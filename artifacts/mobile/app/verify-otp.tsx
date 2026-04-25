@@ -57,6 +57,8 @@ export default function VerifyOtpScreen() {
           startCountdown();
         } else if (msg.includes("already") && msg.includes("confirmed")) {
           setError("This email is already verified. Please sign in.");
+        } else if (msg.includes("email not confirmed") || msg.includes("user not found")) {
+          setError("We couldn't send the code yet. Please register again and check your email settings.");
         } else {
           setError(resendError.message || "Failed to send code. Please try again.");
         }
