@@ -1,0 +1,103 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Stack, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { PrayerProvider } from "@/providers/PrayerProvider";
+import { FavouritesProvider } from "@/providers/FavouritesProvider";
+import { NotificationsProvider } from "@/providers/NotificationsProvider";
+import { SelectedRecipientsProvider } from "@/providers/SelectedRecipientsProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+
+SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient();
+
+function AuthGuard() {
+  const { session, isInitialized } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const inAuthGroup =
+      segments[0] === "login" ||
+      segments[0] === "register" ||
+      segments[0] === "verify-otp";
+
+    if (!session && !inAuthGroup) {
+      console.log("[AuthGuard] No session, redirecting to login");
+      router.replace("/login");
+    } else if (session && inAuthGroup && segments[0] !== "verify-otp") {
+      console.log("[AuthGuard] Session found, redirecting to home");
+      router.replace("/");
+    }
+  }, [session, isInitialized, segments]);
+
+  return null;
+}
+
+function RootLayoutNav() {
+  return (
+    <>
+      <AuthGuard />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
+      <Stack.Screen name="verify-otp" options={{ headerShown: false }} />
+      <Stack.Screen name="journal" options={{ headerShown: false }} />
+      <Stack.Screen name="journal-entry" options={{ headerShown: false }} />
+      <Stack.Screen name="prayer-mode" options={{ headerShown: false }} />
+      <Stack.Screen name="meditative-prayer" options={{ headerShown: false }} />
+      <Stack.Screen name="meditative-prayer-session" options={{ headerShown: false }} />
+      <Stack.Screen name="prayer-space-pro" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="find-friend" options={{ headerShown: false }} />
+      <Stack.Screen name="friend-requests" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="my-posts" options={{ headerShown: false }} />
+      <Stack.Screen name="prayer-stats" options={{ headerShown: false }} />
+      <Stack.Screen name="top-hearts" options={{ headerShown: false }} />
+      <Stack.Screen name="record-prayer" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="new-request" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="explore" options={{ headerShown: false }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
+      <Stack.Screen name="bulk-notify" options={{ headerShown: false }} />
+      <Stack.Screen name="search" options={{ headerShown: false }} />
+      <Stack.Screen name="help-centre" options={{ headerShown: false }} />
+      <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
+      <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+    </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <AuthProvider>
+            <PrayerProvider>
+              <FavouritesProvider>
+                <NotificationsProvider>
+                  <SelectedRecipientsProvider>
+                    <RootLayoutNav />
+                  </SelectedRecipientsProvider>
+                </NotificationsProvider>
+              </FavouritesProvider>
+            </PrayerProvider>
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}

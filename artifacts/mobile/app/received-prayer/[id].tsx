@@ -1,0 +1,934 @@
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  Animated,
+  Platform,
+  Modal,
+} from "react-native";
+import { AutoScrollView } from '@/components/AutoScrollView';
+import { Image } from "expo-image";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams, useFocusEffect, Stack } from "expo-router";
+import {
+  ChevronLeft,
+  Clock,
+  Quote,
+  Play,
+  Pause,
+  FileText,
+  MessageCircle,
+  BookmarkPlus,
+  X,
+} from "lucide-react-native";
+import * as Haptics from "expo-haptics";
+import { LightColors as Colors } from "@/constants/colors";
+import { ThemeColors } from "@/constants/colors";
+import { useThemeColors } from "@/providers/ThemeProvider";
+import { receivedPrayerRequests } from "@/mocks/data";
+import { checkHasPrayed, checkIsJournaled, markAsJournaled, markAsPrayed } from "@/mocks/prayerSessionState";
+import { useNotifications } from "@/providers/NotificationsProvider";
+import { usePrayer } from "@/providers/PrayerProvider";
+
+export default function ReceivedPrayerScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { addJournalEntry } = usePrayer();
+  const { markRequestPrayed } = useNotifications();
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playProgress, setPlayProgress] = useState(0);
+  const [hasPrayed, setHasPrayed] = useState(false);
+  const [isJournaled, setIsJournaled] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [showPrayModal, setShowPrayModal] = useState(false);
+  const [newJournalEntryId, setNewJournalEntryId] = useState<string>("");
+  const modalScaleAnim = useRef(new Animated.Value(0.88)).current;
+  const modalFadeAnim = useRef(new Animated.Value(0)).current;
+  const modalSlideAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tooltipFadeAnim = useRef(new Animated.Value(0)).current;
+  const tooltipSlideAnim = useRef(new Animated.Value(8)).current;
+  const dotsAnim = useRef(new Animated.Value(0)).current;
+
+  const prayer = receivedPrayerRequests.find((p) => p.id === id);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        const prayed = checkHasPrayed(id);
+        const journaled = checkIsJournaled(id);
+        setHasPrayed(prayed);
+        setIsJournaled(journaled);
+        console.log("[ReceivedPrayer] focus check - prayed:", prayed, "journaled:", journaled);
+      }
+    }, [id])
+  );
+
+  useEffect(() => {
+    if (hasPrayed) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(dotsAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(dotsAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+    return () => {
+      dotsAnim.stopAnimation();
+    };
+  }, [hasPrayed, dotsAnim]);
+
+  useEffect(() => {
+    return () => {
+      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+    };
+  }, []);
+
+  const openTooltip = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setShowTooltip(true);
+    tooltipFadeAnim.setValue(0);
+    tooltipSlideAnim.setValue(8);
+    Animated.parallel([
+      Animated.timing(tooltipFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(tooltipSlideAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }, [tooltipFadeAnim, tooltipSlideAnim]);
+
+  const closeTooltip = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(tooltipFadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
+      Animated.timing(tooltipSlideAnim, { toValue: 8, duration: 160, useNativeDriver: true }),
+    ]).start(() => setShowTooltip(false));
+  }, [tooltipFadeAnim, tooltipSlideAnim]);
+
+  const handleAddToJournalFromTooltip = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    if (id) markAsJournaled(id);
+    setIsJournaled(true);
+    addJournalEntry({
+      title: `Praying for ${prayer?.senderName ?? "Someone"}`,
+      body: `Prayer request from ${prayer?.senderName ?? "Someone"}.`,
+      tag: "praying_for",
+      contactName: prayer?.senderName,
+      contactAvatar: prayer?.senderAvatar,
+      prayerRequest: prayer?.content,
+    });
+    closeTooltip();
+    router.push({
+      pathname: "/journal-added-success",
+      params: { senderName: prayer?.senderName ?? "Someone" },
+    });
+  }, [id, prayer, addJournalEntry, closeTooltip, router]);
+
+  const handlePlayPause = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    if (isPlaying) {
+      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      playIntervalRef.current = setInterval(() => {
+        setPlayProgress((prev) => {
+          const next = prev + 1 / 42;
+          if (next >= 1) {
+            if (playIntervalRef.current) clearInterval(playIntervalRef.current);
+            setIsPlaying(false);
+            return 1;
+          }
+          return next;
+        });
+      }, 1000);
+    }
+  }, [isPlaying]);
+
+  const handlePray = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    if (id) {
+      markAsJournaled(id);
+      markAsPrayed(id);
+      markRequestPrayed(id);
+    }
+    setHasPrayed(true);
+    setIsJournaled(true);
+    const entryId = addJournalEntry({
+      title: `Praying for ${prayer?.senderName ?? "Someone"}`,
+      body: `Prayer request from ${prayer?.senderName ?? "Someone"}.`,
+      tag: "praying_for",
+      contactName: prayer?.senderName,
+      contactAvatar: prayer?.senderAvatar,
+      prayerRequest: prayer?.content,
+    });
+    setNewJournalEntryId(entryId);
+    console.log("[ReceivedPrayer] Created journal entry:", entryId);
+    modalScaleAnim.setValue(0.88);
+    modalFadeAnim.setValue(0);
+    setShowPrayModal(true);
+    Animated.parallel([
+      Animated.spring(modalScaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }),
+      Animated.timing(modalFadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }, [id, prayer, addJournalEntry, modalScaleAnim, modalFadeAnim]);
+
+  const closePrayModal = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(modalFadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(modalScaleAnim, { toValue: 0.9, duration: 180, useNativeDriver: true }),
+    ]).start(() => setShowPrayModal(false));
+  }, [modalFadeAnim, modalScaleAnim]);
+
+  const dismissWithSlideDown = useCallback((onDone: () => void) => {
+    modalSlideAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(modalSlideAnim, { toValue: 600, duration: 380, useNativeDriver: true }),
+      Animated.timing(modalFadeAnim, { toValue: 0, duration: 320, useNativeDriver: true }),
+    ]).start(() => {
+      setShowPrayModal(false);
+      modalSlideAnim.setValue(0);
+      onDone();
+    });
+  }, [modalSlideAnim, modalFadeAnim]);
+
+  if (!prayer) {
+    return (
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={["top"]}>
+          <View style={styles.header}>
+            <Pressable style={styles.headerBtn} onPress={() => router.back()}>
+              <ChevronLeft size={20} color={Colors.foreground} />
+            </Pressable>
+          </View>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Prayer request not found.</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const isVoice = prayer.type === "voice";
+  const othersCount = Math.max(0, prayer.prayerCount - prayer.prayedByAvatars.length);
+
+  const dotsOpacity1 = dotsAnim.interpolate({ inputRange: [0, 0.33, 1], outputRange: [0.3, 1, 0.3] });
+  const dotsOpacity2 = dotsAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] });
+  const dotsOpacity3 = dotsAnim.interpolate({ inputRange: [0, 0.66, 1], outputRange: [0.3, 1, 0.3] });
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Modal
+        visible={showPrayModal}
+        transparent
+        animationType="none"
+        onRequestClose={closePrayModal}
+        statusBarTranslucent
+      >
+        <Pressable style={styles.modalOverlay} onPress={closePrayModal}>
+          <Animated.View
+            style={[
+              styles.modalCard,
+              { opacity: modalFadeAnim, transform: [{ scale: modalScaleAnim }, { translateY: modalSlideAnim }] },
+            ]}
+          >
+            <View style={styles.modalEmoji}>
+              <Text style={styles.modalEmojiText}>🙏</Text>
+            </View>
+            <Text style={styles.modalTitle}>Praying for {prayer?.senderName.split(" ")[0]}</Text>
+            <Text style={styles.modalBody}>
+              We've let <Text style={styles.modalBold}>{prayer?.senderName.split(" ")[0]}</Text> know you're praying for them and this has been added to your prayer journal.
+            </Text>
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, pressed && { opacity: 0.85 }]}
+                onPress={() => {
+                  closePrayModal();
+                  router.push({ pathname: "/journal", params: { tab: "praying_for", highlightId: newJournalEntryId } });
+                }}
+              >
+                <Text style={styles.modalBtnText}>Pray now</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtnLater, pressed && { opacity: 0.7 }]}
+                onPress={() => {
+                  dismissWithSlideDown(() => router.replace("/(tabs)/(home)"));
+                }}
+              >
+                <Text style={styles.modalBtnLaterText}>Later</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+
+      <View style={styles.topGradient} />
+      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+        <View style={styles.header}>
+          <Pressable style={styles.headerBtn} onPress={() => router.back()}>
+            <ChevronLeft size={20} color={Colors.foreground} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Prayer Request</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <AutoScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.senderSection}>
+            <Pressable style={styles.avatarWrap} onPress={() => router.push({ pathname: "/profile/[id]", params: { id: prayer.senderId ?? prayer.id } })}>
+              <Image source={{ uri: prayer.senderAvatar }} style={styles.avatar} />
+              <View style={styles.avatarBadge}>
+                {isVoice ? (
+                  <Text style={styles.avatarBadgeEmoji}>🎙</Text>
+                ) : (
+                  <Text style={styles.avatarBadgeEmoji}>🤍</Text>
+                )}
+              </View>
+            </Pressable>
+            <Text style={styles.senderName}>{prayer.senderName}</Text>
+            <View style={styles.timeRow}>
+              <Clock size={13} color={Colors.primary} />
+              <Text style={styles.timeText}>Sent {prayer.sentAt}</Text>
+            </View>
+          </View>
+
+          {isVoice ? (
+            <View style={styles.card}>
+              <View style={styles.playerRow}>
+                <Pressable style={styles.playBtn} onPress={handlePlayPause}>
+                  {isPlaying ? (
+                    <Pause size={22} color={Colors.primary} />
+                  ) : (
+                    <Play size={22} color={Colors.primary} />
+                  )}
+                </Pressable>
+                <View style={styles.progressWrap}>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${playProgress * 100}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.durationText}>{prayer.voiceDuration ?? "0:00"}</Text>
+              </View>
+
+              <View style={styles.transcriptSection}>
+                <View style={styles.transcriptLabelRow}>
+                  <FileText size={13} color={Colors.primary} />
+                  <Text style={styles.transcriptLabel}>TRANSCRIPT</Text>
+                </View>
+                <Text style={styles.transcriptText}>"{prayer.content}"</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.card}>
+              <View style={styles.quoteIconWrap}>
+                <Quote size={32} color={Colors.primary + "18"} />
+              </View>
+              <Text style={styles.requestText}>"{prayer.content}"</Text>
+            </View>
+          )}
+
+          <View style={styles.prayedSection}>
+            <View style={styles.avatarStack}>
+              {prayer.prayedByAvatars.slice(0, 3).map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={[styles.stackAvatar, i > 0 && { marginLeft: -10 }]}
+                />
+              ))}
+              {othersCount > 0 && (
+                <View style={[styles.stackCount, { marginLeft: -10 }]}>
+                  <Text style={styles.stackCountText}>+{othersCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.prayedText}>
+              {prayer.prayerCount} {prayer.prayerCount === 1 ? "person has" : "people have"}{" "}
+              {isVoice ? "listened to" : "prayed for"}{" "}
+              <Text style={styles.prayedBold}>{prayer.senderName.split(" ")[0]}</Text>{" "}
+              today
+            </Text>
+          </View>
+        </AutoScrollView>
+
+        <SafeAreaView edges={["bottom"]} style={styles.bottomBar}>
+          {showTooltip && !isJournaled && (
+            <Animated.View
+              style={[
+                styles.tooltip,
+                {
+                  opacity: tooltipFadeAnim,
+                  transform: [{ translateY: tooltipSlideAnim }],
+                },
+              ]}
+            >
+              <View style={styles.tooltipContent}>
+                <BookmarkPlus size={18} color={Colors.primary} />
+                <View style={styles.tooltipTextWrap}>
+                  <Text style={styles.tooltipTitle}>Add to Prayer Journal?</Text>
+                  <Text style={styles.tooltipSub}>Keep praying for {prayer.senderName.split(" ")[0]}</Text>
+                </View>
+                <Pressable
+                  style={({ pressed }) => [styles.tooltipYesBtn, pressed && { opacity: 0.8 }]}
+                  onPress={handleAddToJournalFromTooltip}
+                >
+                  <Text style={styles.tooltipYesText}>Add</Text>
+                </Pressable>
+                <Pressable onPress={closeTooltip} style={styles.tooltipCloseBtn}>
+                  <X size={14} color={Colors.mutedForeground} />
+                </Pressable>
+              </View>
+              <View style={styles.tooltipArrow} />
+            </Animated.View>
+          )}
+
+          <View style={styles.bottomRow}>
+            <View style={styles.prayBtnWrap}>
+              <Pressable
+                style={[styles.prayBtn, hasPrayed && styles.prayBtnPraying]}
+                onPress={hasPrayed ? undefined : handlePray}
+                testID="pray-button"
+              >
+                <Text style={styles.prayBtnEmoji}>🙏</Text>
+                <View style={styles.prayBtnTextWrap}>
+                  <Text style={styles.prayBtnText}>{hasPrayed ? "Praying" : "Pray"}</Text>
+                </View>
+              </Pressable>
+
+              {hasPrayed && !isJournaled && (
+                <Pressable style={styles.dotsBtn} onPress={openTooltip} testID="dots-btn">
+                  <View style={styles.dotsInner}>
+                    <Animated.View style={[styles.dot, { opacity: dotsOpacity1 }]} />
+                    <Animated.View style={[styles.dot, { opacity: dotsOpacity2 }]} />
+                    <Animated.View style={[styles.dot, { opacity: dotsOpacity3 }]} />
+                  </View>
+                </Pressable>
+              )}
+
+              {hasPrayed && isJournaled && (
+                <View style={styles.journaledBadge} testID="journaled-badge">
+                  <Text style={styles.journaledBadgeEmoji}>📖</Text>
+                </View>
+              )}
+            </View>
+
+            <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${prayer.senderId}`)}>
+              <MessageCircle size={22} color={Colors.secondaryForeground} />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  topGradient: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 280,
+    backgroundColor: Colors.primary + "0A",
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+  },
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.card + "CC",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 140,
+  },
+  senderSection: {
+    alignItems: "center" as const,
+    marginBottom: 28,
+    paddingTop: 8,
+  },
+  avatarWrap: {
+    position: "relative" as const,
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
+    borderWidth: 4,
+    borderColor: Colors.card,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+  },
+  avatarBadge: {
+    position: "absolute" as const,
+    bottom: -6,
+    right: -6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 2,
+    borderColor: Colors.background,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  avatarBadgeEmoji: {
+    fontSize: 14,
+  },
+  senderName: {
+    fontSize: 26,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    marginBottom: 6,
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  timeText: {
+    fontSize: 13,
+    color: Colors.mutedForeground,
+    fontWeight: "600" as const,
+  },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: 32,
+    padding: 28,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 30,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: Colors.border + "30",
+    marginBottom: 28,
+  },
+  quoteIconWrap: {
+    position: "absolute" as const,
+    top: 20,
+    left: 20,
+  },
+  requestText: {
+    fontSize: 18,
+    lineHeight: 28,
+    color: Colors.secondaryForeground,
+    fontWeight: "500" as const,
+    fontStyle: "italic" as const,
+    paddingTop: 8,
+  },
+  playerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 24,
+  },
+  playBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  progressWrap: {
+    flex: 1,
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: Colors.secondary,
+    borderRadius: 3,
+    overflow: "hidden" as const,
+  },
+  progressFill: {
+    height: "100%" as const,
+    backgroundColor: Colors.primary,
+    borderRadius: 3,
+  },
+  durationText: {
+    fontSize: 11,
+    fontWeight: "800" as const,
+    color: Colors.mutedForeground,
+    letterSpacing: 1,
+  },
+  transcriptSection: {
+    gap: 10,
+  },
+  transcriptLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  transcriptLabel: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.mutedForeground,
+    letterSpacing: 1.5,
+  },
+  transcriptText: {
+    fontSize: 17,
+    lineHeight: 27,
+    color: Colors.secondaryForeground,
+    fontWeight: "500" as const,
+    fontStyle: "italic" as const,
+  },
+  prayedSection: {
+    alignItems: "center" as const,
+    gap: 12,
+  },
+  avatarStack: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  stackAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: Colors.card,
+  },
+  stackCount: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.accent,
+    borderWidth: 2,
+    borderColor: Colors.card,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  stackCountText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.accentForeground,
+  },
+  prayedText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.mutedForeground,
+    textAlign: "center" as const,
+  },
+  prayedBold: {
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  bottomBar: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    backgroundColor: Colors.background + "F0",
+    borderTopWidth: 1,
+    borderTopColor: Colors.border + "20",
+  },
+  tooltip: {
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: Colors.border + "40",
+  },
+  tooltipContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    gap: 10,
+  },
+  tooltipTextWrap: {
+    flex: 1,
+  },
+  tooltipTitle: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  tooltipSub: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    fontWeight: "500" as const,
+  },
+  tooltipYesBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  tooltipYesText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.primaryForeground,
+  },
+  tooltipCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.secondary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  tooltipArrow: {
+    position: "absolute" as const,
+    bottom: -8,
+    left: 52,
+    width: 16,
+    height: 16,
+    backgroundColor: Colors.card,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.border + "40",
+    transform: [{ rotate: "45deg" }],
+  },
+  bottomRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  prayBtnWrap: {
+    flex: 1,
+    position: "relative" as const,
+  },
+  prayBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    backgroundColor: Colors.primary,
+    paddingVertical: 18,
+    borderRadius: 999,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  prayBtnPraying: {
+    backgroundColor: "#B85A1D",
+    shadowColor: "#B85A1D",
+    shadowOpacity: 0.3,
+  },
+  prayBtnEmoji: {
+    fontSize: 20,
+  },
+  prayBtnText: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: Colors.primaryForeground,
+  },
+  dotsBtn: {
+    position: "absolute" as const,
+    top: -6,
+    right: 6,
+    backgroundColor: Colors.card,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  dotsInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.primary,
+  },
+  journaledBadge: {
+    position: "absolute" as const,
+    top: -6,
+    right: 6,
+    backgroundColor: Colors.card,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  journaledBadgeEmoji: {
+    fontSize: 13,
+  },
+  chatBtn: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.secondary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.mutedForeground,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    backgroundColor: Colors.card,
+    borderRadius: 32,
+    paddingHorizontal: 28,
+    paddingTop: 36,
+    paddingBottom: 28,
+    width: "100%" as const,
+    alignItems: "center" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.2,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  modalEmoji: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginBottom: 20,
+  },
+  modalEmojiText: {
+    fontSize: 34,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    marginBottom: 12,
+    textAlign: "center" as const,
+  },
+  modalBody: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: Colors.secondaryForeground,
+    textAlign: "center" as const,
+    fontWeight: "500" as const,
+    marginBottom: 28,
+  },
+  modalBold: {
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  modalBtnRow: {
+    width: "100%" as const,
+    gap: 12,
+    alignItems: "center" as const,
+  },
+  modalBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    width: "100%" as const,
+    alignItems: "center" as const,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  modalBtnText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.primaryForeground,
+  },
+  modalBtnLater: {
+    paddingVertical: 12,
+    paddingHorizontal: 48,
+  },
+  modalBtnLaterText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.mutedForeground,
+  },
+  prayBtnTextWrap: {
+    alignItems: "center" as const,
+  },
+  prayBtnSub: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.primaryForeground + "CC",
+    marginTop: 1,
+    letterSpacing: 0.2,
+  },
+});

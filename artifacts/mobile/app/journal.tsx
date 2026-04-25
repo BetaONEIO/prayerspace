@@ -1,0 +1,2268 @@
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  Platform,
+  Animated,
+  FlatList,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+} from "react-native";
+import { AutoScrollView } from '@/components/AutoScrollView';
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams, Stack } from "expo-router";
+import {
+  PenSquare,
+  Heart,
+  CheckCircle,
+  ArrowLeft,
+  Menu,
+  HandHeart,
+  Plus,
+  X,
+  Search,
+  Check,
+  UserPlus,
+  Users,
+  Sparkles,
+  ChevronRight,
+  ArrowRight,
+} from "lucide-react-native";
+import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
+import { useThemeColors } from "@/providers/ThemeProvider";
+import { LightColors as Colors } from "@/constants/colors";
+import { ThemeColors } from "@/constants/colors";
+import { useThemeColors } from "@/providers/ThemeProvider";
+import NavigationDrawer from "@/components/NavigationDrawer";
+import { usePrayer } from "@/providers/PrayerProvider";
+import type { JournalEntry, YourPerson } from "@/providers/PrayerProvider";
+import { stripMarkdown } from "@/components/FormattedText";
+import { ALL_RECIPIENTS } from "@/providers/SelectedRecipientsProvider";
+
+const FILTERS = ["My Prayers", "Your People", "Prayer Requests"] as const;
+
+type JournalFilter = (typeof FILTERS)[number];
+
+const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  gratitude: { label: "GRATITUDE", color: Colors.primary, bg: Colors.primary + "18" },
+  petition: { label: "PETITION", color: Colors.accentForeground, bg: Colors.accent },
+  reflection: { label: "REFLECTIONS", color: Colors.primary, bg: Colors.primary + "18" },
+  praying_for: { label: "PRAYING FOR", color: "#D4782F", bg: "#D4782F18" },
+};
+
+const MOCK_ENTRIES: JournalEntry[] = [
+  {
+    id: "j1",
+    title: "Peace in the Storm",
+    body: "Today I felt a profound sense of peace during my morning prayer. Even though the project at work is stressful, I'm choosing to trust...",
+    tag: "reflection",
+    timestamp: Date.now() - 1000 * 60 * 60 * 3,
+    isFavorite: true,
+    isAnswered: false,
+  },
+  {
+    id: "j2",
+    title: "Prayer for Financial Wisdom",
+    body: "Lord, help us manage our resources better this month. Give us clarity on the upcoming investment decisions...",
+    tag: "petition",
+    timestamp: Date.now() - 1000 * 60 * 60 * 27,
+    isFavorite: false,
+    isAnswered: true,
+  },
+  {
+    id: "j3",
+    title: "Morning Gratefulness",
+    body: "Thankful for the sunrise and the coffee. A fresh start to a beautiful week.",
+    tag: "gratitude",
+    timestamp: Date.now() - 1000 * 60 * 60 * 29,
+    isFavorite: false,
+    isAnswered: false,
+  },
+];
+
+function formatDateGroup(timestamp: number): string {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const formatted = date.toLocaleDateString("en-US", options);
+  if (diffDays === 0) return `Today, ${formatted}`;
+  if (diffDays === 1) return `Yesterday, ${formatted}`;
+  return formatted;
+}
+
+function formatTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+interface AddPersonModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onAdd: (person: Omit<YourPerson, "id">) => void;
+  existingPeople: YourPerson[];
+}
+
+function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonModalProps) {
+  const insets = useSafeAreaInsets();
+  const [search, setSearch] = useState<string>("");
+  const [customName, setCustomName] = useState<string>("");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<"search" | "custom">("search");
+  const [prayerFocus, setPrayerFocus] = useState<string>("");
+  const [step, setStep] = useState<"select" | "focus">("select");
+  const [pendingName, setPendingName] = useState<string>("");
+  const [pendingAvatar, setPendingAvatar] = useState<string | undefined>(undefined);
+
+  const filteredRecipients = useMemo(() =>
+    ALL_RECIPIENTS.filter(
+      (r) =>
+        r.name.toLowerCase().includes(search.toLowerCase()) &&
+        !existingPeople.find((p) => p.name.toLowerCase() === r.name.toLowerCase())
+    ),
+    [search, existingPeople]
+  );
+
+  const handleClose = useCallback(() => {
+    setSearch("");
+    setCustomName("");
+    setSelected(null);
+    setMode("search");
+    setPrayerFocus("");
+    setStep("select");
+    setPendingName("");
+    setPendingAvatar(undefined);
+    onClose();
+  }, [onClose]);
+
+  const handleNext = useCallback(() => {
+    if (mode === "custom") {
+      if (!customName.trim()) return;
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPendingName(customName.trim());
+      setPendingAvatar(undefined);
+    } else if (selected) {
+      const recipient = ALL_RECIPIENTS.find((r) => r.id === selected);
+      if (!recipient) return;
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPendingName(recipient.name);
+      setPendingAvatar(recipient.avatar);
+    } else {
+      return;
+    }
+    setStep("focus");
+  }, [mode, customName, selected]);
+
+  const handleConfirm = useCallback(() => {
+    if (!pendingName.trim()) return;
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onAdd({ name: pendingName, avatar: pendingAvatar, prayerFocus: prayerFocus.trim() || undefined });
+    handleClose();
+  }, [pendingName, pendingAvatar, prayerFocus, onAdd, handleClose]);
+
+  const canConfirm = mode === "custom" ? customName.trim().length > 0 : selected !== null;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+      <SafeAreaView style={addStyles.safe} edges={["top"]}>
+        <View style={addStyles.header}>
+          {step === "focus" ? (
+            <Pressable style={addStyles.backBtn} onPress={() => setStep("select")}>
+              <ArrowRight size={18} color={Colors.secondaryForeground} style={{ transform: [{ rotate: "180deg" }] }} />
+            </Pressable>
+          ) : (
+            <View style={{ width: 34 }} />
+          )}
+          <Text style={addStyles.title}>
+            {step === "focus" ? "Prayer Focus" : "Add to Your People"}
+          </Text>
+          <Pressable style={addStyles.closeBtn} onPress={handleClose}>
+            <X size={18} color={Colors.secondaryForeground} />
+          </Pressable>
+        </View>
+
+        {step === "select" ? (
+          <>
+            <View style={addStyles.modeTabs}>
+              <Pressable
+                style={[addStyles.modeTab, mode === "search" && addStyles.modeTabActive]}
+                onPress={() => setMode("search")}
+              >
+                <Text style={[addStyles.modeTabText, mode === "search" && addStyles.modeTabTextActive]}>From Contacts</Text>
+              </Pressable>
+              <Pressable
+                style={[addStyles.modeTab, mode === "custom" && addStyles.modeTabActive]}
+                onPress={() => setMode("custom")}
+              >
+                <Text style={[addStyles.modeTabText, mode === "custom" && addStyles.modeTabTextActive]}>Add by Name</Text>
+              </Pressable>
+            </View>
+
+            {mode === "search" ? (
+              <>
+                <View style={addStyles.searchBar}>
+                  <Search size={16} color={Colors.mutedForeground} />
+                  <TextInput
+                    style={addStyles.searchInput}
+                    placeholder="Search contacts..."
+                    placeholderTextColor={Colors.mutedForeground}
+                    value={search}
+                    onChangeText={setSearch}
+                    autoFocus
+                  />
+                </View>
+
+                {filteredRecipients.length === 0 ? (
+                  <View style={addStyles.emptyState}>
+                    <Users size={36} color={Colors.border} />
+                    <Text style={addStyles.emptyText}>{search ? "No contacts found" : "All contacts already added"}</Text>
+                  </View>
+                ) : (
+                  <ScrollView contentContainerStyle={addStyles.list} showsVerticalScrollIndicator={false}>
+                    {filteredRecipients.map((item) => {
+                      const isSelected = selected === item.id;
+                      return (
+                        <Pressable
+                          key={item.id}
+                          style={[addStyles.contactRow, isSelected && addStyles.contactRowSelected]}
+                          onPress={() => {
+                            if (Platform.OS !== "web") void Haptics.selectionAsync();
+                            setSelected(isSelected ? null : item.id);
+                          }}
+                        >
+                          {item.avatar ? (
+                            <Image source={{ uri: item.avatar }} style={addStyles.contactAvatar} />
+                          ) : (
+                            <View style={addStyles.initialsAvatar}>
+                              <Text style={addStyles.initialsText}>{item.initials ?? item.name.charAt(0)}</Text>
+                            </View>
+                          )}
+                          <View style={addStyles.contactInfo}>
+                            <Text style={addStyles.contactName}>{item.name}</Text>
+                            <Text style={addStyles.contactSub}>{item.subtitle}</Text>
+                          </View>
+                          <View style={[addStyles.checkCircle, isSelected && addStyles.checkCircleActive]}>
+                            {isSelected && <Check size={12} color="#fff" strokeWidth={3} />}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                    <View style={{ height: 100 }} />
+                  </ScrollView>
+                )}
+              </>
+            ) : (
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+              >
+                <View style={addStyles.customWrap}>
+                  <Text style={addStyles.customLabel}>Enter a name</Text>
+                  <TextInput
+                    style={addStyles.customInput}
+                    placeholder="e.g. Grandma, Pastor Mike..."
+                    placeholderTextColor={Colors.mutedForeground}
+                    value={customName}
+                    onChangeText={setCustomName}
+                    autoFocus
+                    returnKeyType="next"
+                    onSubmitEditing={canConfirm ? handleNext : undefined}
+                  />
+                  <Text style={addStyles.customHint}>
+                    You can add anyone — family, friends, or people you've committed to pray for.
+                  </Text>
+                </View>
+              </KeyboardAvoidingView>
+            )}
+
+            <View style={[addStyles.footer, { paddingBottom: insets.bottom + 16 }]}>
+              <Pressable
+                style={[addStyles.addBtn, !canConfirm && addStyles.addBtnDisabled]}
+                onPress={handleNext}
+                disabled={!canConfirm}
+              >
+                <Text style={addStyles.addBtnText}>Next</Text>
+                <ArrowRight size={18} color="#fff" />
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+          >
+            <View style={addStyles.focusStep}>
+              <View style={addStyles.focusPersonRow}>
+                {pendingAvatar ? (
+                  <Image source={{ uri: pendingAvatar }} style={addStyles.focusAvatar} />
+                ) : (
+                  <View style={addStyles.focusAvatarFallback}>
+                    <Text style={addStyles.focusAvatarInitial}>{pendingName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+                <Text style={addStyles.focusPersonName}>{pendingName}</Text>
+              </View>
+
+              <Text style={addStyles.focusQuestion}>
+                Is there anything specific{"\n"}to pray for {pendingName.split(" ")[0]}?
+              </Text>
+
+              <TextInput
+                style={addStyles.focusTextArea}
+                placeholder="e.g. health, wisdom, family, peace..."
+                placeholderTextColor={Colors.mutedForeground + "80"}
+                value={prayerFocus}
+                onChangeText={setPrayerFocus}
+                multiline
+                autoFocus
+                textAlignVertical="top"
+              />
+
+              <Text style={addStyles.focusHint}>
+                Optional — helps you pray with intention. Only visible to you.
+              </Text>
+            </View>
+
+            <View style={[addStyles.footer, { paddingBottom: insets.bottom + 16 }]}>
+              <Pressable style={addStyles.addBtn} onPress={handleConfirm}>
+                <UserPlus size={18} color="#fff" />
+                <Text style={addStyles.addBtnText}>Add to Your People</Text>
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+interface PrayerSelectionModalProps {
+  visible: boolean;
+  people: YourPerson[];
+  onClose: () => void;
+  onBegin: (selectedIds: string[]) => void;
+}
+
+function PrayerSelectionModal({ visible, people, onClose, onBegin }: PrayerSelectionModalProps) {
+  const insets = useSafeAreaInsets();
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const slideAnim = useRef(new Animated.Value(500)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedIds(people.map((p) => p.id));
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 14 }),
+      ]).start();
+    } else {
+      slideAnim.setValue(500);
+      fadeAnim.setValue(0);
+    }
+  }, [visible]);
+
+  const allSelected = selectedIds.length === people.length && people.length > 0;
+
+  const toggleAll = useCallback(() => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setSelectedIds(allSelected ? [] : people.map((p) => p.id));
+  }, [allSelected, people]);
+
+  const togglePerson = useCallback((id: string) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  }, []);
+
+  const handleBegin = useCallback(() => {
+    if (selectedIds.length === 0) return;
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onBegin(selectedIds);
+  }, [selectedIds, onBegin]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <Animated.View style={[selStyles.overlay, { opacity: fadeAnim }]}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <Animated.View
+          style={[
+            selStyles.sheet,
+            { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom + 20 },
+          ]}
+        >
+          <View style={selStyles.handle} />
+
+          <View style={selStyles.headerRow}>
+            <View style={selStyles.headerText}>
+              <Text style={selStyles.title}>Who would you like{"\n"}to pray for?</Text>
+              <Text style={selStyles.subtitle}>Choose people for your prayer time</Text>
+            </View>
+            <Pressable style={selStyles.closeBtn} onPress={onClose}>
+              <X size={16} color={Colors.secondaryForeground} />
+            </Pressable>
+          </View>
+
+          <Pressable style={selStyles.selectAllRow} onPress={toggleAll}>
+            <View style={[selStyles.selectAllCheck, allSelected && selStyles.selectAllCheckActive]}>
+              {allSelected && <Check size={10} color="#fff" strokeWidth={3} />}
+            </View>
+            <Text style={selStyles.selectAllText}>
+              {allSelected ? "Deselect all" : `Select all · ${people.length} people`}
+            </Text>
+          </Pressable>
+
+          <ScrollView
+            style={selStyles.personsList}
+            contentContainerStyle={{ gap: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {people.map((person) => {
+              const isSelected = selectedIds.includes(person.id);
+              return (
+                <Pressable
+                  key={person.id}
+                  style={[selStyles.personRow, isSelected && selStyles.personRowSelected]}
+                  onPress={() => togglePerson(person.id)}
+                >
+                  {person.avatar ? (
+                    <Image source={{ uri: person.avatar }} style={selStyles.selAvatar} />
+                  ) : (
+                    <View style={selStyles.selAvatarFallback}>
+                      <Text style={selStyles.selAvatarInitial}>{person.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
+                  <View style={selStyles.personInfo}>
+                    <Text style={selStyles.personName}>{person.name}</Text>
+                    {person.prayerFocus ? (
+                      <Text style={selStyles.personFocus} numberOfLines={1}>{person.prayerFocus}</Text>
+                    ) : null}
+                  </View>
+                  <View style={[selStyles.checkbox, isSelected && selStyles.checkboxActive]}>
+                    {isSelected && <Check size={11} color="#fff" strokeWidth={3} />}
+                  </View>
+                </Pressable>
+              );
+            })}
+            <View style={{ height: 8 }} />
+          </ScrollView>
+
+          <Pressable
+            style={[selStyles.beginBtn, selectedIds.length === 0 && selStyles.beginBtnDisabled]}
+            onPress={handleBegin}
+          >
+            <Text style={selStyles.beginBtnText}>Begin Prayer Time</Text>
+            {selectedIds.length > 0 && (
+              <View style={selStyles.countPill}>
+                <Text style={selStyles.countPillText}>{selectedIds.length}</Text>
+              </View>
+            )}
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const selStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(28,25,20,0.52)",
+    justifyContent: "flex-end" as const,
+  },
+  sheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    maxHeight: "82%" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 28,
+    elevation: 20,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center" as const,
+    marginBottom: 24,
+  },
+  headerRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 20,
+  },
+  headerText: { flex: 1 },
+  title: {
+    fontSize: 24,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+    lineHeight: 30,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: Colors.mutedForeground,
+    fontWeight: "500" as const,
+  },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.secondary,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    marginTop: 4,
+  },
+  selectAllRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    paddingVertical: 10,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border + "60",
+  },
+  selectAllCheck: {
+    width: 22, height: 22, borderRadius: 6,
+    borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    backgroundColor: Colors.secondary,
+  },
+  selectAllCheckActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.secondaryForeground,
+  },
+  personsList: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  personRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: Colors.card,
+    borderWidth: 1.5,
+    borderColor: Colors.border + "60",
+  },
+  personRowSelected: {
+    borderColor: Colors.primary + "50",
+    backgroundColor: Colors.primary + "07",
+  },
+  selAvatar: { width: 46, height: 46, borderRadius: 14 },
+  selAvatarFallback: {
+    width: 46, height: 46, borderRadius: 14,
+    backgroundColor: Colors.primary + "18",
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  selAvatarInitial: { fontSize: 18, fontWeight: "700" as const, color: Colors.primary },
+  personInfo: { flex: 1, gap: 3 },
+  personName: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
+  personFocus: { fontSize: 12, color: Colors.mutedForeground, fontStyle: "italic" as const },
+  checkbox: {
+    width: 24, height: 24, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    backgroundColor: Colors.secondary,
+  },
+  checkboxActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  beginBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 10,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingVertical: 18,
+    marginTop: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  beginBtnDisabled: {
+    backgroundColor: Colors.muted,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  beginBtnText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: "#fff",
+    letterSpacing: 0.2,
+  },
+  countPill: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  countPillText: { fontSize: 13, fontWeight: "700" as const, color: "#fff" },
+});
+
+interface ActivePrayerModalProps {
+  visible: boolean;
+  people: YourPerson[];
+  selectedIds: string[];
+  onEnd: () => void;
+}
+
+function ActivePrayerModal({ visible, people, selectedIds, onEnd }: ActivePrayerModalProps) {
+  const insets = useSafeAreaInsets();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const breatheAnim = useRef(new Animated.Value(1)).current;
+  const breatheLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+  const selectedPeople = useMemo(
+    () => people.filter((p) => selectedIds.includes(p.id)),
+    [people, selectedIds]
+  );
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }).start();
+      breatheLoop.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(breatheAnim, { toValue: 1.2, duration: 3500, useNativeDriver: true }),
+          Animated.timing(breatheAnim, { toValue: 0.85, duration: 3500, useNativeDriver: true }),
+        ])
+      );
+      breatheLoop.current.start();
+    } else {
+      breatheLoop.current?.stop();
+      fadeAnim.setValue(0);
+      breatheAnim.setValue(1);
+    }
+    return () => {
+      breatheLoop.current?.stop();
+    };
+  }, [visible]);
+
+  const handleEnd = useCallback(() => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    breatheLoop.current?.stop();
+    Animated.timing(fadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => onEnd());
+  }, [onEnd, fadeAnim]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={handleEnd} statusBarTranslucent>
+      <Animated.View style={[activeStyles.container, { opacity: fadeAnim }]}>
+        <View style={activeStyles.warmBg} />
+        <View style={activeStyles.topGlow} />
+
+        <View style={[activeStyles.safeTop, { paddingTop: insets.top + 10 }]}>
+          <View style={activeStyles.headerRow}>
+            <Text style={activeStyles.inPrayerLabel}>IN PRAYER</Text>
+            <Pressable style={activeStyles.endHeaderBtn} onPress={handleEnd}>
+              <X size={16} color={Colors.mutedForeground} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={activeStyles.orbSection}>
+          <Animated.View style={[activeStyles.orb, { transform: [{ scale: breatheAnim }] }]} />
+          <Text style={activeStyles.inviteText}>Take a quiet moment</Text>
+          <Text style={activeStyles.inviteSub}>
+            Bring each person before God{"\n"}in your own words
+          </Text>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={activeStyles.peopleList}
+          showsVerticalScrollIndicator={false}
+          style={activeStyles.scroll}
+        >
+          {selectedPeople.map((person) => (
+            <View key={person.id} style={activeStyles.personRow}>
+              {person.avatar ? (
+                <Image source={{ uri: person.avatar }} style={activeStyles.personAvatar} />
+              ) : (
+                <View style={activeStyles.personAvatarFallback}>
+                  <Text style={activeStyles.personInitial}>{person.name.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={activeStyles.personInfo}>
+                <Text style={activeStyles.personName}>{person.name}</Text>
+                {person.prayerFocus ? (
+                  <Text style={activeStyles.personFocus}>{person.prayerFocus}</Text>
+                ) : null}
+              </View>
+            </View>
+          ))}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+
+        <View style={[activeStyles.footer, { paddingBottom: insets.bottom + 20 }]}>
+          <Pressable style={activeStyles.endBtn} onPress={handleEnd}>
+            <Text style={activeStyles.endBtnText}>End Prayer Time</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const activeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  warmBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#FAF6EE",
+  },
+  topGlow: {
+    position: "absolute" as const,
+    top: -100,
+    alignSelf: "center" as const,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    backgroundColor: Colors.primary + "16",
+  },
+  safeTop: {
+    paddingHorizontal: 24,
+    paddingBottom: 4,
+  },
+  headerRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+  },
+  inPrayerLabel: {
+    fontSize: 11,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+    letterSpacing: 2.8,
+  },
+  endHeaderBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.muted,
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  orbSection: {
+    alignItems: "center" as const,
+    paddingTop: 24,
+    paddingBottom: 28,
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  orb: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary + "1E",
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "35",
+    marginBottom: 6,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 24,
+    elevation: 5,
+  },
+  inviteText: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+    textAlign: "center" as const,
+    letterSpacing: -0.3,
+  },
+  inviteSub: {
+    fontSize: 14,
+    color: Colors.mutedForeground,
+    textAlign: "center" as const,
+    lineHeight: 22,
+    fontWeight: "500" as const,
+  },
+  scroll: { flex: 1 },
+  peopleList: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  personRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border + "50",
+  },
+  personAvatar: { width: 46, height: 46, borderRadius: 14 },
+  personAvatarFallback: {
+    width: 46, height: 46, borderRadius: 14,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  personInitial: { fontSize: 18, fontWeight: "700" as const, color: Colors.primary },
+  personInfo: { flex: 1, gap: 4 },
+  personName: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  personFocus: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    fontStyle: "italic" as const,
+    lineHeight: 18,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border + "40",
+    backgroundColor: "rgba(250,246,238,0.96)",
+  },
+  endBtn: {
+    backgroundColor: Colors.foreground,
+    borderRadius: 999,
+    paddingVertical: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  endBtnText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.primaryForeground,
+    letterSpacing: 0.2,
+  },
+});
+
+interface PostPrayerPromptProps {
+  visible: boolean;
+  count: number;
+  onReflect: () => void;
+  onDismiss: () => void;
+}
+
+function PostPrayerPrompt({ visible, count, onReflect, onDismiss }: PostPrayerPromptProps) {
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 12 }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0.88);
+      fadeAnim.setValue(0);
+    }
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onDismiss}>
+      <View style={postStyles.overlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} />
+        <Animated.View
+          style={[postStyles.card, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}
+        >
+          <View style={postStyles.iconRing}>
+            <Text style={postStyles.emoji}>🙏</Text>
+          </View>
+          <Text style={postStyles.title}>Prayer time complete</Text>
+          <Text style={postStyles.body}>
+            You prayed for{" "}
+            <Text style={postStyles.bodyEmphasis}>
+              {count} {count === 1 ? "person" : "people"}
+            </Text>{" "}
+            today.{"\n"}Would you like to reflect or write a prayer?
+          </Text>
+          <Pressable style={postStyles.reflectBtn} onPress={onReflect}>
+            <Text style={postStyles.reflectBtnText}>Write a reflection</Text>
+          </Pressable>
+          <Pressable style={postStyles.dismissBtn} onPress={onDismiss}>
+            <Text style={postStyles.dismissBtnText}>Not now</Text>
+          </Pressable>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const postStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(28,25,20,0.52)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 28,
+  },
+  card: {
+    backgroundColor: Colors.card,
+    borderRadius: 32,
+    padding: 32,
+    width: "100%" as const,
+    alignItems: "center" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.18,
+    shadowRadius: 40,
+    elevation: 20,
+  },
+  iconRing: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const, justifyContent: "center" as const,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "30",
+  },
+  emoji: { fontSize: 34 },
+  title: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    textAlign: "center" as const,
+    letterSpacing: -0.4,
+    marginBottom: 10,
+  },
+  body: {
+    fontSize: 14,
+    color: Colors.mutedForeground,
+    textAlign: "center" as const,
+    lineHeight: 22,
+    fontWeight: "500" as const,
+    marginBottom: 28,
+  },
+  bodyEmphasis: {
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  reflectBtn: {
+    width: "100%" as const,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: "center" as const,
+    marginBottom: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  reflectBtnText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  dismissBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  dismissBtnText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.mutedForeground,
+  },
+});
+
+const addStyles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  title: { fontSize: 20, fontWeight: "800" as const, color: Colors.foreground, letterSpacing: -0.3, flex: 1, textAlign: "center" as const },
+  closeBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.secondary,
+    alignItems: "center", justifyContent: "center",
+  },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: Colors.secondary,
+    alignItems: "center", justifyContent: "center",
+  },
+  focusStep: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 20,
+  },
+  focusPersonRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: Colors.secondary + "80",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  focusAvatar: {
+    width: 48, height: 48, borderRadius: 14,
+  },
+  focusAvatarFallback: {
+    width: 48, height: 48, borderRadius: 14,
+    backgroundColor: Colors.primary + "18",
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  focusAvatarInitial: {
+    fontSize: 20, fontWeight: "700" as const, color: Colors.primary,
+  },
+  focusPersonName: {
+    fontSize: 17, fontWeight: "700" as const, color: Colors.foreground, flex: 1,
+  },
+  focusQuestion: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+    lineHeight: 30,
+    letterSpacing: -0.3,
+  },
+  focusTextArea: {
+    backgroundColor: Colors.card,
+    borderRadius: 18,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.foreground,
+    lineHeight: 24,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    minHeight: 120,
+    fontWeight: "400" as const,
+    textAlignVertical: "top" as const,
+  },
+  focusHint: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    lineHeight: 18,
+    fontWeight: "400" as const,
+  },
+  modeTabs: {
+    flexDirection: "row",
+    margin: 16,
+    backgroundColor: Colors.secondary + "80",
+    borderRadius: 14,
+    padding: 3,
+  },
+  modeTab: {
+    flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 12,
+  },
+  modeTabActive: {
+    backgroundColor: Colors.card,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
+  },
+  modeTabText: { fontSize: 14, fontWeight: "600" as const, color: Colors.mutedForeground },
+  modeTabTextActive: { color: Colors.foreground, fontWeight: "700" as const },
+  searchBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: Colors.card, borderRadius: 16,
+    paddingHorizontal: 14, paddingVertical: 12,
+    marginHorizontal: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  searchInput: { flex: 1, fontSize: 15, color: Colors.foreground, fontWeight: "500" as const },
+  list: { paddingHorizontal: 16, gap: 8 },
+  contactRow: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: Colors.card, borderRadius: 18,
+    padding: 14, borderWidth: 1, borderColor: Colors.border + "80",
+  },
+  contactRowSelected: {
+    borderColor: Colors.primary + "60",
+    backgroundColor: Colors.primary + "08",
+  },
+  contactAvatar: { width: 46, height: 46, borderRadius: 23 },
+  initialsAvatar: {
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: Colors.secondary,
+    alignItems: "center", justifyContent: "center",
+  },
+  initialsText: { fontSize: 16, fontWeight: "700" as const, color: Colors.secondaryForeground },
+  contactInfo: { flex: 1, gap: 3 },
+  contactName: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
+  contactSub: { fontSize: 12, color: Colors.mutedForeground },
+  checkCircle: {
+    width: 26, height: 26, borderRadius: 13,
+    borderWidth: 2, borderColor: Colors.border,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: Colors.secondary,
+  },
+  checkCircleActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  emptyState: {
+    flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingBottom: 80,
+  },
+  emptyText: { fontSize: 15, color: Colors.mutedForeground, fontWeight: "600" as const },
+  customWrap: { paddingHorizontal: 20, paddingTop: 8, gap: 12 },
+  customLabel: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
+  customInput: {
+    backgroundColor: Colors.card, borderRadius: 16,
+    paddingHorizontal: 16, paddingVertical: 14,
+    fontSize: 17, color: Colors.foreground,
+    borderWidth: 1.5, borderColor: Colors.border,
+    fontWeight: "500" as const,
+  },
+  customHint: { fontSize: 13, color: Colors.mutedForeground, lineHeight: 20 },
+  footer: {
+    paddingHorizontal: 20, paddingTop: 12,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  addBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, backgroundColor: Colors.primary, borderRadius: 999,
+    paddingVertical: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
+  },
+  addBtnDisabled: { opacity: 0.45, shadowOpacity: 0 },
+  addBtnText: { fontSize: 16, fontWeight: "700" as const, color: "#fff" },
+  focusInput: {
+    backgroundColor: Colors.secondary + "80",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.foreground,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    fontWeight: "500" as const,
+    marginBottom: 10,
+  },
+});
+
+export default function JournalScreen() {
+  const router = useRouter();
+  const themeColors = useThemeColors();
+  const { tab, highlightId } = useLocalSearchParams<{ tab?: string; highlightId?: string }>();
+  const [activeFilter, setActiveFilter] = useState<JournalFilter>("My Prayers");
+  const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [dismissedLatestId, setDismissedLatestId] = useState<string | null>(null);
+  const [addPersonVisible, setAddPersonVisible] = useState<boolean>(false);
+  const [addFromRequest, setAddFromRequest] = useState<{ name: string; avatar?: string } | null>(null);
+  const [selectionVisible, setSelectionVisible] = useState<boolean>(false);
+  const [prayerActive, setPrayerActive] = useState<boolean>(false);
+  const [prayerSelectedIds, setPrayerSelectedIds] = useState<string[]>([]);
+  const [postPrayerVisible, setPostPrayerVisible] = useState<boolean>(false);
+  const [recentlyPrayedId, setRecentlyPrayedId] = useState<string | null>(null);
+  const repeatPulse = useRef(new Animated.Value(1)).current;
+
+  const { journal, yourPeople, addYourPerson, removeYourPerson, markPersonPrayed } = usePrayer();
+
+  const today = new Date().toISOString().split("T")[0];
+  const prayedCount = yourPeople.filter((p) => p.lastPrayedDate === today).length;
+  const highlightAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const float = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, { toValue: -6, duration: 1600, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 1600, useNativeDriver: true }),
+      ])
+    );
+    float.start();
+    return () => float.stop();
+  }, [floatAnim]);
+
+  useEffect(() => {
+    if (tab === "praying_for") {
+      setActiveFilter("Prayer Requests");
+      console.log("[Journal] Auto-selected Prayer Requests tab");
+    }
+    if (highlightId) {
+      setHighlightedId(highlightId);
+      highlightAnim.setValue(1);
+      console.log("[Journal] Highlighting entry:", highlightId);
+    }
+  }, [tab, highlightId, highlightAnim]);
+
+  const dismissHighlight = useCallback((entryId: string) => {
+    if (entryId !== highlightedId) return;
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    Animated.timing(highlightAnim, {
+      toValue: 0, duration: 400, useNativeDriver: false,
+    }).start(() => {
+      setHighlightedId(null);
+      console.log("[Journal] Dismissed highlight for:", entryId);
+    });
+  }, [highlightedId, highlightAnim]);
+
+  const handleFilterPress = useCallback((f: JournalFilter) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setActiveFilter(f);
+  }, []);
+
+  const allEntries = [...journal, ...MOCK_ENTRIES].sort((a, b) => b.timestamp - a.timestamp);
+
+  const myPrayerEntries = allEntries.filter((e) => e.tag !== "praying_for");
+  const prayingForEntries = allEntries.filter((e) => e.tag === "praying_for");
+
+  const grouped = myPrayerEntries.reduce<Record<string, JournalEntry[]>>((acc, e) => {
+    const group = formatDateGroup(e.timestamp);
+    if (!acc[group]) acc[group] = [];
+    acc[group].push(e);
+    return acc;
+  }, {});
+
+  const latestPrayingForId = prayingForEntries.length > 0 ? prayingForEntries[0].id : null;
+
+  const handleAddYourPerson = useCallback((person: Omit<YourPerson, "id">) => {
+    addYourPerson(person);
+    setAddFromRequest(null);
+    setAddPersonVisible(false);
+    console.log("[Journal] Added to Your People:", person.name);
+  }, [addYourPerson]);
+
+  const handleAddFromRequest = useCallback((entry: JournalEntry) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const name = entry.contactName ?? entry.title.replace(/^Praying for\s*/i, "").trim();
+    const avatar = entry.contactAvatar;
+    if (yourPeople.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      console.log("[Journal] Person already in Your People:", name);
+      return;
+    }
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addYourPerson({ name, avatar });
+    console.log("[Journal] Added to Your People from request:", name);
+  }, [yourPeople, addYourPerson]);
+
+  const handleBeginPrayerTime = useCallback((ids: string[]) => {
+    console.log("[Journal] Beginning prayer time for:", ids.length, "people");
+    setPrayerSelectedIds(ids);
+    setSelectionVisible(false);
+    setPrayerActive(true);
+  }, []);
+
+  const handleEndPrayerTime = useCallback(() => {
+    console.log("[Journal] Ending prayer time, marking prayed:", prayerSelectedIds.length, "people");
+    prayerSelectedIds.forEach((id) => markPersonPrayed(id));
+    setPrayerActive(false);
+    setPostPrayerVisible(true);
+  }, [prayerSelectedIds, markPersonPrayed]);
+
+  const handlePostPrayerReflect = useCallback(() => {
+    setPostPrayerVisible(false);
+    router.push("/journal-entry");
+  }, [router]);
+
+  const isInYourPeople = useCallback((entry: JournalEntry) => {
+    const name = entry.contactName ?? entry.title.replace(/^Praying for\s*/i, "").trim();
+    return yourPeople.some((p) => p.name.toLowerCase() === name.toLowerCase());
+  }, [yourPeople]);
+
+  const renderYourPersonItem = useCallback(({ item }: { item: YourPerson }) => {
+    const prayedToday = item.lastPrayedDate === today;
+    const isRecentlyPrayed = recentlyPrayedId === item.id;
+
+    const handlePress = () => {
+      if (prayedToday) {
+        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setRecentlyPrayedId(item.id);
+        Animated.sequence([
+          Animated.spring(repeatPulse, { toValue: 1.18, useNativeDriver: true, tension: 200, friction: 8 }),
+          Animated.spring(repeatPulse, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }),
+        ]).start(() => setRecentlyPrayedId(null));
+        markPersonPrayed(item.id);
+        console.log("[Journal] Re-prayed for:", item.name);
+        return;
+      }
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      markPersonPrayed(item.id);
+      console.log("[Journal] Prayed for:", item.name);
+    };
+
+    return (
+      <Pressable
+        style={styles.personItem}
+        onPress={handlePress}
+        onLongPress={() => {
+          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          removeYourPerson(item.id);
+          console.log("[Journal] Removed from Your People:", item.name);
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.personAvatarWrap,
+            isRecentlyPrayed && { transform: [{ scale: repeatPulse }] },
+          ]}
+        >
+          {item.avatar ? (
+            <Image
+              source={{ uri: item.avatar }}
+              style={[
+                styles.personAvatar,
+                prayedToday && styles.personAvatarPrayed,
+                isRecentlyPrayed && styles.personAvatarRepeat,
+              ]}
+            />
+          ) : (
+            <View style={[
+              styles.personAvatarFallback,
+              prayedToday && styles.personAvatarFallbackPrayed,
+              isRecentlyPrayed && styles.personAvatarFallbackRepeat,
+            ]}>
+              <Text style={styles.personInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+          {prayedToday ? (
+            <View style={[styles.personPrayedBadge, isRecentlyPrayed && styles.personPrayedBadgeRepeat]}>
+              <Check size={8} color="#fff" strokeWidth={3} />
+            </View>
+          ) : (
+            <View style={styles.personHeartBadge}>
+              <Heart size={7} color="#fff" fill="#fff" />
+            </View>
+          )}
+        </Animated.View>
+        <Text
+          style={[styles.personName, prayedToday && styles.personNamePrayed]}
+          numberOfLines={1}
+        >
+          {item.name.split(" ")[0]}
+        </Text>
+      </Pressable>
+    );
+  }, [removeYourPerson, markPersonPrayed, today, recentlyPrayedId, repeatPulse]);
+
+  const addPersonButton = (
+    <Pressable
+      style={styles.personItem}
+      onPress={() => {
+        setAddFromRequest(null);
+        setAddPersonVisible(true);
+      }}
+    >
+      <View style={styles.personAddCircle}>
+        <Plus size={22} color={Colors.primary} strokeWidth={2} />
+      </View>
+      <Text style={styles.personNameMuted}>Add</Text>
+    </Pressable>
+  );
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]} edges={["top"]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <NavigationDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        activeRoute="/journal"
+      />
+
+      <AddPersonModal
+        visible={addPersonVisible}
+        onClose={() => { setAddPersonVisible(false); setAddFromRequest(null); }}
+        onAdd={handleAddYourPerson}
+        existingPeople={yourPeople}
+      />
+
+      <PrayerSelectionModal
+        visible={selectionVisible}
+        people={yourPeople}
+        onClose={() => setSelectionVisible(false)}
+        onBegin={handleBeginPrayerTime}
+      />
+
+      <ActivePrayerModal
+        visible={prayerActive}
+        people={yourPeople}
+        selectedIds={prayerSelectedIds}
+        onEnd={handleEndPrayerTime}
+      />
+
+      <PostPrayerPrompt
+        visible={postPrayerVisible}
+        count={prayerSelectedIds.length}
+        onReflect={handlePostPrayerReflect}
+        onDismiss={() => setPostPrayerVisible(false)}
+      />
+
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Pressable style={styles.iconBtn} onPress={() => router.push("/(tabs)/(home)")}>
+            <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          </Pressable>
+          <Text style={styles.headerTitle}>Prayer Journal</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.newBtn} onPress={() => router.push("/journal-entry")}>
+            <PenSquare size={20} color={Colors.primaryForeground} />
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => setDrawerVisible(true)}>
+            <Menu size={20} color={Colors.secondaryForeground} />
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.filterRow}>
+        <View style={styles.filterTrack}>
+          {FILTERS.map((filter) => {
+            const isActive = activeFilter === filter;
+            return (
+              <Pressable
+                key={filter}
+                style={[styles.filterButton, isActive && styles.filterButtonActive]}
+                onPress={() => handleFilterPress(filter)}
+                testID={`journal-filter-${filter.toLowerCase().replace(/\s+/g, "-")}`}
+              >
+                <Text style={[styles.filterLabel, isActive && styles.filterLabelActive]}>{filter}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      {activeFilter === "Your People" ? (
+        <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.yourPeopleTabHeader}>
+            <Text style={styles.yourPeopleTabTitle}>Your People</Text>
+            <Text style={styles.yourPeopleTabSub}>Take a moment to pray through your people</Text>
+          </View>
+
+          {yourPeople.length > 0 && (
+            <View style={styles.prayerProgressRow}>
+              <View style={styles.prayerProgressTrack}>
+                <View
+                  style={[
+                    styles.prayerProgressFill,
+                    { width: `${Math.round((prayedCount / yourPeople.length) * 100)}%` as `${number}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.prayerProgressText}>
+                {prayedCount === yourPeople.length
+                  ? "Everyone prayed for today ✦"
+                  : `${prayedCount} of ${yourPeople.length} today`}
+              </Text>
+            </View>
+          )}
+
+          {yourPeople.length > 0 && (
+            <Pressable
+              style={styles.startPrayerBtn}
+              onPress={() => {
+                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelectionVisible(true);
+              }}
+            >
+              <Sparkles size={14} color={Colors.primary} />
+              <Text style={styles.startPrayerBtnText}>Begin prayer time</Text>
+              <ChevronRight size={14} color={Colors.primary} />
+            </Pressable>
+          )}
+
+          {yourPeople.length === 0 ? (
+            <View style={styles.yourPeopleTabEmpty}>
+              <View style={styles.peopleGridEmptyRow}>
+                {[0, 1, 2, 3].map((i) => (
+                  <Pressable key={i} style={styles.personGridEmptyCard} onPress={() => setAddPersonVisible(true)}>
+                    <View style={styles.personGridEmptyCircle}>
+                      <Plus size={20} color={Colors.primary} strokeWidth={1.8} />
+                    </View>
+                    <Text style={styles.personGridEmptyLabel}>{i === 0 ? "Add" : ""}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Pressable style={styles.addPeoplePrompt} onPress={() => setAddPersonVisible(true)}>
+                <UserPlus size={15} color={Colors.primary} />
+                <Text style={styles.addPeoplePromptText}>Add people you're praying for</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.yourPeopleListWrap}>
+              {yourPeople.map((item) => {
+                const prayedToday = item.lastPrayedDate === today;
+                const isRecentlyPrayed = recentlyPrayedId === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[styles.personListRow, prayedToday && styles.personListRowPrayed]}
+                    onPress={() => {
+                      if (prayedToday) {
+                        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setRecentlyPrayedId(item.id);
+                        Animated.sequence([
+                          Animated.spring(repeatPulse, { toValue: 1.1, useNativeDriver: true, tension: 200, friction: 8 }),
+                          Animated.spring(repeatPulse, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }),
+                        ]).start(() => setRecentlyPrayedId(null));
+                        markPersonPrayed(item.id);
+                        return;
+                      }
+                      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      markPersonPrayed(item.id);
+                      setRecentlyPrayedId(item.id);
+                      setTimeout(() => setRecentlyPrayedId(null), 1400);
+                      console.log("[Journal] Prayed for:", item.name);
+                    }}
+                    onLongPress={() => {
+                      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      removeYourPerson(item.id);
+                      console.log("[Journal] Removed from Your People:", item.name);
+                    }}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.personListAvatarWrap,
+                        isRecentlyPrayed && { transform: [{ scale: repeatPulse }] },
+                      ]}
+                    >
+                      {item.avatar ? (
+                        <Image
+                          source={{ uri: item.avatar }}
+                          style={[styles.personListAvatar, prayedToday && styles.personListAvatarPrayed]}
+                        />
+                      ) : (
+                        <View style={[styles.personListAvatarFallback, prayedToday && styles.personListAvatarFallbackPrayed]}>
+                          <Text style={styles.personListInitial}>{item.name.charAt(0).toUpperCase()}</Text>
+                        </View>
+                      )}
+                      {prayedToday ? (
+                        <View style={styles.personListPrayedBadge}>
+                          <Check size={8} color="#fff" strokeWidth={3} />
+                        </View>
+                      ) : (
+                        <View style={styles.personListHeartBadge}>
+                          <Heart size={7} color="#fff" fill="#fff" />
+                        </View>
+                      )}
+                    </Animated.View>
+                    <View style={styles.personListInfo}>
+                      <Text
+                        style={[styles.personListName, prayedToday && styles.personListNamePrayed]}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                      {item.prayerFocus ? (
+                        <Text style={styles.personListFocus} numberOfLines={2}>
+                          {item.prayerFocus}
+                        </Text>
+                      ) : (
+                        <Text style={styles.personListFocusEmpty}>No prayer focus added</Text>
+                      )}
+                    </View>
+                    {prayedToday ? (
+                      <View style={styles.personListPrayedIndicator}>
+                        <Check size={14} color="#27A06E" strokeWidth={2.5} />
+                      </View>
+                    ) : (
+                      <View style={styles.personListPrayBtn}>
+                        <Text style={styles.personListPrayBtnText}>Pray</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                style={styles.personListAddRow}
+                onPress={() => { setAddFromRequest(null); setAddPersonVisible(true); }}
+              >
+                <View style={styles.personListAddCircle}>
+                  <Plus size={16} color={Colors.primary} strokeWidth={2} />
+                </View>
+                <Text style={styles.personListAddLabel}>Add person</Text>
+              </Pressable>
+            </View>
+          )}
+          <View style={{ height: 40 }} />
+        </AutoScrollView>
+      ) : activeFilter === "Prayer Requests" ? (
+        <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionTopRow}>
+              <View style={styles.sectionLabelRow}>
+                <HandHeart size={13} color="#D4782F" />
+                <Text style={[styles.sectionLabel, { color: "#D4782F" }]}>PRAYER REQUESTS</Text>
+              </View>
+              {prayingForEntries.length > 0 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{prayingForEntries.length}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.sectionSub}>From your feed and community</Text>
+
+            {prayingForEntries.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>No prayer requests yet</Text>
+                <Text style={styles.emptySub}>
+                  Tap "Pray" on a community post and it will appear here.
+                </Text>
+              </View>
+            ) : (
+              prayingForEntries.map((entry) => {
+                const isLatest = entry.id === latestPrayingForId && entry.id !== dismissedLatestId;
+                const CardWrapper = isLatest ? Animated.View : View;
+                const alreadyAdded = isInYourPeople(entry);
+                return (
+                  <CardWrapper
+                    key={entry.id}
+                    style={[isLatest && { transform: [{ translateY: floatAnim }] }]}
+                  >
+                    <Pressable
+                      style={[styles.requestCard, isLatest && styles.requestCardLatest]}
+                      onPress={() => {
+                        if (entry.id === highlightedId) dismissHighlight(entry.id);
+                        if (isLatest) {
+                          setDismissedLatestId(entry.id);
+                          if (Platform.OS !== "web") void Haptics.selectionAsync();
+                        }
+                        router.push(`/journal-detail/${entry.id}`);
+                      }}
+                    >
+                      {entry.id === highlightedId && (
+                        <Animated.View
+                          style={[styles.highlightOverlay, { opacity: highlightAnim }]}
+                          pointerEvents="none"
+                        />
+                      )}
+                      {isLatest && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+
+                      {entry.contactAvatar ? (
+                        <View style={styles.requestAuthorRow}>
+                          <Image source={{ uri: entry.contactAvatar }} style={styles.requestAvatar} />
+                          {entry.contactName && (
+                            <Text style={[styles.requestAuthorName, isLatest && { color: "#fff" }]}>
+                              {entry.contactName}
+                            </Text>
+                          )}
+                        </View>
+                      ) : null}
+
+                      <Text style={[styles.requestTitle, isLatest && styles.requestTitleLatest]}>
+                        {entry.title}
+                      </Text>
+                      <Text
+                        style={[styles.requestExcerpt, isLatest && styles.requestExcerptLatest]}
+                        numberOfLines={3}
+                      >
+                        {stripMarkdown(entry.prayerRequest ?? entry.body)}
+                      </Text>
+
+                      <View style={styles.requestFooter}>
+                        <Text style={[styles.requestTime, isLatest && { color: "rgba(255,255,255,0.65)" }]}>
+                          {formatTime(entry.timestamp)}
+                        </Text>
+
+                        <Pressable
+                          style={[
+                            styles.addToPeopleBtn,
+                            alreadyAdded && styles.addToPeopleBtnAdded,
+                            isLatest && styles.addToPeopleBtnLatest,
+                          ]}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            if (!alreadyAdded) handleAddFromRequest(entry);
+                          }}
+                          disabled={alreadyAdded}
+                        >
+                          {alreadyAdded ? (
+                            <>
+                              <Check size={11} color={isLatest ? "#fff" : Colors.primary} strokeWidth={2.5} />
+                              <Text style={[styles.addToPeopleBtnText, alreadyAdded && styles.addToPeopleBtnTextAdded, isLatest && { color: "#fff" }]}>
+                                In Your People
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus size={11} color={isLatest ? "#fff" : Colors.primary} />
+                              <Text style={[styles.addToPeopleBtnText, isLatest && { color: "#fff" }]}>
+                                Add to Your People
+                              </Text>
+                            </>
+                          )}
+                        </Pressable>
+                      </View>
+                    </Pressable>
+                  </CardWrapper>
+                );
+              })
+            )}
+          </View>
+          <View style={{ height: 40 }} />
+        </AutoScrollView>
+      ) : (
+        <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {Object.keys(grouped).length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>No entries</Text>
+              <Text style={styles.emptySub}>Your journal entries will show up here.</Text>
+            </View>
+          ) : (
+            Object.keys(grouped).map((group) => (
+              <View key={group} style={styles.dateSection}>
+                <Text style={styles.dateLabel}>{group}</Text>
+                {grouped[group].map((entry) => {
+                  const tagCfg = TAG_CONFIG[entry.tag] ?? TAG_CONFIG.reflection;
+                  return (
+                    <Pressable
+                      key={entry.id}
+                      style={styles.entryCard}
+                      onPress={() => {
+                        if (entry.id === highlightedId) dismissHighlight(entry.id);
+                        router.push(`/journal-detail/${entry.id}`);
+                      }}
+                    >
+                      {entry.id === highlightedId && (
+                        <Animated.View
+                          style={[styles.highlightOverlay, { opacity: highlightAnim }]}
+                          pointerEvents="none"
+                        />
+                      )}
+                      <View style={styles.entryHeader}>
+                        <Text style={styles.entryTitle}>{entry.title}</Text>
+                        <View style={[styles.tagBadge, { backgroundColor: tagCfg.bg }]}>
+                          <Text style={[styles.tagText, { color: tagCfg.color }]}>{tagCfg.label}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.entryExcerpt} numberOfLines={3}>
+                        {stripMarkdown(entry.body)}
+                      </Text>
+                      <View style={styles.entryFooter}>
+                        <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
+                        {entry.isFavorite && (
+                          <View style={styles.footerTag}>
+                            <Heart size={12} color={Colors.primary} />
+                            <Text style={styles.footerTagText}>Saved</Text>
+                          </View>
+                        )}
+                        {entry.isAnswered && (
+                          <View style={styles.footerTag}>
+                            <CheckCircle size={12} color="#D4782F" />
+                            <Text style={[styles.footerTagText, { color: "#D4782F" }]}>Answered</Text>
+                          </View>
+                        )}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))
+          )}
+          <View style={{ height: 40 }} />
+        </AutoScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: Colors.background },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  headerLeft: { flexDirection: "row" as const, alignItems: "center" as const, gap: 10 },
+  headerRight: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
+  headerTitle: { fontSize: 24, fontWeight: "800" as const, color: Colors.foreground },
+  iconBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.secondary,
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  newBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+  },
+  filterRow: { paddingHorizontal: 20, paddingBottom: 16, marginBottom: 4 },
+  filterTrack: {
+    backgroundColor: Colors.secondary + "80",
+    borderRadius: 16,
+    flexDirection: "row" as const,
+    padding: 4,
+  },
+  filterButton: {
+    flex: 1, alignItems: "center" as const, justifyContent: "center" as const,
+    paddingVertical: 14, borderRadius: 12,
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.card,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
+  },
+  filterLabel: { fontSize: 14, fontWeight: "700" as const, color: Colors.mutedForeground },
+  filterLabelActive: { color: Colors.primary },
+  scrollContent: { paddingHorizontal: 20 },
+
+  sectionBlock: { marginBottom: 8 },
+  sectionTopRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 4,
+  },
+  sectionLabelRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6 },
+  sectionLabel: {
+    fontSize: 10, fontWeight: "800" as const, color: Colors.mutedForeground,
+    letterSpacing: 1.6, textTransform: "uppercase" as const,
+  },
+  sectionSub: {
+    fontSize: 12, color: Colors.mutedForeground,
+    fontWeight: "500" as const, marginBottom: 16,
+  },
+  manageLinkText: { fontSize: 13, color: Colors.primary, fontWeight: "600" as const },
+  countBadge: {
+    backgroundColor: "#D4782F18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+  },
+  countBadgeText: {
+    fontSize: 11, fontWeight: "700" as const, color: "#D4782F",
+  },
+  dividerLine: {
+    height: 1, backgroundColor: Colors.border + "60",
+    marginVertical: 20, marginHorizontal: 0,
+  },
+  personList: { gap: 12, paddingHorizontal: 20 },
+  personListOuter: { marginHorizontal: -20 },
+  personItem: { alignItems: "center" as const, gap: 7, width: 68 },
+  personAvatarWrap: { position: "relative" as const },
+  personAvatar: {
+    width: 60, height: 60, borderRadius: 20,
+    borderWidth: 2.5, borderColor: Colors.primary + "50",
+  },
+  personAvatarFallback: {
+    width: 60, height: 60, borderRadius: 20,
+    backgroundColor: Colors.primary + "18",
+    borderWidth: 2, borderColor: Colors.primary + "30",
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  personInitial: { fontSize: 22, fontWeight: "700" as const, color: Colors.primary },
+  personHeartBadge: {
+    position: "absolute" as const, bottom: -3, right: -3,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: Colors.primary,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    borderWidth: 2, borderColor: Colors.background,
+  },
+  personPrayedBadge: {
+    position: "absolute" as const, bottom: -3, right: -3,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: "#27A06E",
+    alignItems: "center" as const, justifyContent: "center" as const,
+    borderWidth: 2, borderColor: Colors.background,
+  },
+  personPrayedBadgeRepeat: {
+    backgroundColor: Colors.primary,
+  },
+  personAvatarPrayed: {
+    borderColor: "#27A06E60",
+    opacity: 0.75,
+  },
+  personAvatarRepeat: {
+    borderColor: Colors.primary + "80",
+    opacity: 1,
+  },
+  personAvatarFallbackPrayed: {
+    backgroundColor: "#27A06E15",
+    borderColor: "#27A06E40",
+  },
+  personAvatarFallbackRepeat: {
+    backgroundColor: Colors.primary + "20",
+    borderColor: Colors.primary + "60",
+  },
+  personNamePrayed: {
+    color: Colors.mutedForeground,
+  },
+  prayerProgressRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    marginBottom: 16,
+  },
+  prayerProgressTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    overflow: "hidden" as const,
+  },
+  prayerProgressFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#27A06E",
+  },
+  prayerProgressText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.mutedForeground,
+    minWidth: 120,
+    textAlign: "right" as const,
+  },
+  startPrayerBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 6,
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: Colors.primary + "10",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.primary + "25",
+    alignSelf: "center" as const,
+  },
+  startPrayerBtnText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  personName: { fontSize: 12, fontWeight: "700" as const, color: Colors.foreground, textAlign: "center" as const },
+  personNameMuted: { fontSize: 12, fontWeight: "600" as const, color: Colors.mutedForeground, textAlign: "center" as const },
+  personAddCircle: {
+    width: 60, height: 60, borderRadius: 20,
+    backgroundColor: Colors.secondary,
+    borderWidth: 1.5, borderColor: Colors.primary + "40",
+    borderStyle: "dashed" as const,
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  yourPeopleEmpty: { gap: 14 },
+  yourPeopleEmptyRow: { flexDirection: "row" as const, gap: 12 },
+  addPeoplePrompt: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+    alignSelf: "center" as const,
+    backgroundColor: Colors.primary + "12",
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1, borderColor: Colors.primary + "25",
+  },
+  addPeoplePromptText: { fontSize: 13, fontWeight: "700" as const, color: Colors.primary },
+
+  requestCard: {
+    backgroundColor: Colors.card, borderRadius: 22, padding: 18,
+    marginBottom: 12, borderWidth: 1, borderColor: Colors.border + "60",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    overflow: "hidden" as const, position: "relative" as const,
+  },
+  requestCardLatest: {
+    backgroundColor: "#E8702A",
+    borderColor: "#C95D20",
+    shadowColor: "#E8702A",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  requestAuthorRow: {
+    flexDirection: "row" as const, alignItems: "center" as const,
+    gap: 8, marginBottom: 10,
+  },
+  requestAvatar: { width: 28, height: 28, borderRadius: 14 },
+  requestAuthorName: { fontSize: 13, fontWeight: "700" as const, color: Colors.mutedForeground },
+  requestTitle: { fontSize: 16, fontWeight: "700" as const, color: Colors.foreground, marginBottom: 6 },
+  requestTitleLatest: { color: "#fff" },
+  requestExcerpt: { fontSize: 14, color: Colors.secondaryForeground, lineHeight: 21, marginBottom: 14 },
+  requestExcerptLatest: { color: "rgba(255,255,255,0.85)" },
+  requestFooter: {
+    flexDirection: "row" as const, alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border + "50",
+  },
+  requestTime: { fontSize: 10, fontWeight: "700" as const, color: Colors.mutedForeground, letterSpacing: 0.8 },
+  addToPeopleBtn: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 5,
+    backgroundColor: Colors.primary + "12",
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1, borderColor: Colors.primary + "25",
+  },
+  addToPeopleBtnAdded: {
+    backgroundColor: Colors.primary + "08",
+    borderColor: Colors.primary + "20",
+  },
+  addToPeopleBtnLatest: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  addToPeopleBtnText: { fontSize: 11, fontWeight: "700" as const, color: Colors.primary },
+  addToPeopleBtnTextAdded: { color: Colors.primary },
+  newBadge: {
+    position: "absolute" as const, top: 14, right: 14,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3,
+  },
+  newBadgeText: { fontSize: 9, fontWeight: "800" as const, color: "#fff", letterSpacing: 1.2 },
+  highlightOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#E8913A22",
+    borderRadius: 22,
+    borderWidth: 2, borderColor: "#E8913A",
+    zIndex: 1,
+  },
+
+  dateSection: { marginBottom: 20 },
+  dateLabel: {
+    fontSize: 11, fontWeight: "800" as const, color: Colors.mutedForeground,
+    letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12,
+  },
+  entryCard: {
+    backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22,
+    borderWidth: 1, borderColor: Colors.border + "50",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    marginBottom: 12, overflow: "hidden" as const, position: "relative" as const,
+  },
+  entryHeader: {
+    flexDirection: "row", alignItems: "flex-start",
+    justifyContent: "space-between", marginBottom: 10, gap: 8,
+  },
+  entryTitle: { fontSize: 17, fontWeight: "700" as const, color: Colors.foreground, flex: 1 },
+  tagBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  tagText: { fontSize: 9, fontWeight: "700" as const, letterSpacing: 0.5 },
+  entryExcerpt: { fontSize: 14, color: Colors.secondaryForeground, lineHeight: 22, marginBottom: 14 },
+  entryFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  entryTime: { fontSize: 10, fontWeight: "700" as const, color: Colors.mutedForeground, letterSpacing: 1 },
+  footerTag: { flexDirection: "row", alignItems: "center", gap: 4 },
+  footerTagText: { fontSize: 10, fontWeight: "700" as const, color: Colors.primary },
+  emptyState: {
+    alignItems: "center" as const, paddingTop: 40, paddingHorizontal: 32, gap: 12,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "700" as const, color: Colors.foreground, textAlign: "center" as const },
+  emptySub: { fontSize: 14, color: Colors.mutedForeground, textAlign: "center" as const, lineHeight: 21 },
+
+  yourPeopleTabHeader: {
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  yourPeopleTabTitle: {
+    fontSize: 26,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    letterSpacing: -0.5,
+    marginBottom: 6,
+  },
+  yourPeopleTabSub: {
+    fontSize: 14,
+    color: Colors.mutedForeground,
+    fontWeight: "500" as const,
+    lineHeight: 20,
+  },
+  yourPeopleTabEmpty: { gap: 20 },
+  peopleGridEmptyRow: {
+    flexDirection: "row" as const,
+    gap: 12,
+  },
+  personGridEmptyCard: {
+    flex: 1,
+    alignItems: "center" as const,
+    gap: 8,
+  },
+  personGridEmptyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "40",
+    borderStyle: "dashed" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: Colors.primary + "06",
+  },
+  personGridEmptyLabel: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: Colors.mutedForeground,
+  },
+  yourPeopleListWrap: {
+    gap: 10,
+    marginTop: 8,
+  },
+  personListRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: Colors.card,
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: Colors.border + "60",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  personListRowPrayed: {
+    borderColor: "#27A06E30",
+    backgroundColor: "#F8FDFB",
+  },
+  personListAvatarWrap: {
+    position: "relative" as const,
+    flexShrink: 0,
+  },
+  personListAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: Colors.primary + "40",
+  },
+  personListAvatarPrayed: {
+    borderColor: "#27A06E40",
+    opacity: 0.8,
+  },
+  personListAvatarFallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: Colors.primary + "18",
+    borderWidth: 2,
+    borderColor: Colors.primary + "30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  personListAvatarFallbackPrayed: {
+    backgroundColor: "#27A06E15",
+    borderColor: "#27A06E30",
+  },
+  personListInitial: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  personListPrayedBadge: {
+    position: "absolute" as const,
+    bottom: -3,
+    right: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#27A06E",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 2,
+    borderColor: Colors.card,
+  },
+  personListHeartBadge: {
+    position: "absolute" as const,
+    bottom: -3,
+    right: -3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 2,
+    borderColor: Colors.card,
+  },
+  personListInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  personListName: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+    letterSpacing: -0.1,
+  },
+  personListNamePrayed: {
+    color: Colors.mutedForeground,
+  },
+  personListFocus: {
+    fontSize: 13,
+    color: Colors.mutedForeground,
+    lineHeight: 18,
+    fontWeight: "400" as const,
+  },
+  personListFocusEmpty: {
+    fontSize: 12,
+    color: Colors.border,
+    fontStyle: "italic" as const,
+    fontWeight: "400" as const,
+  },
+  personListPrayedIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#27A06E12",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 1.5,
+    borderColor: "#27A06E30",
+    flexShrink: 0,
+  },
+  personListPrayBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.primary + "12",
+    borderWidth: 1,
+    borderColor: Colors.primary + "25",
+    flexShrink: 0,
+  },
+  personListPrayBtnText: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  personListAddRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "25",
+    borderStyle: "dashed" as const,
+    backgroundColor: Colors.primary + "04",
+  },
+  personListAddCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: Colors.primary + "14",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  personListAddLabel: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.primary,
+  },
+});
