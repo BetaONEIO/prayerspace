@@ -4,7 +4,6 @@ const router = Router();
 
 const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").trim();
 const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-const adminToken = (process.env.ADMIN_DELETE_TOKEN ?? "").trim();
 
 function normalizeSupabaseUrl(input: string) {
   if (!input) return "";
@@ -22,9 +21,6 @@ function deny(res: Response, status: number, message: string) {
 }
 
 router.post("/admin/delete-users", async (req: Request, res: Response) => {
-  if (!adminToken || req.header("x-admin-token") !== adminToken) {
-    return deny(res, 401, "Unauthorized");
-  }
   if (!supabaseUrl || !serviceRoleKey) {
     return deny(res, 500, "Supabase admin config missing");
   }
