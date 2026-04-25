@@ -163,7 +163,7 @@ export default function VerifyOtpScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => router.replace("/register")}>
           <ArrowLeft size={20} color={colors.foreground} />
         </Pressable>
 
