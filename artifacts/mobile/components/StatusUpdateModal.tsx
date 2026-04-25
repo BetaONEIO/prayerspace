@@ -28,7 +28,7 @@ import {
   Tag,
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { ThemeColors } from "@/constants/colors";
+import { ThemeColors, LightColors as Colors } from "@/constants/colors";
 import { currentUser } from "@/mocks/data";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
 

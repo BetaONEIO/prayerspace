@@ -37,7 +37,6 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
-import { useThemeColors } from "@/providers/ThemeProvider";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, YourPerson } from "@/providers/PrayerProvider";
