@@ -93,22 +93,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   -- alter table public.profiles add column if not exists deletion_requested_at timestamptz default null;
 
   -- ============================================================
-  -- OTP CODES TABLE — Required for Brevo email verification:
+  -- EMAIL CONFIRMATION (6-digit OTP):
+  -- Handled natively by Supabase Auth — no custom tables needed.
+  -- In Supabase Dashboard:
+  --   1. Authentication → Providers → Email: keep "Confirm email" enabled.
+  --   2. Authentication → Email Templates → Confirm signup: ensure the
+  --      template body includes the 6-digit token via {{ .Token }}, e.g.
+  --      "Your Prayer Space verification code is {{ .Token }}".
   -- ============================================================
-
-  -- otp_codes (custom email verification via Brevo)
-  create table public.otp_codes (
-    id uuid default gen_random_uuid() primary key,
-    email text not null,
-    code text not null,
-    expires_at timestamptz not null,
-    used boolean default false,
-    created_at timestamptz default now()
-  );
-  create index otp_codes_email_idx on public.otp_codes(email);
-
-  -- email_verified column on profiles
-  alter table public.profiles add column if not exists email_verified boolean default false;
 
   -- ============================================================
   -- CHAT TABLES — Run this SQL in your Supabase dashboard:

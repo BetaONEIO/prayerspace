@@ -46,13 +46,25 @@ export default function VerifyOtpScreen() {
     setIsSending(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke<{ error?: string; success?: boolean }>("send-otp", { body: { email } });
-      if (fnError || data?.error) {
-        setError(data?.error ?? "Failed to send code. Please try again.");
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+      if (resendError) {
+        const msg = (resendError.message ?? "").toLowerCase();
+        if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("for security purposes")) {
+          setError("Too many requests. Please wait a moment before trying again.");
+          startCountdown();
+        } else if (msg.includes("already") && msg.includes("confirmed")) {
+          setError("This email is already verified. Please sign in.");
+        } else {
+          setError(resendError.message || "Failed to send code. Please try again.");
+        }
       } else {
         startCountdown();
       }
-    } catch {
+    } catch (err) {
+      console.error("[VerifyOtp] sendOtp threw:", err);
       setError("Network error. Please check your connection.");
     } finally {
       setIsSending(false);
@@ -102,12 +114,24 @@ export default function VerifyOtpScreen() {
   const handleVerify = useCallback(async () => {
     const code = digits.join("");
     if (code.length < CODE_LENGTH) { setError("Please enter the full 6-digit code."); triggerShake(); return; }
+    if (!email) { setError("Missing email. Please go back and try again."); triggerShake(); return; }
     setIsVerifying(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke<{ error?: string; success?: boolean }>("verify-otp", { body: { email, code } });
-      if (fnError || data?.error) {
-        setError(data?.error ?? "Invalid code. Please try again.");
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: "signup",
+      });
+      if (verifyError) {
+        const msg = (verifyError.message ?? "").toLowerCase();
+        let userMessage = verifyError.message || "Invalid code. Please try again.";
+        if (msg.includes("expired") || msg.includes("invalid")) {
+          userMessage = "That code is invalid or expired. Please try again or resend.";
+        } else if (msg.includes("rate limit") || msg.includes("too many")) {
+          userMessage = "Too many attempts. Please wait a moment and try again.";
+        }
+        setError(userMessage);
         triggerShake();
         setDigits(Array(CODE_LENGTH).fill(""));
         setTimeout(() => inputRefs.current[0]?.focus(), 100);
@@ -115,9 +139,10 @@ export default function VerifyOtpScreen() {
         setSuccess(true);
         Animated.spring(successAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
         Keyboard.dismiss();
-        setTimeout(() => router.replace("/login"), 1800);
+        setTimeout(() => router.replace("/"), 1800);
       }
-    } catch {
+    } catch (err) {
+      console.error("[VerifyOtp] verify threw:", err);
       setError("Network error. Please try again.");
       triggerShake();
     } finally {
@@ -145,11 +170,27 @@ export default function VerifyOtpScreen() {
             <Image source={{ uri: LOGO_URI }} style={styles.logo} contentFit="contain" />
           </View>
 
-          {success ? (
+          {!email ? (
+            <View style={styles.successContainer}>
+              <View style={styles.iconWrap}><Mail size={28} color={colors.primary} /></View>
+              <Text style={styles.title}>No email on file</Text>
+              <Text style={styles.successSubtitle}>We don't have an email to verify. Please go back and start registration again.</Text>
+              <Pressable
+                style={[styles.verifyBtn, { marginTop: 24, paddingHorizontal: 24 }]}
+                onPress={() => router.replace("/register")}
+                testID="otp-back-to-register"
+              >
+                <Text style={styles.verifyBtnText}>Back to Register</Text>
+              </Pressable>
+              <Pressable style={{ marginTop: 12, padding: 8 }} onPress={() => router.replace("/login")}>
+                <Text style={styles.resendLink}>Sign in instead</Text>
+              </Pressable>
+            </View>
+          ) : success ? (
             <Animated.View style={[styles.successContainer, { opacity: successAnim, transform: [{ scale: successAnim }] }]}>
               <View style={styles.successIcon}><CheckCircle size={48} color={colors.primary} /></View>
               <Text style={styles.successTitle}>Email Verified!</Text>
-              <Text style={styles.successSubtitle}>Your account is confirmed. Redirecting to sign in…</Text>
+              <Text style={styles.successSubtitle}>Your account is confirmed. Taking you in…</Text>
             </Animated.View>
           ) : (
             <>

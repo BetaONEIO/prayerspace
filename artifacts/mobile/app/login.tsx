@@ -103,15 +103,22 @@ export default function LoginScreen() {
     }
     setIsLoading(true);
     try {
-      await signIn(email.trim().toLowerCase(), password);
+      const normalizedEmail = email.trim().toLowerCase();
+      await signIn(normalizedEmail, password);
       console.log("[Login] Sign in successful");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Please check your credentials.";
+      const lower = message.toLowerCase();
+      if (lower.includes("email not confirmed") || lower.includes("not confirmed") || lower.includes("email_not_confirmed")) {
+        console.log("[Login] Email not confirmed, redirecting to verify-otp");
+        router.replace({ pathname: "/verify-otp", params: { email: email.trim().toLowerCase() } });
+        return;
+      }
       showError("Incorrect Password", message, "error");
     } finally {
       setIsLoading(false);
     }
-  }, [email, password, signIn, showError]);
+  }, [email, password, signIn, showError, router]);
 
   return (
     <View style={styles.root}>
