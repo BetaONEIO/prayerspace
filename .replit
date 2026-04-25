@@ -30,3 +30,8 @@ externalPort = 80
 [[ports]]
 localPort = 18115
 externalPort = 3000
+
+[userenv]
+
+[userenv.shared]
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsYWZ4aHloaXB4amdza2N5ZHVqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTczMTY1MSwiZXhwIjoyMDkxMzA3NjUxfQ.F7ARuGkJmAHZiJQ2eWWfFJNP6A53eSbTsjfFLKOnfZM"
