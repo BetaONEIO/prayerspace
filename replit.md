@@ -40,5 +40,6 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
        - From email: `hello@prayerspace.app`
        - Use the Brevo SMTP password from secrets
        Supabase's built-in mailer is rate-limited to a few emails per hour and is meant for development.
+       If no email arrives and no Brevo log appears, the signup email is still being handled by Supabase's default mailer or the template is not set to OTP mode.
 - **api-server** (`artifacts/api-server/`) — shared Express API at `/api`.
 - **mockup-sandbox** (`artifacts/mockup-sandbox/`) — design canvas for prototyping.
