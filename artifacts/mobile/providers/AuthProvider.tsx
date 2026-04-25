@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
+import { getAppUrl } from "@/lib/getAppUrl";
 
 export interface UserProfile {
   id: string;
@@ -195,7 +196,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signInWithGoogle = useCallback(async () => {
     console.log("[Auth] Starting Google sign in...");
-    const redirectTo = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/`;
+    const redirectTo = `${getAppUrl()}/`;
     console.log("[Auth] Google redirect URI:", redirectTo);
 
     if (Platform.OS === "web") {
