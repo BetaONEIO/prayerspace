@@ -22,6 +22,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+export const mailer = {
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  user: "892523002@smtp-brevo.com",
+  fromEmail: "hello@prayerspace.app",
+};
+
 /*
   REQUIRED DATABASE TABLES — Run this SQL in your Supabase dashboard:
 
