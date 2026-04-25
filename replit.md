@@ -29,6 +29,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Artifacts
 
 - **mobile** (`artifacts/mobile/`) — Prayer Space, an Expo (React Native) mobile app imported from https://github.com/BetaONEIO/prayerspace. Uses Supabase for auth/storage/chat (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`). Optional secrets: `EXPO_PUBLIC_TOOLKIT_URL` and `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY` for AI transcription/text generation features.
+  - **`EXPO_PUBLIC_SUPABASE_URL` must be the bare project URL** (e.g. `https://<ref>.supabase.co`) — NOT the REST endpoint. If a path like `/rest/v1/` is included, supabase-js builds malformed auth URLs and every call fails with `Invalid path specified in request URL`. `lib/supabase.ts` defensively strips any path/trailing slash and logs a warning, but the secret should still be cleaned up.
   - **Email OTP registration setup (one-time, in Supabase Dashboard):**
     1. Authentication → Providers → Email: keep "Confirm email" enabled.
     2. Authentication → Email Templates → Confirm signup: edit the body to include the 6-digit token, e.g. `Your Prayer Space verification code is {{ .Token }}`. Without this, the email will only contain the magic link and the OTP screen will reject every code.

@@ -2,8 +2,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 
-const supabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").trim();
+const rawSupabaseUrl = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? "").trim();
 const supabaseAnonKey = (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+
+function normalizeSupabaseUrl(input: string): string {
+  if (!input) return "";
+  let url = input;
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return url.replace(/\/+$/, "").replace(/\/(rest|auth|storage|realtime)\/v\d+.*$/i, "");
+  }
+}
+
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
+
+if (rawSupabaseUrl && rawSupabaseUrl !== supabaseUrl) {
+  console.warn(
+    `[Supabase] EXPO_PUBLIC_SUPABASE_URL contained a path ("${rawSupabaseUrl}"). ` +
+    `Using normalized base URL "${supabaseUrl}" instead. Please update the secret to just the project URL.`
+  );
+}
 
 console.log("[Supabase] URL configured:", supabaseUrl ? `✓ ${supabaseUrl}` : "✗ Missing");
 console.log("[Supabase] Anon key configured:", supabaseAnonKey ? `✓ (${supabaseAnonKey.length} chars)` : "✗ Missing");
