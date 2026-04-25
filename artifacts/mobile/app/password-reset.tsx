@@ -16,7 +16,6 @@ import { ChevronLeft, Mail, CheckCircle, ArrowRight } from "lucide-react-native"
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
-import { getAppUrl } from "@/lib/getAppUrl";
 
 type ScreenState = "input" | "success";
 
@@ -81,7 +80,7 @@ export default function PasswordResetScreen() {
 
     try {
       const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: `${getAppUrl()}/login`,
+        redirectTo: undefined,
       });
 
       if (supabaseError) {

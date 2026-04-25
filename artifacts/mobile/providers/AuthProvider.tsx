@@ -6,7 +6,6 @@ import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
-import { getAppUrl } from "@/lib/getAppUrl";
 
 export interface UserProfile {
   id: string;
@@ -196,13 +195,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signInWithGoogle = useCallback(async () => {
     console.log("[Auth] Starting Google sign in...");
-    const redirectTo = `${getAppUrl()}/`;
-    console.log("[Auth] Google redirect URI:", redirectTo);
-
     if (Platform.OS === "web") {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo },
+        options: {},
       });
       if (error) {
         console.error("[Auth] Google OAuth error (web):", error.message);
@@ -214,7 +210,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
         skipBrowserRedirect: true,
       },
     });
@@ -226,7 +221,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (!data?.url) throw new Error("No OAuth URL returned from Supabase");
 
     console.log("[Auth] Opening Google auth browser...");
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    const result = await WebBrowser.openAuthSessionAsync(data.url);
     console.log("[Auth] WebBrowser result type:", result.type);
 
     if (result.type === "success" && result.url) {
