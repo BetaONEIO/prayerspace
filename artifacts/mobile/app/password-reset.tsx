@@ -80,7 +80,7 @@ export default function PasswordResetScreen() {
 
     try {
       const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(trimmed, {
-        redirectTo: undefined,
+        redirectTo: `https://${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/login`,
       });
 
       if (supabaseError) {

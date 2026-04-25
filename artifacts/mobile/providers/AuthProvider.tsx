@@ -195,7 +195,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signInWithGoogle = useCallback(async () => {
     console.log("[Auth] Starting Google sign in...");
-    const redirectTo = Linking.createURL("/");
+    const redirectTo = `https://${process.env.EXPO_PUBLIC_DOMAIN ?? ""}/`;
     console.log("[Auth] Google redirect URI:", redirectTo);
 
     if (Platform.OS === "web") {
