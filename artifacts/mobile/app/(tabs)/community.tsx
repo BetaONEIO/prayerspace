@@ -2444,7 +2444,8 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             )}
             {post.eventDate && !isNaN(daysUntil(post.eventDate)) && daysUntil(post.eventDate) >= 0 && (
               <View style={styles.eventDateBadge}>
-                <Text style={styles.eventDateBadgeText}>{formatPrayerDateFeed(post.eventDate).toUpperCase()}</Text>
+                <Clock size={9} color="#FFFFFF" />
+                <Text style={styles.eventDateBadgeText}>{formatPrayerDateFeed(post.eventDate)}</Text>
               </View>
             )}
           </View>
@@ -4945,17 +4946,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   eventDateBadge: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: "#D4782F",
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
   },
   eventDateBadgeText: {
     fontSize: 9,
-    fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    fontWeight: "800" as const,
+    color: "#FFFFFF",
     letterSpacing: 0.5,
   },
   cardMetaRow: {
