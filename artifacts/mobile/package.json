@@ -68,5 +68,8 @@
     "zod": "catalog:",
     "zod-validation-error": "^3.4.0",
     "zustand": "^5.0.2"
+  },
+  "dependencies": {
+    "expo-notifications": "^0.32.16"
   }
 }

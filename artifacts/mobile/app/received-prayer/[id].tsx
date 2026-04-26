@@ -23,6 +23,7 @@ import {
   MessageCircle,
   BookmarkPlus,
   X,
+  CalendarDays,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { LightColors as Colors } from "@/constants/colors";
@@ -32,6 +33,8 @@ import { receivedPrayerRequests } from "@/mocks/data";
 import { checkHasPrayed, checkIsJournaled, markAsJournaled, markAsPrayed } from "@/mocks/prayerSessionState";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
+import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
+import { scheduleReceivedPrayerReminders, shouldShowReminderBadge } from "@/lib/prayerReminders";
 
 export default function ReceivedPrayerScreen() {
   const router = useRouter();
@@ -160,6 +163,14 @@ export default function ReceivedPrayerScreen() {
       markAsJournaled(id);
       markAsPrayed(id);
       markRequestPrayed(id);
+    }
+    if (prayer?.hasPrayerDate && prayer.eventDate) {
+      void scheduleReceivedPrayerReminders({
+        prayerRequestId: prayer.id,
+        senderName: prayer.senderName,
+        snippet: prayer.content,
+        eventDate: prayer.eventDate,
+      });
     }
     setHasPrayed(true);
     setIsJournaled(true);
@@ -341,6 +352,26 @@ export default function ReceivedPrayerScreen() {
                 <Quote size={32} color={Colors.primary + "18"} />
               </View>
               <Text style={styles.requestText}>"{prayer.content}"</Text>
+            </View>
+          )}
+
+          {prayer.hasPrayerDate && prayer.eventDate && !isNaN(daysUntil(prayer.eventDate)) && daysUntil(prayer.eventDate) >= 0 && (
+            <View style={[styles.dateBanner, shouldShowReminderBadge(prayer.eventDate) && styles.dateBannerUrgent]}>
+              <View style={styles.dateBannerIcon}>
+                <CalendarDays size={18} color={shouldShowReminderBadge(prayer.eventDate) ? Colors.destructive : Colors.primary} />
+              </View>
+              <View style={styles.dateBannerContent}>
+                <Text style={[styles.dateBannerLabel, shouldShowReminderBadge(prayer.eventDate) && styles.dateBannerLabelUrgent]}>
+                  {formatPrayerDateFeed(prayer.eventDate)}
+                </Text>
+                <Text style={styles.dateBannerSub}>
+                  {daysUntil(prayer.eventDate) === 0
+                    ? `Pray for ${prayer.senderName.split(" ")[0]} today`
+                    : daysUntil(prayer.eventDate) === 1
+                    ? `${prayer.senderName.split(" ")[0]}'s prayer date is tomorrow`
+                    : `${prayer.senderName.split(" ")[0]} needs prayer on this date`}
+                </Text>
+              </View>
             </View>
           )}
 
@@ -624,6 +655,46 @@ const styles = StyleSheet.create({
     color: Colors.secondaryForeground,
     fontWeight: "500" as const,
     fontStyle: "italic" as const,
+  },
+  dateBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: Colors.primary + "0D",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "30",
+    padding: 16,
+    marginBottom: 24,
+  },
+  dateBannerUrgent: {
+    backgroundColor: Colors.destructive + "0D",
+    borderColor: Colors.destructive + "40",
+  },
+  dateBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  dateBannerContent: {
+    flex: 1,
+    gap: 3,
+  },
+  dateBannerLabel: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  dateBannerLabelUrgent: {
+    color: Colors.destructive,
+  },
+  dateBannerSub: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    fontWeight: "500" as const,
   },
   prayedSection: {
     alignItems: "center" as const,

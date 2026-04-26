@@ -52,33 +52,115 @@ export function buildReminderPayload(
   };
 }
 
-// TODO: Integrate with Expo Notifications (expo-notifications) for push scheduling.
-// When a user sets an eventDate on a prayer request, schedule a local notification
-// for reminderDate (the day before) and optionally for the day of the event.
-//
-// Example flow (not yet implemented):
-//
-//   import * as Notifications from "expo-notifications";
-//
-//   async function schedulePrayerReminder(payload: PrayerReminderPayload) {
-//     await Notifications.scheduleNotificationAsync({
-//       content: {
-//         title: `Prayer reminder for ${payload.senderName}`,
-//         body: `"${payload.snippet}" — happening tomorrow`,
-//         data: { prayerRequestId: payload.prayerRequestId },
-//       },
-//       trigger: {
-//         date: new Date(payload.eventDate + "T08:00:00"),
-//       },
-//     });
-//   }
-//
-// For server-side push (background reminders), the api-server can query
-// prayer_requests where event_date = CURRENT_DATE + 1 and reminder_sent = false,
-// then send via Expo's push API and mark reminder_sent = true.
-//
-// Required steps to enable:
-//   1. pnpm --filter @workspace/mobile add expo-notifications
-//   2. Register for push permissions in app startup (ask user once)
-//   3. Handle notification tap to navigate to prayer-detail/[id]
-//   4. Add cron job to api-server for server-side reminders
+function notifIdFor(prayerRequestId: string, type: "day_before" | "day_of"): string {
+  return `prayer_reminder_${prayerRequestId}_${type}`;
+}
+
+function triggerAt9am(isoDate: string): Date {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const t = new Date(y, m - 1, d, 9, 0, 0, 0);
+  return t;
+}
+
+export async function scheduleReceivedPrayerReminders(
+  payload: PrayerReminderPayload
+): Promise<void> {
+  let Notifications: typeof import("expo-notifications") | null = null;
+  try {
+    Notifications = await import("expo-notifications");
+  } catch {
+    return;
+  }
+
+  const { prayerRequestId, senderName, snippet, eventDate } = payload;
+  const firstName = senderName.split(" ")[0];
+  const days = daysUntil(eventDate);
+
+  if (isNaN(days) || days < 0) return;
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== "granted") return;
+
+  await Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+
+  const dayOfDate = eventDate;
+  const dayBeforeDate = reminderDateFor(eventDate);
+
+  if (days >= 2 && dayBeforeDate) {
+    const triggerDate = triggerAt9am(dayBeforeDate);
+    if (triggerDate > new Date()) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: notifIdFor(prayerRequestId, "day_before"),
+        content: {
+          title: `Tomorrow is the day for ${firstName}`,
+          body: `Remember to pray for them: "${snippet.slice(0, 80)}${snippet.length > 80 ? "…" : ""}"`,
+          data: { prayerRequestId, screen: "received-prayer" },
+        },
+        trigger: triggerDate,
+      });
+    }
+  }
+
+  if (days === 1) {
+    const triggerDate = triggerAt9am(eventDate);
+    if (triggerDate > new Date()) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: notifIdFor(prayerRequestId, "day_before"),
+        content: {
+          title: `Tomorrow is ${firstName}'s big day`,
+          body: `Hold them in prayer — it's happening tomorrow.`,
+          data: { prayerRequestId, screen: "received-prayer" },
+        },
+        trigger: { seconds: 10 },
+      });
+    }
+  }
+
+  if (days >= 1) {
+    const triggerDate = triggerAt9am(dayOfDate);
+    if (triggerDate > new Date()) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: notifIdFor(prayerRequestId, "day_of"),
+        content: {
+          title: `Today is the day for ${firstName} 🙏`,
+          body: `${firstName} needs your prayers today. Lift them up.`,
+          data: { prayerRequestId, screen: "received-prayer" },
+        },
+        trigger: triggerDate,
+      });
+    }
+  }
+
+  if (days === 0) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: notifIdFor(prayerRequestId, "day_of"),
+      content: {
+        title: `Pray for ${firstName} today 🙏`,
+        body: `Today is the day — ${firstName} is counting on your prayers.`,
+        data: { prayerRequestId, screen: "received-prayer" },
+      },
+      trigger: { seconds: 30 },
+    });
+  }
+}
+
+export async function cancelPrayerReminders(prayerRequestId: string): Promise<void> {
+  let Notifications: typeof import("expo-notifications") | null = null;
+  try {
+    Notifications = await import("expo-notifications");
+  } catch {
+    return;
+  }
+  await Promise.all([
+    Notifications.cancelScheduledNotificationAsync(notifIdFor(prayerRequestId, "day_before")).catch(() => {}),
+    Notifications.cancelScheduledNotificationAsync(notifIdFor(prayerRequestId, "day_of")).catch(() => {}),
+  ]);
+}
