@@ -1175,7 +1175,6 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
           end={{ x: 1, y: 1 }}
           style={styles.selectorBanner}
         >
-          <View style={styles.selectorOverlay} />
           <View style={styles.selectorHeaderRow}>
             <View style={styles.selectorBadge}>
               <Text style={styles.selectorLabel}>ACTIVE COMMUNITY</Text>
@@ -1200,9 +1199,7 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
                   </View>
                 )}
               </View>
-              <View style={styles.memberPill}>
-                <Text style={styles.memberPillText}>{activeCommunity.memberCount} members</Text>
-              </View>
+              <Text style={styles.selectorMembers}>{activeCommunity.memberCount} members</Text>
             </View>
           </View>
         </LinearGradient>
