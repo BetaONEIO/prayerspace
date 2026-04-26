@@ -23,6 +23,7 @@ import {
   Menu,
   HandHeart,
   Plus,
+  Minus,
   X,
   Search,
   Check,
@@ -1227,6 +1228,18 @@ export default function JournalScreen() {
     });
   }, [highlightedId, highlightAnim]);
 
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = useCallback((id: string) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const handleFilterPress = useCallback((f: JournalFilter) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setActiveFilter(f);
@@ -1728,69 +1741,91 @@ export default function JournalScreen() {
         </AutoScrollView>
       ) : (
         <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {Object.keys(grouped).length === 0 ? (
+          {myPrayerEntries.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No entries</Text>
               <Text style={styles.emptySub}>Your journal entries will show up here.</Text>
             </View>
           ) : (
-            Object.keys(grouped).map((group) => (
-              <View key={group} style={styles.dateSection}>
-                <Text style={styles.dateLabel}>{group}</Text>
-                {grouped[group].map((entry) => {
-                  const tagCfg = TAG_CONFIG[entry.tag] ?? TAG_CONFIG.reflection;
-                  return (
+            <View style={styles.accordionContainer}>
+              {myPrayerEntries.map((entry, index) => {
+                const tagCfg = TAG_CONFIG[entry.tag] ?? TAG_CONFIG.reflection;
+                const isExpanded = expandedIds.has(entry.id);
+                const isLast = index === myPrayerEntries.length - 1;
+                return (
+                  <View key={entry.id} style={!isLast && styles.accordionDivider}>
+                    {entry.id === highlightedId && (
+                      <Animated.View
+                        style={[styles.accordionHighlight, { opacity: highlightAnim }]}
+                        pointerEvents="none"
+                      />
+                    )}
                     <Pressable
-                      key={entry.id}
-                      style={styles.entryCard}
+                      style={styles.accordionRow}
                       onPress={() => {
                         if (entry.id === highlightedId) dismissHighlight(entry.id);
                         router.push(`/journal-detail/${entry.id}`);
                       }}
                     >
-                      {entry.id === highlightedId && (
-                        <Animated.View
-                          style={[styles.highlightOverlay, { opacity: highlightAnim }]}
-                          pointerEvents="none"
-                        />
-                      )}
-                      <View style={styles.entryHeader}>
-                        <Text style={styles.entryTitle}>{entry.title}</Text>
+                      <View style={styles.accordionRowLeft}>
+                        <Text style={styles.accordionTitle} numberOfLines={isExpanded ? undefined : 1}>
+                          {entry.title}
+                        </Text>
                         <View style={[styles.tagBadge, { backgroundColor: tagCfg.bg }]}>
                           <Text style={[styles.tagText, { color: tagCfg.color }]}>{tagCfg.label}</Text>
                         </View>
                       </View>
-                      <Text style={styles.entryExcerpt} numberOfLines={3}>
-                        {stripMarkdown(entry.body)}
-                      </Text>
-                      {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
-                        <View style={[styles.entryDateChip, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipUrgent]}>
-                          <CalendarDays size={12} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
-                          <Text style={[styles.entryDateChipText, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipTextUrgent]}>
-                            {formatPrayerDateFeed(entry.eventDate)}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={styles.entryFooter}>
-                        <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
-                        {entry.isFavorite && (
-                          <View style={styles.footerTag}>
-                            <Heart size={12} color={Colors.primary} />
-                            <Text style={styles.footerTagText}>Saved</Text>
-                          </View>
-                        )}
-                        {entry.isAnswered && (
-                          <View style={styles.footerTag}>
-                            <CheckCircle size={12} color="#D4782F" />
-                            <Text style={[styles.footerTagText, { color: "#D4782F" }]}>Answered</Text>
-                          </View>
-                        )}
-                      </View>
+                      <Pressable
+                        style={styles.expandBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(entry.id);
+                        }}
+                        hitSlop={10}
+                      >
+                        {isExpanded
+                          ? <Minus size={15} color={Colors.mutedForeground} />
+                          : <Plus size={15} color={Colors.primary} />
+                        }
+                      </Pressable>
                     </Pressable>
-                  );
-                })}
-              </View>
-            ))
+
+                    {isExpanded && (
+                      <View style={styles.accordionBody}>
+                        <Text style={styles.accordionExcerpt}>
+                          {stripMarkdown(entry.body)}
+                        </Text>
+                        {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
+                          <View style={[styles.entryDateChip, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipUrgent]}>
+                            <CalendarDays size={12} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
+                            <Text style={[styles.entryDateChipText, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipTextUrgent]}>
+                              {formatPrayerDateFeed(entry.eventDate)}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={styles.accordionFooter}>
+                          <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
+                          <View style={styles.accordionFooterTags}>
+                            {entry.isFavorite && (
+                              <View style={styles.footerTag}>
+                                <Heart size={11} color={Colors.primary} />
+                                <Text style={styles.footerTagText}>Saved</Text>
+                              </View>
+                            )}
+                            {entry.isAnswered && (
+                              <View style={styles.footerTag}>
+                                <CheckCircle size={11} color="#D4782F" />
+                                <Text style={[styles.footerTagText, { color: "#D4782F" }]}>Answered</Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
           )}
           <View style={{ height: 40 }} />
         </AutoScrollView>
@@ -2050,6 +2085,83 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
+  accordionContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: Colors.border + "60",
+    overflow: "hidden" as const,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  accordionDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border + "50",
+  },
+  accordionHighlight: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.primary + "10",
+    borderRadius: 24,
+    zIndex: 0,
+  },
+  accordionRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 10,
+  },
+  accordionRowLeft: {
+    flex: 1,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    flexWrap: "nowrap" as const,
+    overflow: "hidden" as const,
+  },
+  accordionTitle: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.foreground,
+    flex: 1,
+    flexShrink: 1,
+  },
+  expandBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.secondary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    flexShrink: 0,
+  },
+  accordionBody: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    paddingTop: 0,
+    gap: 10,
+  },
+  accordionExcerpt: {
+    fontSize: 14,
+    color: Colors.secondaryForeground,
+    lineHeight: 22,
+  },
+  accordionFooter: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginTop: 4,
+  },
+  accordionFooterTags: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+  },
   dateSection: { marginBottom: 20 },
   dateLabel: {
     fontSize: 11, fontWeight: "800" as const, color: Colors.mutedForeground,
