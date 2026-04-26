@@ -30,6 +30,7 @@ import {
   ChevronDown,
   X,
   Calendar,
+  CalendarDays,
   Repeat,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -39,6 +40,14 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, PrayerReminder } from "@/providers/PrayerProvider";
 import FormattedText from "@/components/FormattedText";
+import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
+import { shouldShowReminderBadge } from "@/lib/prayerReminders";
+
+function isoOffset(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const MOCK_ENTRIES: JournalEntry[] = [
   {
@@ -57,7 +66,8 @@ const MOCK_ENTRIES: JournalEntry[] = [
     tag: "petition",
     timestamp: Date.now() - 1000 * 60 * 60 * 27,
     isFavorite: false,
-    isAnswered: true,
+    isAnswered: false,
+    eventDate: isoOffset(1),
   },
   {
     id: "j3",
@@ -332,6 +342,26 @@ export default function JournalDetailScreen() {
             <FormattedText text={entry.body} baseStyle={styles.bodyText} />
           )}
         </View>
+
+        {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
+          <View style={[styles.dateBanner, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerUrgent]}>
+            <View style={[styles.dateBannerIcon, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerIconUrgent]}>
+              <CalendarDays size={18} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
+            </View>
+            <View style={styles.dateBannerContent}>
+              <Text style={[styles.dateBannerLabel, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerLabelUrgent]}>
+                {formatPrayerDateFeed(entry.eventDate)}
+              </Text>
+              <Text style={styles.dateBannerSub}>
+                {daysUntil(entry.eventDate) === 0
+                  ? "This is the day you've been praying for"
+                  : daysUntil(entry.eventDate) === 1
+                  ? "Your prayer date is tomorrow — trust in God"
+                  : "You have a prayer date set for this request"}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { flex: 0, minWidth: 140 }]}>
@@ -719,6 +749,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: Colors.foreground,
+  },
+  dateBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: Colors.primary + "0D",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: Colors.primary + "30",
+    padding: 16,
+    marginBottom: 16,
+  },
+  dateBannerUrgent: {
+    backgroundColor: Colors.destructive + "0D",
+    borderColor: Colors.destructive + "40",
+  },
+  dateBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + "15",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  dateBannerIconUrgent: {
+    backgroundColor: Colors.destructive + "15",
+  },
+  dateBannerContent: {
+    flex: 1,
+    gap: 3,
+  },
+  dateBannerLabel: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  dateBannerLabelUrgent: {
+    color: Colors.destructive,
+  },
+  dateBannerSub: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    fontWeight: "500" as const,
   },
   prayingBanner: {
     flexDirection: "row",

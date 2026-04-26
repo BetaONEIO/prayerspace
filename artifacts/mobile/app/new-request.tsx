@@ -36,6 +36,7 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
+import { scheduleOwnPrayerReminders } from "@/lib/prayerReminders";
 
 export default function NewRequestScreen() {
   const router = useRouter();
@@ -79,6 +80,14 @@ export default function NewRequestScreen() {
     }
     console.log("Post request:", { content, isAnonymous, isTimeSensitive, selectedTags, audience: selectedAudience.key, hasImage: !!requestImageUri, eventDate });
     const senderName = isAnonymous ? "Someone" : currentUser.name;
+    const requestId = `request-${Date.now()}`;
+    if (eventDate) {
+      void scheduleOwnPrayerReminders({
+        prayerRequestId: requestId,
+        snippet: content.trim(),
+        eventDate,
+      });
+    }
     addNotification({
       type: "request",
       title: `${senderName} posted a prayer request`,

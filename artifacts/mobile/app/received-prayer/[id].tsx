@@ -124,6 +124,7 @@ export default function ReceivedPrayerScreen() {
       contactName: prayer?.senderName,
       contactAvatar: prayer?.senderAvatar,
       prayerRequest: prayer?.content,
+      eventDate: prayer?.eventDate ?? null,
     });
     closeTooltip();
     router.push({
@@ -181,6 +182,7 @@ export default function ReceivedPrayerScreen() {
       contactName: prayer?.senderName,
       contactAvatar: prayer?.senderAvatar,
       prayerRequest: prayer?.content,
+      eventDate: prayer?.eventDate ?? null,
     });
     setNewJournalEntryId(entryId);
     console.log("[ReceivedPrayer] Created journal entry:", entryId);

@@ -31,6 +31,7 @@ import {
   Sparkles,
   ChevronRight,
   ArrowRight,
+  CalendarDays,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -41,6 +42,8 @@ import NavigationDrawer from "@/components/NavigationDrawer";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, YourPerson } from "@/providers/PrayerProvider";
 import { stripMarkdown } from "@/components/FormattedText";
+import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
+import { shouldShowReminderBadge } from "@/lib/prayerReminders";
 import { ALL_RECIPIENTS } from "@/providers/SelectedRecipientsProvider";
 
 const FILTERS = ["My Prayers", "Your People", "Prayer Requests"] as const;
@@ -53,6 +56,12 @@ const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> =
   reflection: { label: "REFLECTIONS", color: Colors.primary, bg: Colors.primary + "18" },
   praying_for: { label: "PRAYING FOR", color: "#D4782F", bg: "#D4782F18" },
 };
+
+function isoOffset(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const MOCK_ENTRIES: JournalEntry[] = [
   {
@@ -71,7 +80,8 @@ const MOCK_ENTRIES: JournalEntry[] = [
     tag: "petition",
     timestamp: Date.now() - 1000 * 60 * 60 * 27,
     isFavorite: false,
-    isAnswered: true,
+    isAnswered: false,
+    eventDate: isoOffset(1),
   },
   {
     id: "j3",
@@ -1753,6 +1763,14 @@ export default function JournalScreen() {
                       <Text style={styles.entryExcerpt} numberOfLines={3}>
                         {stripMarkdown(entry.body)}
                       </Text>
+                      {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
+                        <View style={[styles.entryDateChip, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipUrgent]}>
+                          <CalendarDays size={12} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
+                          <Text style={[styles.entryDateChipText, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipTextUrgent]}>
+                            {formatPrayerDateFeed(entry.eventDate)}
+                          </Text>
+                        </View>
+                      )}
                       <View style={styles.entryFooter}>
                         <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
                         {entry.isFavorite && (
@@ -2036,6 +2054,29 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 11, fontWeight: "800" as const, color: Colors.mutedForeground,
     letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12,
+  },
+  entryDateChip: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    alignSelf: "flex-start" as const,
+    backgroundColor: Colors.primary + "12",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  entryDateChipUrgent: {
+    backgroundColor: Colors.destructive + "12",
+  },
+  entryDateChipText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  entryDateChipTextUrgent: {
+    color: Colors.destructive,
   },
   entryCard: {
     backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22,
