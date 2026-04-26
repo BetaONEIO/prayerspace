@@ -1175,32 +1175,35 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
           end={{ x: 1, y: 1 }}
           style={styles.selectorBanner}
         >
-          <Image
-            source={{ uri: activeCommunity.bannerImage }}
-            style={styles.selectorChurchImage}
-            contentFit="cover"
-          />
-          <View style={styles.selectorTextWrap}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={styles.selectorOverlay} />
+          <View style={styles.selectorHeaderRow}>
+            <View style={styles.selectorBadge}>
               <Text style={styles.selectorLabel}>ACTIVE COMMUNITY</Text>
-              {activeCommunity.isOfficial && (
-                <View style={styles.officialBadgeLight}>
-                  <Award size={8} color="#FFF4E0" />
-                  <Text style={styles.officialBadgeLightText}>Official</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.selectorName}>
-              {activeCommunity.name}
-            </Text>
-          </View>
-          <View style={styles.selectorRight}>
-            <View style={styles.memberPill}>
-              <Text style={styles.memberPillText}>
-                {activeCommunity.memberCount} members
-              </Text>
             </View>
             <ChevronDown size={15} color="#fff" />
+          </View>
+          <View style={styles.selectorBody}>
+            <View style={styles.selectorImageShell}>
+              <Image
+                source={{ uri: activeCommunity.bannerImage }}
+                style={styles.selectorChurchImage}
+                contentFit="cover"
+              />
+            </View>
+            <View style={styles.selectorTextWrap}>
+              <View style={styles.selectorNameRow}>
+                <Text style={styles.selectorName}>{activeCommunity.name}</Text>
+                {activeCommunity.isOfficial && (
+                  <View style={styles.officialBadgeLight}>
+                    <Award size={8} color="#FFF4E0" />
+                    <Text style={styles.officialBadgeLightText}>Official</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.memberPill}>
+                <Text style={styles.memberPillText}>{activeCommunity.memberCount} members</Text>
+              </View>
+            </View>
           </View>
         </LinearGradient>
       </Animated.View>
@@ -4515,6 +4518,118 @@ const cpStyles = StyleSheet.create({
     fontWeight: "800" as const,
     color: "#fff",
     letterSpacing: 0.3,
+  },
+  selectorOuter: {
+    paddingHorizontal: 20,
+    marginBottom: 18,
+  },
+  selectorBannerWrap: {
+    borderRadius: 26,
+    overflow: "hidden" as const,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  selectorBanner: {
+    padding: 16,
+    minHeight: 106,
+  },
+  selectorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.12)",
+  },
+  selectorHeaderRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 14,
+  },
+  selectorBadge: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  selectorLabel: {
+    fontSize: 9,
+    fontWeight: "800" as const,
+    color: "#FFF7EF",
+    letterSpacing: 1.2,
+  },
+  selectorBody: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+  },
+  selectorImageShell: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    padding: 3,
+  },
+  selectorChurchImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 15,
+  },
+  selectorTextWrap: {
+    flex: 1,
+    gap: 6,
+  },
+  selectorNameRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    flexWrap: "wrap" as const,
+  },
+  selectorName: {
+    fontSize: 20,
+    fontWeight: "800" as const,
+    color: "#FFFFFF",
+    letterSpacing: -0.4,
+    flexShrink: 1,
+  },
+  selectorOfficialBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+    backgroundColor: "#FFF4E0",
+    borderRadius: 99,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  selectorOfficialText: {
+    fontSize: 9,
+    fontWeight: "800" as const,
+    color: "#B5820A",
+    letterSpacing: 0.5,
+  },
+  selectorMembers: {
+    fontSize: 13,
+    color: "#FFF4EA",
+    fontWeight: "600" as const,
+    opacity: 0.95,
+  },
+  selectorRight: {
+    alignItems: "flex-end" as const,
+    gap: 8,
+    flexShrink: 0,
+  },
+  memberPill: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  memberPillText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: "#FFFFFF",
+    letterSpacing: 0.4,
   },
 });
 
