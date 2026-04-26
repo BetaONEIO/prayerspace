@@ -44,10 +44,11 @@ const MAX_CHARS = 280;
 interface Props {
   visible: boolean;
   onClose: () => void;
+  communityName?: string | null;
   onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null) => void;
 }
 
-export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props) {
+export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
   const colors = useThemeColors();
   const [text, setText] = useState<string>("");
   const [statusImageUri, setStatusImageUri] = useState<string | null>(null);
@@ -213,6 +214,9 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
                     <ChevronDown size={10} color={Colors.mutedForeground} />
                   </Pressable>
                 </View>
+                {communityName && (
+                  <Text style={styles.communityHint}>Posting to {communityName}</Text>
+                )}
               </View>
 
               {audienceOpen && (
