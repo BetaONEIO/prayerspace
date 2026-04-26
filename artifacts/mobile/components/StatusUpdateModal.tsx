@@ -398,7 +398,7 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
                   style={{
                     maxHeight: dateAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, 120],
+                      outputRange: [0, 380],
                     }),
                     opacity: dateAnim,
                     overflow: "hidden",

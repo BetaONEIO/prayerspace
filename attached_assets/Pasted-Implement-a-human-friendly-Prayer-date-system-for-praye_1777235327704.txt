@@ -1,0 +1,126 @@
+Implement a human-friendly “Prayer date” system for prayer requests and status updates.
+
+---
+
+## Goal
+
+Allow users to attach a meaningful date to a prayer (e.g. an event, appointment, or situation) using a simple, natural UI.
+
+Dates should feel conversational and intuitive, not like a formal form field.
+
+---
+
+## 1. UI – Prayer date selection
+
+Add an optional field:
+
+Label:
+Prayer date
+
+Helper text:
+Add a date if this prayer is connected to a specific day or event.
+
+---
+
+## 2. Replace standard date picker with quick options
+
+Display a dropdown or selector with:
+
+* Today
+* Tomorrow
+* Next few upcoming days (e.g. Thu 25 Apr, Fri 26 Apr, Sat 27 Apr)
+* In 2 weeks
+* In 3 weeks
+* In 1 month
+* Set a date
+
+---
+
+## 3. Custom date selection
+
+When user selects “Set a date”:
+
+* open calendar picker
+* optionally allow time selection
+* store selected value normally
+
+---
+
+## 4. Date calculation logic (IMPORTANT)
+
+All quick options must be calculated relative to the **creation time of the post**.
+
+Use the timestamp when the user submits the prayer request/status update.
+
+Examples:
+
+* Today = creation date
+* Tomorrow = creation date + 1 day
+* Upcoming days = sequential days after creation date
+* In 2 weeks = creation date + 14 days
+* In 3 weeks = creation date + 21 days
+* In 1 month = creation date + 1 calendar month
+
+---
+
+## 5. Data storage
+
+Store:
+
+* eventDate (required if selected)
+* eventTime (optional)
+* hasPrayerDate (boolean)
+
+IMPORTANT:
+
+* Always store the real calculated date (not just labels like “Tomorrow”)
+
+---
+
+## 6. Display rules (frontend)
+
+Render dates in a human-friendly way:
+
+* Today → “Prayer needed today”
+* Tomorrow → “Prayer needed tomorrow”
+* Within next 7 days → “Prayer needed Thu 25 Apr”
+* Beyond that → “Prayer needed 12 May”
+* Optional: “In X days” for mid-range clarity
+
+Do NOT display raw DD/MM/YYYY unless necessary.
+
+---
+
+## 7. Feed behaviour
+
+If a prayer has a date:
+
+* show a soft label on the card
+* do not make it feel like a strict calendar event
+* keep tone calm and prayer-focused
+
+---
+
+## 8. Notification logic (future-ready)
+
+This date will later be used to:
+
+* trigger reminder notifications for engaged users
+* prompt the original poster for an update after the date passes
+
+Do not implement notifications yet if not already built, but structure data to support this.
+
+---
+
+## 9. UX rules
+
+* Keep date optional
+* Avoid making prayers feel like tasks
+* Use warm, natural language
+* Avoid rigid or corporate date formatting
+
+---
+
+## Goal outcome
+
+Users can quickly select meaningful dates using natural language (“Tomorrow”, “In 2 weeks”), while the system stores accurate timestamps and displays them in a friendly, prayer-focused way.

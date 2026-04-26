@@ -290,7 +290,7 @@ export default function NewRequestScreen() {
                 {
                   maxHeight: dateHeightAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, 120],
+                    outputRange: [0, 380],
                   }),
                   opacity: dateHeightAnim,
                   overflow: "hidden",

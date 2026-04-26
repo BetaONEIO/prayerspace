@@ -36,7 +36,7 @@ import {
   type ReceivedPrayerRequest,
   type ActivityItem,
 } from "@/mocks/data";
-import { formatPrayerDateLabel, daysUntil } from "@/lib/prayerDateUtils";
+import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { useFavourites } from "@/providers/FavouritesProvider";
 import { useDailyVerse } from "@/hooks/useDailyVerse";
 import NavigationDrawer from "@/components/NavigationDrawer";
@@ -185,7 +185,7 @@ export default function HomeScreen() {
             {item.hasPrayerDate && item.eventDate && !isNaN(daysUntil(item.eventDate)) && daysUntil(item.eventDate) >= 0 && (
               <View style={styles.dateChip}>
                 <Text style={styles.dateChipText}>
-                  📅 {formatPrayerDateLabel(item.eventDate, item.senderName.split(" ")[0])}
+                  📅 {formatPrayerDateFeed(item.eventDate)}
                 </Text>
               </View>
             )}
