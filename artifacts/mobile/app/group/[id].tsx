@@ -14,6 +14,9 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Modal,
+  TouchableOpacity,
+  Clipboard,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,6 +33,15 @@ import {
   Shield,
   Search,
   ImageIcon,
+  Check,
+  CheckCheck,
+  Reply,
+  SmilePlus,
+  Forward,
+  Copy,
+  Trash2,
+  Flag,
+  Info,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { LightColors as Colors } from "@/constants/colors";
@@ -48,6 +60,23 @@ interface SharedPrayerCard {
   updateTag?: string;
 }
 
+interface MessageReaction {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  type: "pray" | "emoji";
+  emoji?: string;
+  createdAt: string;
+}
+
+interface MessageRead {
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  readAt: string;
+  deliveredAt?: string;
+}
+
 interface ChatMessage {
   id: string;
   senderId: string;
@@ -59,6 +88,8 @@ interface ChatMessage {
   isVoice?: boolean;
   sharedPrayer?: SharedPrayerCard;
   imageUrl?: string;
+  reactions?: MessageReaction[];
+  readBy?: MessageRead[];
 }
 
 interface Member {
@@ -70,6 +101,8 @@ interface Member {
   joinedDate?: string;
 }
 
+const TOTAL_GROUP_MEMBERS = 12;
+
 const CHAT_MESSAGES: ChatMessage[] = [
   {
     id: "cm1",
@@ -79,6 +112,11 @@ const CHAT_MESSAGES: ChatMessage[] = [
     text: "Amen! Standing with you, Sarah. The Lord is your strength during this surgery.",
     time: "9:12 AM",
     isOwn: false,
+    reactions: [
+      { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "pray", createdAt: "9:13 AM" },
+      { userId: "michael", userName: "Michael", userAvatar: "https://randomuser.me/api/portraits/men/32.jpg", type: "pray", createdAt: "9:14 AM" },
+      { userId: "david", userName: "David", userAvatar: "https://randomuser.me/api/portraits/men/85.jpg", type: "pray", createdAt: "9:15 AM" },
+    ],
   },
   {
     id: "cm2",
@@ -88,6 +126,23 @@ const CHAT_MESSAGES: ChatMessage[] = [
     text: "Thank you so much Alice. It means the world to have this community.",
     time: "9:18 AM",
     isOwn: true,
+    readBy: [
+      { userId: "alice", userName: "Alice Thompson", userAvatar: "https://randomuser.me/api/portraits/women/62.jpg", readAt: "9:19 AM", deliveredAt: "9:18 AM" },
+      { userId: "michael", userName: "Michael Reeves", userAvatar: "https://randomuser.me/api/portraits/men/32.jpg", readAt: "9:20 AM", deliveredAt: "9:18 AM" },
+      { userId: "emma", userName: "Emma Watson", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", readAt: "9:22 AM", deliveredAt: "9:19 AM" },
+      { userId: "david", userName: "David Chen", userAvatar: "https://randomuser.me/api/portraits/men/85.jpg", readAt: "9:21 AM", deliveredAt: "9:19 AM" },
+      { userId: "chloe", userName: "Chloe Martin", userAvatar: "https://randomuser.me/api/portraits/women/24.jpg", readAt: "9:25 AM", deliveredAt: "9:20 AM" },
+      { userId: "bob", userName: "Bob Jenkins", userAvatar: "https://randomuser.me/api/portraits/men/42.jpg", readAt: "9:28 AM", deliveredAt: "9:20 AM" },
+      { userId: "diana", userName: "Diana Prince", userAvatar: "https://randomuser.me/api/portraits/women/33.jpg", readAt: "9:30 AM", deliveredAt: "9:21 AM" },
+      { userId: "chris", userName: "Chris Evans", userAvatar: "https://randomuser.me/api/portraits/men/12.jpg", readAt: "9:31 AM", deliveredAt: "9:21 AM" },
+      { userId: "sarah", userName: "Sarah Jenkins", userAvatar: "https://randomuser.me/api/portraits/women/45.jpg", readAt: "9:33 AM", deliveredAt: "9:22 AM" },
+      { userId: "nathan", userName: "Nathan Ford", userAvatar: "https://randomuser.me/api/portraits/men/55.jpg", readAt: "9:35 AM", deliveredAt: "9:22 AM" },
+      { userId: "grace", userName: "Grace Kim", userAvatar: "https://randomuser.me/api/portraits/women/68.jpg", readAt: "9:37 AM", deliveredAt: "9:23 AM" },
+    ],
+    reactions: [
+      { userId: "alice", userName: "Alice", userAvatar: "https://randomuser.me/api/portraits/women/62.jpg", type: "pray", createdAt: "9:20 AM" },
+      { userId: "michael", userName: "Michael", userAvatar: "https://randomuser.me/api/portraits/men/32.jpg", type: "pray", createdAt: "9:21 AM" },
+    ],
   },
   {
     id: "cm3",
@@ -107,6 +162,9 @@ const CHAT_MESSAGES: ChatMessage[] = [
     text: "Just shared a prayer for you in my morning devotions. Keep us posted! ❤️",
     time: "10:02 AM",
     isOwn: false,
+    reactions: [
+      { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "pray", createdAt: "10:03 AM" },
+    ],
   },
   {
     id: "cm5",
@@ -127,6 +185,11 @@ const CHAT_MESSAGES: ChatMessage[] = [
     imageUrl: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&q=80",
     time: "2:30 PM",
     isOwn: true,
+    readBy: [
+      { userId: "alice", userName: "Alice Thompson", userAvatar: "https://randomuser.me/api/portraits/women/62.jpg", readAt: "2:32 PM", deliveredAt: "2:31 PM" },
+      { userId: "michael", userName: "Michael Reeves", userAvatar: "https://randomuser.me/api/portraits/men/32.jpg", readAt: "2:35 PM", deliveredAt: "2:31 PM" },
+      { userId: "emma", userName: "Emma Watson", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", readAt: "2:40 PM", deliveredAt: "2:32 PM" },
+    ],
   },
   {
     id: "cm7",
@@ -157,6 +220,7 @@ const CHAT_MESSAGES: ChatMessage[] = [
     imageUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&q=80",
     time: "Sunday",
     isOwn: true,
+    readBy: [],
   },
   {
     id: "cm10",
@@ -295,7 +359,46 @@ export default function GroupDetailScreen() {
   const [memberSearch, setMemberSearch] = useState<string>("");
   const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
   const [viewingGroupImage, setViewingGroupImage] = useState<string | null>(null);
+  const [contextMsg, setContextMsg] = useState<ChatMessage | null>(null);
+  const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const injectedRef = useRef<boolean>(false);
+
+  const handleLongPress = useCallback((msg: ChatMessage) => {
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setContextMsg(msg);
+  }, []);
+
+  const handleAddPrayReaction = useCallback((msgId: string) => {
+    setChatMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const existing = (m.reactions ?? []).find((r) => r.userId === "me" && r.type === "pray");
+        if (existing) return m;
+        return {
+          ...m,
+          reactions: [
+            ...(m.reactions ?? []),
+            { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "pray" as const, createdAt: "Just now" },
+          ],
+        };
+      })
+    );
+    setContextMsg(null);
+  }, []);
+
+  const handleDeleteMessage = useCallback((msgId: string) => {
+    Alert.alert("Delete message", "Remove this message for everyone?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          setChatMessages((prev) => prev.filter((m) => m.id !== msgId));
+          setContextMsg(null);
+        },
+      },
+    ]);
+  }, []);
 
   React.useEffect(() => {
     if (injectedRef.current) return;
@@ -459,9 +562,19 @@ export default function GroupDetailScreen() {
             </View>
             {chatMessages.map((msg) =>
               msg.isOwn ? (
-                <OwnMessage key={msg.id} message={msg} onImagePress={setViewingGroupImage} />
+                <OwnMessage
+                  key={msg.id}
+                  message={msg}
+                  onImagePress={setViewingGroupImage}
+                  onLongPress={handleLongPress}
+                />
               ) : (
-                <OtherMessage key={msg.id} message={msg} onImagePress={setViewingGroupImage} />
+                <OtherMessage
+                  key={msg.id}
+                  message={msg}
+                  onImagePress={setViewingGroupImage}
+                  onLongPress={handleLongPress}
+                />
               )
             )}
           </ScrollView>
@@ -515,6 +628,27 @@ export default function GroupDetailScreen() {
           />
         </KeyboardAvoidingView>
       )}
+
+      <MessageContextMenu
+        message={contextMsg}
+        visible={!!contextMsg}
+        onClose={() => setContextMsg(null)}
+        onPray={(id) => handleAddPrayReaction(id)}
+        onCopy={(text) => {
+          try { Clipboard.setString(text); } catch {}
+          setContextMsg(null);
+        }}
+        onDelete={(id) => handleDeleteMessage(id)}
+        onInfo={(msg) => { setInfoMsg(msg); setContextMsg(null); }}
+        onReport={() => { Alert.alert("Reported", "This message has been reported."); setContextMsg(null); }}
+      />
+
+      <MessageInfoSheet
+        message={infoMsg}
+        visible={!!infoMsg}
+        totalMembers={TOTAL_GROUP_MEMBERS}
+        onClose={() => setInfoMsg(null)}
+      />
 
       {activeTab === "Media" && (
         <MediaGallery
@@ -650,28 +784,103 @@ function SharedPrayerCardView({ card }: { card: SharedPrayerCard }) {
   );
 }
 
-function OwnMessage({ message, onImagePress }: { message: ChatMessage; onImagePress?: (uri: string) => void }) {
+function ReadReceipt({ readBy, totalMembers }: { readBy?: MessageRead[]; totalMembers: number }) {
+  const count = (readBy ?? []).length;
+  const allRead = count >= totalMembers - 1;
+  const someRead = count > 0;
+  if (allRead) {
+    return (
+      <View style={styles.receiptRow}>
+        <CheckCheck size={14} color={Colors.primary} strokeWidth={2.5} />
+      </View>
+    );
+  }
+  if (someRead) {
+    return (
+      <View style={styles.receiptRow}>
+        <CheckCheck size={14} color={Colors.mutedForeground} strokeWidth={2} />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.receiptRow}>
+      <Check size={14} color={Colors.mutedForeground} strokeWidth={2} />
+    </View>
+  );
+}
+
+function PrayingReactions({ reactions }: { reactions?: MessageReaction[] }) {
+  const prayReactions = (reactions ?? []).filter((r) => r.type === "pray");
+  if (prayReactions.length === 0) return null;
+  const count = prayReactions.length;
+  const displayNames = prayReactions.slice(0, 2).map((r) => r.userName);
+  let label = "";
+  if (count === 1) label = `${displayNames[0]} praying`;
+  else if (count === 2) label = `${displayNames[0]} & ${displayNames[1]} praying`;
+  else label = `${displayNames[0]}, ${displayNames[1]} & ${count - 2} more praying`;
+
+  return (
+    <View style={styles.prayReactionRow}>
+      <View style={styles.prayAvatarStack}>
+        {prayReactions.slice(0, 3).map((r, i) => (
+          r.userAvatar ? (
+            <Image
+              key={r.userId}
+              source={{ uri: r.userAvatar }}
+              style={[styles.prayAvatar, { marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }]}
+              contentFit="cover"
+            />
+          ) : (
+            <View
+              key={r.userId}
+              style={[styles.prayAvatar, styles.prayAvatarFallback, { marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }]}
+            >
+              <Text style={styles.prayAvatarInitial}>{(r.userName || "?").charAt(0)}</Text>
+            </View>
+          )
+        ))}
+      </View>
+      <Text style={styles.prayLabel}>🙏 {label}</Text>
+    </View>
+  );
+}
+
+function OwnMessage({ message, onImagePress, onLongPress }: {
+  message: ChatMessage;
+  onImagePress?: (uri: string) => void;
+  onLongPress?: (msg: ChatMessage) => void;
+}) {
   const hasText = (message.text ?? "").trim().length > 0;
   if (message.sharedPrayer) {
     return (
       <View style={styles.ownMessageWrap}>
-        <View style={styles.ownSharedBubble}>
+        <Pressable
+          onLongPress={() => onLongPress?.(message)}
+          delayLongPress={400}
+          style={styles.ownSharedBubble}
+        >
           {hasText && (
             <Text style={[styles.ownBubbleText, styles.ownSharedText]}>
               {message.text}
             </Text>
           )}
           <SharedPrayerCardView card={message.sharedPrayer} />
-        </View>
+        </Pressable>
+        <PrayingReactions reactions={message.reactions} />
         <View style={styles.ownMeta}>
           <Text style={styles.ownTime}>{message.time}</Text>
+          <ReadReceipt readBy={message.readBy} totalMembers={TOTAL_GROUP_MEMBERS} />
         </View>
       </View>
     );
   }
   return (
     <View style={styles.ownMessageWrap}>
-      <View style={[styles.ownBubble, message.imageUrl && styles.ownBubbleWithImage]}>
+      <Pressable
+        onLongPress={() => onLongPress?.(message)}
+        delayLongPress={400}
+        style={[styles.ownBubble, message.imageUrl && styles.ownBubbleWithImage]}
+      >
         {message.imageUrl && (
           <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
             <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
@@ -680,22 +889,28 @@ function OwnMessage({ message, onImagePress }: { message: ChatMessage; onImagePr
         {hasText && (
           <Text style={[styles.ownBubbleText, message.imageUrl && styles.groupBubbleTextWithImage]}>{message.text}</Text>
         )}
-      </View>
+      </Pressable>
+      <PrayingReactions reactions={message.reactions} />
       <View style={styles.ownMeta}>
         <Text style={styles.ownTime}>{message.time}</Text>
+        <ReadReceipt readBy={message.readBy} totalMembers={TOTAL_GROUP_MEMBERS} />
       </View>
     </View>
   );
 }
 
-function OtherMessage({ message, onImagePress }: { message: ChatMessage; onImagePress?: (uri: string) => void }) {
+function OtherMessage({ message, onImagePress, onLongPress }: {
+  message: ChatMessage;
+  onImagePress?: (uri: string) => void;
+  onLongPress?: (msg: ChatMessage) => void;
+}) {
   return (
     <View style={styles.otherMessageWrap}>
       <Image source={{ uri: message.senderAvatar }} style={styles.otherAvatar} />
       <View style={styles.otherContent}>
         <Text style={styles.otherSenderName}>{message.senderName}</Text>
         {message.isVoice ? (
-          <View style={styles.voiceBubble}>
+          <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400} style={styles.voiceBubble}>
             <Pressable style={styles.voicePlayBtn}>
               <Text style={{ fontSize: 14 }}>▶</Text>
             </Pressable>
@@ -703,24 +918,174 @@ function OtherMessage({ message, onImagePress }: { message: ChatMessage; onImage
               <View style={styles.voiceBar} />
             </View>
             <Text style={styles.voiceDuration}>0:12</Text>
-          </View>
+          </Pressable>
         ) : message.imageUrl ? (
-          <View style={[styles.otherBubble, styles.otherBubbleWithImage]}>
+          <Pressable
+            onLongPress={() => onLongPress?.(message)}
+            delayLongPress={400}
+            style={[styles.otherBubble, styles.otherBubbleWithImage]}
+          >
             <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
               <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
             </Pressable>
             {(message.text ?? "").trim().length > 0 && (
               <Text style={[styles.otherBubbleText, styles.groupBubbleTextWithImage]}>{message.text}</Text>
             )}
-          </View>
+          </Pressable>
         ) : (
-          <View style={styles.otherBubble}>
+          <Pressable
+            onLongPress={() => onLongPress?.(message)}
+            delayLongPress={400}
+            style={styles.otherBubble}
+          >
             <Text style={styles.otherBubbleText}>{message.text}</Text>
-          </View>
+          </Pressable>
         )}
+        <PrayingReactions reactions={message.reactions} />
         <Text style={styles.otherTime}>{message.time}</Text>
       </View>
     </View>
+  );
+}
+
+function MessageContextMenu({
+  message,
+  visible,
+  onClose,
+  onPray,
+  onCopy,
+  onDelete,
+  onInfo,
+  onReport,
+}: {
+  message: ChatMessage | null;
+  visible: boolean;
+  onClose: () => void;
+  onPray: (id: string) => void;
+  onCopy: (text: string) => void;
+  onDelete: (id: string) => void;
+  onInfo: (msg: ChatMessage) => void;
+  onReport: () => void;
+}) {
+  if (!message) return null;
+  const isOwn = message.isOwn;
+  const ownActions = [
+    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: onClose },
+    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: onClose },
+    { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
+    { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
+    { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
+    { icon: <Info size={20} color={Colors.foreground} />, label: "Info", onPress: () => onInfo(message) },
+    { icon: <Trash2 size={20} color="#E55" />, label: "Delete", labelStyle: { color: "#E55" }, onPress: () => onDelete(message.id) },
+  ];
+  const otherActions = [
+    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: onClose },
+    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: onClose },
+    { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
+    { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
+    { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
+    { icon: <Flag size={20} color="#E55" />, label: "Report", labelStyle: { color: "#E55" }, onPress: onReport },
+  ];
+  const actions = isOwn ? ownActions : otherActions;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={styles.menuSheet}>
+          <View style={styles.menuHandle} />
+          {message.text ? (
+            <View style={styles.menuPreviewBubble}>
+              <Text style={styles.menuPreviewText} numberOfLines={3}>{message.text}</Text>
+            </View>
+          ) : null}
+          <View style={styles.menuActions}>
+            {actions.map((action, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.menuActionItem}
+                onPress={action.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuActionIcon}>{action.icon}</View>
+                <Text style={[styles.menuActionLabel, (action as any).labelStyle]}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+function MessageInfoSheet({
+  message,
+  visible,
+  totalMembers,
+  onClose,
+}: {
+  message: ChatMessage | null;
+  visible: boolean;
+  totalMembers: number;
+  onClose: () => void;
+}) {
+  if (!message) return null;
+  const readBy = message.readBy ?? [];
+  const readIds = new Set(readBy.map((r) => r.userId));
+  const notSeen = MEMBERS.filter((m) => !readIds.has(m.id));
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.infoOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={styles.infoSheet} onStartShouldSetResponder={() => true}>
+          <View style={styles.infoHandle} />
+          <View style={styles.infoHeaderRow}>
+            <Text style={styles.infoTitle}>Message info</Text>
+            <Pressable onPress={onClose} style={styles.infoCloseBtn} hitSlop={10}>
+              <Text style={styles.infoCloseText}>✕</Text>
+            </Pressable>
+          </View>
+
+          {readBy.length > 0 && (
+            <>
+              <Text style={styles.infoSectionLabel}>READ BY</Text>
+              {readBy.map((r) => (
+                <View key={r.userId} style={styles.infoUserRow}>
+                  {r.userAvatar ? (
+                    <Image source={{ uri: r.userAvatar }} style={styles.infoAvatar} contentFit="cover" />
+                  ) : (
+                    <View style={[styles.infoAvatar, styles.infoAvatarFallback]}>
+                      <Text style={styles.infoAvatarInitial}>{r.userName.charAt(0)}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoUserName}>{r.userName}</Text>
+                    <Text style={styles.infoUserTime}>{r.readAt}</Text>
+                  </View>
+                  <CheckCheck size={14} color={Colors.primary} />
+                </View>
+              ))}
+            </>
+          )}
+
+          {notSeen.length > 0 && (
+            <>
+              <Text style={[styles.infoSectionLabel, { marginTop: readBy.length > 0 ? 16 : 0 }]}>NOT YET SEEN</Text>
+              {notSeen.map((m) => (
+                <View key={m.id} style={styles.infoUserRow}>
+                  <Image source={{ uri: m.avatar }} style={styles.infoAvatar} contentFit="cover" />
+                  <Text style={styles.infoUserName}>{m.name}</Text>
+                </View>
+              ))}
+            </>
+          )}
+
+          {readBy.length === 0 && notSeen.length === 0 && (
+            <Text style={styles.infoEmpty}>No read data available yet.</Text>
+          )}
+          <View style={{ height: 32 }} />
+        </View>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -1522,5 +1887,205 @@ const styles = StyleSheet.create({
     color: Colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 20,
+  },
+  receiptRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+  },
+  prayReactionRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    marginTop: 4,
+    backgroundColor: "#FFF6F0",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "#F5D9C8",
+  },
+  prayAvatarStack: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+  },
+  prayAvatar: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#fff",
+  },
+  prayAvatarFallback: {
+    backgroundColor: Colors.primary + "30",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  prayAvatarInitial: {
+    fontSize: 8,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  prayLabel: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: "600" as const,
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end" as const,
+  },
+  menuSheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 36,
+    paddingHorizontal: 20,
+  },
+  menuHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center" as const,
+    marginBottom: 16,
+  },
+  menuPreviewBubble: {
+    backgroundColor: Colors.secondary,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  menuPreviewText: {
+    fontSize: 13,
+    color: Colors.foreground,
+    lineHeight: 19,
+  },
+  menuActions: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 8,
+    justifyContent: "center" as const,
+  },
+  menuActionItem: {
+    alignItems: "center" as const,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    minWidth: 64,
+  },
+  menuActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.secondary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  menuEmoji: {
+    fontSize: 18,
+  },
+  menuActionLabel: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.foreground,
+    textAlign: "center" as const,
+  },
+  infoOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end" as const,
+  },
+  infoSheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    maxHeight: "75%",
+  },
+  infoHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center" as const,
+    marginBottom: 16,
+  },
+  infoHeaderRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 16,
+  },
+  infoTitle: {
+    fontSize: 17,
+    fontWeight: "800" as const,
+    color: Colors.foreground,
+    letterSpacing: -0.3,
+  },
+  infoCloseBtn: {
+    padding: 6,
+  },
+  infoCloseText: {
+    fontSize: 16,
+    color: Colors.mutedForeground,
+  },
+  infoSectionLabel: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: Colors.mutedForeground,
+    textTransform: "uppercase" as const,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+  },
+  infoUserRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border + "40",
+  },
+  infoAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  infoAvatarFallback: {
+    backgroundColor: Colors.accent,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  infoAvatarInitial: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  infoUserName: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.foreground,
+  },
+  infoUserTime: {
+    fontSize: 11,
+    color: Colors.mutedForeground,
+    marginTop: 1,
+  },
+  infoEmpty: {
+    fontSize: 14,
+    color: Colors.mutedForeground,
+    textAlign: "center" as const,
+    paddingVertical: 24,
   },
 });

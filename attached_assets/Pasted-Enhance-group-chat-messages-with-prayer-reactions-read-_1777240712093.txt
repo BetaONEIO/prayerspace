@@ -1,0 +1,132 @@
+Enhance group chat messages with prayer reactions, read receipts, and message info.
+
+## Goal
+
+Make group chat messages feel more meaningful and transparent, similar to WhatsApp, while keeping the Prayer Space tone calm and prayer-focused.
+
+## 1. Prayer reactions with avatars
+
+When users react to a message with “Praying”:
+
+* show a small “praying now” style row under the message
+* display small overlapping profile pictures of users who reacted with “Praying”
+* show text such as:
+  “3 praying”
+  or
+  “Sarah, David and 2 others are praying”
+
+If avatars are missing:
+
+* use initials or the anonymous/default profile image
+
+Keep this subtle and compact so it does not clutter the chat.
+
+## 2. Message read receipts
+
+For messages sent by the current user:
+
+* show one tick when sent
+* show two ticks when delivered/read
+* show double orange ticks when all group members have read the message
+
+Do not show read receipt ticks on messages sent by other users.
+
+## 3. Group read logic
+
+In group chats:
+
+* track which members have read each message
+* if all active group members have read it:
+
+  * show double orange ticks beside the message
+* if only some members have read it:
+
+  * show normal/neutral double ticks or partial read state
+
+Exclude the sender from the read count.
+
+## 4. Message info action
+
+Add an “Info” option to the message long-press action menu for messages sent by the current user.
+
+When tapped, open a message info screen or bottom sheet showing:
+
+Title:
+Message info
+
+Sections:
+
+* Read by
+* Delivered to
+* Not yet seen
+
+Each user row should show:
+
+* profile picture
+* display name
+* timestamp if available
+
+Example:
+Read by:
+
+* Sarah, Today 9:14 AM
+* Michael, Today 9:16 AM
+
+Not yet seen:
+
+* John
+* Emma
+
+## 5. Long-press menu
+
+For the current user’s own messages, include:
+
+* Reply
+* React
+* Pray
+* Forward
+* Copy
+* Info
+* Delete
+
+For other users’ messages, include:
+
+* Reply
+* React
+* Pray
+* Forward
+* Copy
+* Report
+
+## 6. Data model
+
+Add support for:
+
+Message reactions:
+
+* messageId
+* userId
+* reactionType: pray or emoji
+* emoji optional
+* createdAt
+
+Message reads:
+
+* messageId
+* userId
+* readAt
+* deliveredAt optional
+
+## 7. UI rules
+
+* Keep “Praying” reactions visually warm and slightly more meaningful than normal emoji reactions
+* Show praying avatars only when there are prayer reactions
+* Keep read receipts small and subtle
+* Use orange only when all group members have read the message
+* Avoid cluttering the message bubble
+
+## 8. Goal outcome
+
+Users can see when others are praying in response to a message.
+Message senders can see when their group message has been read.
+Users can open message info to see who has read or not yet seen the message.
