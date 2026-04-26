@@ -38,7 +38,14 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
        - Installs a `before insert on auth.users` trigger (`enforce_min_signup_age`) that **unconditionally requires** a valid `raw_user_meta_data.date_of_birth` for email signups and rejects users younger than 13. The mobile signup form sends the DOB in metadata; this trigger is the authoritative server-side check that cannot be bypassed by client tampering.
        - The trigger skips enforcement for OAuth providers (e.g. Google) because their flow does not include DOB at signup — DOB still needs to be collected for those users in a post-signup completion screen (not yet implemented).
        - If you add an admin user-creation endpoint using the service role, it must include `date_of_birth` in `user_metadata` for the trigger to accept it. The current admin route (`/api/admin/delete-users`) only deletes users, so it is unaffected.
-    4. (Production only) Authentication → SMTP Settings: configure custom SMTP.
+    5. **Prayer requests (date-based reminders) — run the new SQL block in `artifacts/mobile/lib/supabase.ts`:**
+       - Creates `prayer_requests` table with `event_date`, `event_time`, `has_prayer_date` (generated), `reminder_sent`, `follow_up_prompt_shown`, `status` (ongoing/answered/still_need_prayer/archived), `prayer_count` fields.
+       - Creates `prayer_engagements` table tracking who prayed for each request, with a trigger that auto-increments/decrements `prayer_count` on `prayer_requests`.
+       - Creates `prayer_request_updates` table for follow-up posts tied to a specific `follow_up_option`.
+       - Adds an index on `event_date WHERE reminder_sent = false AND status = 'ongoing'` for efficient reminder queries.
+       - See `artifacts/mobile/lib/prayerReminders.ts` for the notification stub with full instructions on integrating `expo-notifications` for push scheduling.
+       - `artifacts/mobile/mocks/data.ts` — `ReceivedPrayerRequest` and `PrayerRequest` interfaces now include `eventDate`, `eventTime`, `hasPrayerDate`, `reminderSent`, `followUpPromptShown`, `status` fields. Two sample requests have upcoming dates so the feed display can be tested.
+    6. (Production only) Authentication → SMTP Settings: configure custom SMTP.
        - Brevo host: `smtp-relay.brevo.com`
        - Port: `587`
        - Username: `892523002@smtp-brevo.com`

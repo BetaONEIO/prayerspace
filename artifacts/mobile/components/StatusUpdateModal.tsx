@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
+import PrayerDatePicker from "@/components/PrayerDatePicker";
 import {
   View,
   Text,
@@ -26,11 +27,13 @@ import {
   Ghost,
   Zap,
   Tag,
+  CalendarDays,
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors, LightColors as Colors } from "@/constants/colors";
 import { currentUser } from "@/mocks/data";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
+import { formatPrayerDate } from "@/lib/prayerDateUtils";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -41,7 +44,7 @@ const MAX_CHARS = 280;
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null) => void;
+  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null) => void;
 }
 
 export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props) {
@@ -55,9 +58,12 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
   const [selectedAudience, setSelectedAudience] = useState<AudienceOption>(AUDIENCE_OPTIONS[0]);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
   const [isTimeSensitive, setIsTimeSensitive] = useState<boolean>(false);
+  const [dateExpanded, setDateExpanded] = useState<boolean>(false);
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const tagRotate = useRef(new Animated.Value(0)).current;
+  const dateAnim = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -91,6 +97,14 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
     }
   }, [visible, fadeAnim, slideAnim]);
 
+  useEffect(() => {
+    Animated.timing(dateAnim, {
+      toValue: dateExpanded ? 1 : 0,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [dateExpanded, dateAnim]);
+
   const handleClose = useCallback(() => {
     onClose();
     setTimeout(() => {
@@ -102,16 +116,18 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
       setIsAnonymous(false);
       setIsTimeSensitive(false);
       setStatusImageUri(null);
+      setDateExpanded(false);
+      setEventDate(null);
       Animated.timing(tagRotate, { toValue: 0, duration: 0, useNativeDriver: true }).start();
     }, 300);
   }, [onClose, tagRotate]);
 
   const handleSubmit = useCallback(() => {
     if (!text.trim() && selectedTags.length === 0 && !statusImageUri) return;
-    console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri });
-    onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri);
+    console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate });
+    onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate);
     handleClose();
-  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive]);
+  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -358,6 +374,40 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
                     })}
                   </View>
                 )}
+              </View>
+
+              <View style={styles.dateSection}>
+                <Pressable
+                  style={styles.dateSectionToggle}
+                  onPress={() => setDateExpanded((v) => !v)}
+                >
+                  <View style={styles.dateSectionIcon}>
+                    <CalendarDays size={14} color={eventDate ? Colors.primary : Colors.mutedForeground} />
+                  </View>
+                  <Text style={[styles.dateSectionLabel, eventDate ? styles.dateSectionLabelActive : null]}>
+                    {eventDate ? `Prayer date · ${formatPrayerDate(eventDate)}` : "Add prayer date"}
+                  </Text>
+                  <ChevronDown
+                    size={16}
+                    color={Colors.mutedForeground}
+                    style={{ marginLeft: "auto" }}
+                  />
+                </Pressable>
+
+                <Animated.View
+                  style={{
+                    maxHeight: dateAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 120],
+                    }),
+                    opacity: dateAnim,
+                    overflow: "hidden",
+                  }}
+                >
+                  <View style={{ paddingTop: 12 }}>
+                    <PrayerDatePicker value={eventDate} onChange={setEventDate} />
+                  </View>
+                </Animated.View>
               </View>
             </ScrollView>
 
@@ -707,6 +757,37 @@ const styles = StyleSheet.create({
   tagLabelSelected: {
     color: Colors.primary,
     fontWeight: "700" as const,
+  },
+  dateSection: {
+    backgroundColor: Colors.secondary + "60",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border + "60",
+    overflow: "hidden",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dateSectionToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dateSectionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.primary + "18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dateSectionLabel: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.foreground,
+    flex: 1,
+  },
+  dateSectionLabelActive: {
+    color: Colors.primary,
   },
   footer: {
     paddingHorizontal: 20,

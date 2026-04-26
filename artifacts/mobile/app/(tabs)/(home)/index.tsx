@@ -36,6 +36,7 @@ import {
   type ReceivedPrayerRequest,
   type ActivityItem,
 } from "@/mocks/data";
+import { formatPrayerDateLabel, daysUntil } from "@/lib/prayerDateUtils";
 import { useFavourites } from "@/providers/FavouritesProvider";
 import { useDailyVerse } from "@/hooks/useDailyVerse";
 import NavigationDrawer from "@/components/NavigationDrawer";
@@ -181,6 +182,13 @@ export default function HomeScreen() {
             <Text style={styles.pendingNote} numberOfLines={1}>
               {item.type === "voice" ? "🎙 Voice prayer request" : item.content}
             </Text>
+            {item.hasPrayerDate && item.eventDate && !isNaN(daysUntil(item.eventDate)) && daysUntil(item.eventDate) >= 0 && (
+              <View style={styles.dateChip}>
+                <Text style={styles.dateChipText}>
+                  📅 {formatPrayerDateLabel(item.eventDate, item.senderName.split(" ")[0])}
+                </Text>
+              </View>
+            )}
             <Text style={styles.pendingTime}>{item.sentAt}</Text>
           </View>
         </View>
@@ -838,6 +846,22 @@ function createStyles(colors: ThemeColors) {
       color: colors.primary + "99",
       fontWeight: "600" as const,
       marginTop: 3,
+    },
+    dateChip: {
+      marginTop: 5,
+      marginBottom: 2,
+      alignSelf: "flex-start" as const,
+      backgroundColor: colors.primary + "14",
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderWidth: 1,
+      borderColor: colors.primary + "30",
+    },
+    dateChipText: {
+      fontSize: 11,
+      fontWeight: "700" as const,
+      color: colors.primary,
     },
     emptyRequests: {
       paddingVertical: 20,

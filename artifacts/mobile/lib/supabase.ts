@@ -358,4 +358,100 @@ export const mailer = {
   -- Enable realtime for chat tables:
   -- alter publication supabase_realtime add table public.messages;
   -- alter publication supabase_realtime add table public.message_reactions;
+
+  -- =================================================================
+  -- PRAYER REQUESTS (date-based reminders)
+  -- =================================================================
+
+  -- prayer_requests
+  create table public.prayer_requests (
+    id uuid default gen_random_uuid() primary key,
+    author_id uuid references auth.users on delete cascade not null,
+    content text not null,
+    is_anonymous boolean default false,
+    is_urgent boolean default false,
+    is_time_sensitive boolean default false,
+    audience text default 'everyone' check (audience in ('everyone', 'friends', 'private')),
+    tags text[] default '{}',
+    image_url text,
+    -- date-based reminder fields
+    event_date date,
+    event_time time,
+    has_prayer_date boolean generated always as (event_date is not null) stored,
+    reminder_sent boolean default false,
+    follow_up_prompt_shown boolean default false,
+    -- status lifecycle
+    status text default 'ongoing' check (status in ('ongoing', 'answered', 'still_need_prayer', 'archived')),
+    prayer_count integer default 0,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+  );
+  alter table public.prayer_requests enable row level security;
+  create policy "Authors can manage own prayer requests" on public.prayer_requests
+    for all using (auth.uid() = author_id) with check (auth.uid() = author_id);
+  create policy "Anyone can view public prayer requests" on public.prayer_requests
+    for select using (audience = 'everyone' and status != 'archived');
+
+  -- prayer_engagements — tracks who prayed for a request
+  create table public.prayer_engagements (
+    id uuid default gen_random_uuid() primary key,
+    request_id uuid references public.prayer_requests on delete cascade not null,
+    user_id uuid references auth.users on delete cascade not null,
+    created_at timestamptz default now(),
+    unique(request_id, user_id)
+  );
+  alter table public.prayer_engagements enable row level security;
+  create policy "Authenticated users can log prayer engagement" on public.prayer_engagements
+    for insert with check (auth.uid() = user_id);
+  create policy "Users can view engagements" on public.prayer_engagements
+    for select using (true);
+  create policy "Users remove own engagement" on public.prayer_engagements
+    for delete using (auth.uid() = user_id);
+
+  -- prayer_request_updates — status updates / follow-up posts
+  create table public.prayer_request_updates (
+    id uuid default gen_random_uuid() primary key,
+    request_id uuid references public.prayer_requests on delete cascade not null,
+    author_id uuid references auth.users on delete cascade not null,
+    content text not null,
+    follow_up_option text check (follow_up_option in ('share_update', 'still_need_prayer', 'mark_answered', 'archive')),
+    created_at timestamptz default now()
+  );
+  alter table public.prayer_request_updates enable row level security;
+  create policy "Authors can post updates" on public.prayer_request_updates
+    for insert with check (
+      auth.uid() = author_id and
+      exists (
+        select 1 from public.prayer_requests
+        where id = request_id and author_id = auth.uid()
+      )
+    );
+  create policy "Anyone can view updates on visible requests" on public.prayer_request_updates
+    for select using (
+      exists (
+        select 1 from public.prayer_requests
+        where id = request_id and audience = 'everyone'
+      )
+    );
+
+  -- Trigger: increment/decrement prayer_count on prayer_requests automatically
+  create or replace function public.update_prayer_count()
+  returns trigger language plpgsql as $$
+  begin
+    if tg_op = 'INSERT' then
+      update public.prayer_requests set prayer_count = prayer_count + 1 where id = new.request_id;
+    elsif tg_op = 'DELETE' then
+      update public.prayer_requests set prayer_count = prayer_count - 1 where id = old.request_id;
+    end if;
+    return null;
+  end;
+  $$;
+  create trigger trg_prayer_count
+    after insert or delete on public.prayer_engagements
+    for each row execute procedure public.update_prayer_count();
+
+  -- Index for reminder queries (find requests with event_date tomorrow where reminder not yet sent)
+  create index if not exists idx_prayer_requests_event_date
+    on public.prayer_requests (event_date)
+    where reminder_sent = false and status = 'ongoing';
 */

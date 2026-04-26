@@ -1,0 +1,198 @@
+Implement date-based prayer reminders for prayer requests and status updates.
+
+## Goal
+
+Allow users to add an optional date to a prayer request or status update when the prayer is connected to a specific event, appointment, meeting, surgery, interview, etc.
+
+Users who interact with that prayer should receive a reminder notification before the event so they can pray.
+
+After the event date has passed, the original poster should be prompted to share an update.
+
+---
+
+## 1. Add optional date field
+
+In the prayer request and status update creation forms, add:
+
+Label:
+Prayer date
+
+Helper text:
+Add a date if this prayer is connected to a specific day or event.
+
+This field should be optional.
+
+Do not force every prayer request to have a date.
+
+---
+
+## 2. Data fields
+
+Add support for fields such as:
+
+* eventDate
+* eventTime optional
+* hasPrayerDate boolean
+* reminderSent boolean
+* followUpPromptShown boolean
+* status: ongoing / answered / still_need_prayer / archived
+
+---
+
+## 3. Display in feed
+
+If a prayer has a date, show it clearly but softly on the card.
+
+Examples:
+
+* Today
+* Tomorrow
+* In 3 days
+* 24 April
+
+Avoid making it look like a calendar event.
+
+Use calm language such as:
+“Prayer needed tomorrow”
+
+---
+
+## 4. Reminder notification logic
+
+When users interact with a prayer request or update by tapping:
+
+* Praying
+* Encourage
+* Comment
+
+They should be treated as engaged users for that prayer.
+
+Before the event date, send a push notification to engaged users.
+
+Example notification:
+“David has a prayer request coming up tomorrow. Take a moment to pray.”
+
+If event time is included:
+“David’s prayer request is coming up soon. Take a moment to pray.”
+
+Do not spam users.
+Only send one reminder per event per user.
+
+---
+
+## 5. Reminder timing
+
+For MVP, send reminder:
+
+* the day before the event
+
+Optional later:
+
+* morning of the event
+* custom reminder timing
+
+---
+
+## 6. After event follow-up
+
+Once the event date has passed, prompt only the original poster.
+
+Show a modal or card:
+
+Title:
+“How did this go?”
+
+Subtitle:
+“Would you like to share an update?”
+
+Options:
+
+* Share an update
+* Still need prayer
+* Mark as answered
+* Archive
+
+---
+
+## 7. Follow-up behaviour
+
+If user chooses “Share an update”:
+
+* open update composer
+* quote original prayer request
+* allow user to write update
+* optionally update status
+
+If user chooses “Still need prayer”:
+
+* keep request active
+* update status to still_need_prayer
+
+If user chooses “Mark as answered”:
+
+* update status to answered
+* optionally allow short reflection
+
+If user chooses “Archive”:
+
+* move to archived requests
+
+---
+
+## 8. Feed behaviour after date passes
+
+Do not delete expired prayer requests.
+
+After the date passes:
+
+* remove urgent/date emphasis
+* show “Awaiting update” only to the original author
+* for others, show normal status unless an update is posted
+
+---
+
+## 9. Permissions
+
+Only the original author can:
+
+* edit the date
+* respond to follow-up prompt
+* mark answered
+* archive
+
+Other users can:
+
+* pray
+* encourage
+* receive reminders if they engaged
+
+---
+
+## 10. Notifications
+
+Use existing push notification system if available.
+
+If push notifications are not already implemented:
+
+* create the data structure and reminder scheduling logic
+* leave notification sending as a clearly marked TODO
+
+---
+
+## 11. UX rules
+
+* Keep the date optional
+* Do not make all prayers feel like tasks
+* Keep wording warm and prayer-focused
+* Avoid harsh “expired” language
+* Use “How did this go?” instead of “Event completed”
+
+---
+
+## Goal outcome
+
+A user can create a prayer request with a specific date.
+People who engage with it are reminded to pray before the date.
+After the date passes, the original poster is gently prompted to share an update.
+
+This should help prayer requests feel active, meaningful, and followed through.

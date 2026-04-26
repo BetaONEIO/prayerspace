@@ -20,6 +20,12 @@ export interface Contact {
   bibleVerseRef?: string;
 }
 
+export type PrayerStatus =
+  | "ongoing"
+  | "answered"
+  | "still_need_prayer"
+  | "archived";
+
 export interface ReceivedPrayerRequest {
   id: string;
   senderId: string;
@@ -31,6 +37,12 @@ export interface ReceivedPrayerRequest {
   sentAt: string;
   prayerCount: number;
   prayedByAvatars: string[];
+  eventDate?: string | null;
+  eventTime?: string | null;
+  hasPrayerDate?: boolean;
+  reminderSent?: boolean;
+  followUpPromptShown?: boolean;
+  status?: PrayerStatus;
 }
 
 export interface PrayerRequest {
@@ -49,6 +61,12 @@ export interface PrayerRequest {
   commentCount?: number;
   prayedByAvatars: string[];
   originalPostId?: string;
+  eventDate?: string | null;
+  eventTime?: string | null;
+  hasPrayerDate?: boolean;
+  reminderSent?: boolean;
+  followUpPromptShown?: boolean;
+  status?: PrayerStatus;
 }
 
 export interface ActivityItem {
@@ -65,6 +83,12 @@ export interface ActivityItem {
   prayerContent?: string;
 }
 
+function isoDateOffset(dayOffset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export const receivedPrayerRequests: ReceivedPrayerRequest[] = [
   {
     id: 'rpr1',
@@ -72,13 +96,16 @@ export const receivedPrayerRequests: ReceivedPrayerRequest[] = [
     senderName: 'Sarah Jenkins',
     senderAvatar: 'https://randomuser.me/api/portraits/women/45.jpg',
     type: 'text',
-    content: "I've been feeling a bit overwhelmed with work lately and would appreciate your prayers for peace and clarity. Thank you for being such a supportive friend.",
+    content: "Please pray for my hospital appointment tomorrow — feeling nervous but trusting God's peace.",
     sentAt: '10 minutes ago',
     prayerCount: 5,
     prayedByAvatars: [
       'https://randomuser.me/api/portraits/men/12.jpg',
       'https://randomuser.me/api/portraits/women/22.jpg',
     ],
+    hasPrayerDate: true,
+    eventDate: isoDateOffset(1),
+    status: 'ongoing',
   },
   {
     id: 'rpr2',
@@ -94,6 +121,9 @@ export const receivedPrayerRequests: ReceivedPrayerRequest[] = [
       'https://randomuser.me/api/portraits/women/24.jpg',
       'https://randomuser.me/api/portraits/men/15.jpg',
     ],
+    hasPrayerDate: true,
+    eventDate: isoDateOffset(3),
+    status: 'ongoing',
   },
 ];
 

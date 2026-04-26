@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
+import PrayerDatePicker from "@/components/PrayerDatePicker";
 import {
   View,
   Text,
@@ -24,6 +25,7 @@ import {
   ChevronUp,
   Check,
   Zap,
+  CalendarDays,
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import { LightColors as Colors } from "@/constants/colors";
@@ -33,6 +35,7 @@ import { currentUser } from "@/mocks/data";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
+import { formatPrayerDate } from "@/lib/prayerDateUtils";
 
 export default function NewRequestScreen() {
   const router = useRouter();
@@ -46,7 +49,10 @@ export default function NewRequestScreen() {
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [selectedAudience, setSelectedAudience] = useState<AudienceOption>(AUDIENCE_OPTIONS[0]);
+  const [dateExpanded, setDateExpanded] = useState(false);
+  const [eventDate, setEventDate] = useState<string | null>(null);
   const tagsHeightAnim = useRef(new Animated.Value(0)).current;
+  const dateHeightAnim = useRef(new Animated.Value(0)).current;
 
   useUnsavedChangesWarning(content.trim().length > 0);
 
@@ -58,12 +64,20 @@ export default function NewRequestScreen() {
     }).start();
   }, [tagsExpanded, tagsHeightAnim]);
 
+  useEffect(() => {
+    Animated.timing(dateHeightAnim, {
+      toValue: dateExpanded ? 1 : 0,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [dateExpanded, dateHeightAnim]);
+
   const handlePost = useCallback(() => {
     if (!content.trim()) {
       Alert.alert("Empty Request", "Please describe your prayer request.");
       return;
     }
-    console.log("Post request:", { content, isAnonymous, isTimeSensitive, selectedTags, audience: selectedAudience.key, hasImage: !!requestImageUri });
+    console.log("Post request:", { content, isAnonymous, isTimeSensitive, selectedTags, audience: selectedAudience.key, hasImage: !!requestImageUri, eventDate });
     const senderName = isAnonymous ? "Someone" : currentUser.name;
     addNotification({
       type: "request",
@@ -76,7 +90,7 @@ export default function NewRequestScreen() {
     Alert.alert("Posted!", "Your prayer request has been shared.", [
       { text: "OK", onPress: () => router.back() },
     ]);
-  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, router, addNotification]);
+  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, eventDate, router, addNotification]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -237,6 +251,56 @@ export default function NewRequestScreen() {
                 Anonymous
               </Text>
             </Pressable>
+          </View>
+
+          <View style={styles.dateSection}>
+            <Pressable
+              style={styles.dateSectionToggle}
+              onPress={() => setDateExpanded((v) => !v)}
+            >
+              <CalendarDays
+                size={15}
+                color={eventDate ? Colors.primary : Colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.dateSectionLabel,
+                  eventDate && styles.dateSectionLabelActive,
+                ]}
+              >
+                Prayer date
+              </Text>
+              {eventDate ? (
+                <View style={styles.datePill}>
+                  <Text style={styles.datePillText}>
+                    {formatPrayerDate(eventDate)}
+                  </Text>
+                </View>
+              ) : null}
+              {dateExpanded ? (
+                <ChevronUp size={14} color={Colors.mutedForeground} style={{ marginLeft: "auto" }} />
+              ) : (
+                <ChevronDown size={14} color={Colors.mutedForeground} style={{ marginLeft: "auto" }} />
+              )}
+            </Pressable>
+
+            <Animated.View
+              style={[
+                styles.dateExpandWrap,
+                {
+                  maxHeight: dateHeightAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 120],
+                  }),
+                  opacity: dateHeightAnim,
+                  overflow: "hidden",
+                },
+              ]}
+            >
+              <View style={{ paddingTop: 10 }}>
+                <PrayerDatePicker value={eventDate} onChange={setEventDate} />
+              </View>
+            </Animated.View>
           </View>
 
           <View style={styles.tagsSection}>
@@ -539,6 +603,41 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: "700" as const,
   },
+  dateSection: {
+    backgroundColor: Colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    overflow: "hidden",
+  },
+  dateSectionToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dateSectionLabel: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: Colors.secondaryForeground,
+  },
+  dateSectionLabelActive: {
+    color: Colors.primary,
+  },
+  datePill: {
+    backgroundColor: Colors.primary + "14",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  datePillText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.primary,
+  },
+  dateExpandWrap: {},
   tagsSection: {
     gap: 10,
   },
