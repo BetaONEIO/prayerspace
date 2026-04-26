@@ -290,17 +290,6 @@ export default function GroupDetailScreen() {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<GroupTab>("Chat");
 
-  const allMediaImages = useMemo(() => {
-    return chatMessages
-      .filter((m) => !!m.imageUrl)
-      .map((m) => ({
-        id: m.id,
-        uri: m.imageUrl!,
-        senderName: m.senderName,
-        time: m.time,
-      }))
-      .reverse();
-  }, [chatMessages]);
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(CHAT_MESSAGES);
   const [memberSearch, setMemberSearch] = useState<string>("");
@@ -367,6 +356,17 @@ export default function GroupDetailScreen() {
   const admins = filteredMembers.filter((m) => m.role === "Admin");
   const leaders = filteredMembers.filter((m) => m.role === "Leader");
   const members = filteredMembers.filter((m) => m.role === "Member");
+  const allMediaImages = useMemo(() => {
+    return chatMessages
+      .filter((m) => !!m.imageUrl)
+      .map((m) => ({
+        id: m.id,
+        uri: m.imageUrl!,
+        senderName: m.senderName,
+        time: m.time,
+      }))
+      .reverse();
+  }, [chatMessages]);
 
   const isChatTab = activeTab === "Chat";
 
