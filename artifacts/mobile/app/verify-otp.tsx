@@ -9,7 +9,7 @@ import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
 
 const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 8;
 const RESEND_COOLDOWN = 60;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CODE_BOX_SIZE = Math.max(38, Math.min(48, Math.floor((SCREEN_WIDTH - 28 * 2 - 10 * (CODE_LENGTH - 1)) / CODE_LENGTH)));
@@ -117,7 +117,7 @@ export default function VerifyOtpScreen() {
 
   const handleVerify = useCallback(async () => {
     const code = digits.join("");
-    if (code.length < CODE_LENGTH) { setError("Please enter the full 6-digit code."); triggerShake(); return; }
+    if (code.length < CODE_LENGTH) { setError("Please enter the full 8-digit code."); triggerShake(); return; }
     if (!email) { setError("Missing email. Please go back and try again."); triggerShake(); return; }
     setIsVerifying(true);
     setError("");
@@ -201,7 +201,7 @@ export default function VerifyOtpScreen() {
               <View style={styles.headerArea}>
                 <View style={styles.iconWrap}><Mail size={28} color={colors.primary} /></View>
                 <Text style={styles.title}>Check your email</Text>
-                <Text style={styles.subtitle}>We sent a 6-digit code to</Text>
+                <Text style={styles.subtitle}>We sent a 8-digit code to</Text>
                 <Text style={styles.emailText}>{maskedEmail}</Text>
               </View>
 
