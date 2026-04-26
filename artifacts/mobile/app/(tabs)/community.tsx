@@ -707,7 +707,7 @@ export default function CommunityScreen() {
       communityId: activeCommunity.id,
       authorId: isAnonymous ? "anonymous" : currentUserId,
       authorName: isAnonymous ? "Anonymous" : "Sarah",
-      authorAvatar: isAnonymous ? "" : "https://randomuser.me/api/portraits/women/68.jpg",
+      authorAvatar: isAnonymous ? "https://randomuser.me/api/portraits/lego/1.jpg" : "https://randomuser.me/api/portraits/women/68.jpg",
       category: tags.length > 0 ? tags[0].replace(/_/g, ' ').toUpperCase() : "UPDATE",
       tags: tags,
       timeLabel: "JUST NOW",
@@ -4922,8 +4922,13 @@ const styles = StyleSheet.create({
   cardNameRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    flexWrap: "wrap" as const,
     gap: 8,
+  },
+  cardBadgesRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    flexShrink: 1,
   },
   cardAuthorName: {
     fontSize: 15,
