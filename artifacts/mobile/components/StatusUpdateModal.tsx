@@ -176,7 +176,7 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
           <Animated.View
-            style={[styles.sheet, { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom + 24 }]}
+            style={[styles.sheet, { transform: [{ translateY: slideAnim }], paddingBottom: insets.bottom + 12 }]}
           >
             <View style={styles.dragHandle} />
 
@@ -191,6 +191,7 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               contentContainerStyle={styles.scrollContent}
             >
               <View style={styles.userRow}>
@@ -409,17 +410,16 @@ export default function StatusUpdateModal({ visible, onClose, onSubmit }: Props)
                   </View>
                 </Animated.View>
               </View>
+              <View style={styles.footer}>
+                <Pressable
+                  style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+                  onPress={handleSubmit}
+                  disabled={!canSubmit}
+                >
+                  <Text style={styles.submitText}>Update Status</Text>
+                </Pressable>
+              </View>
             </ScrollView>
-
-            <View style={styles.footer}>
-              <Pressable
-                style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
-                onPress={handleSubmit}
-                disabled={!canSubmit}
-              >
-                <Text style={styles.submitText}>Update Status</Text>
-              </Pressable>
-            </View>
           </Animated.View>
         </Animated.View>
       </KeyboardAvoidingView>
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 32,
     elevation: 20,
-    maxHeight: "92%",
+    maxHeight: "86%",
   },
   dragHandle: {
     width: 40,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 20,
     gap: 16,
   },
   userRow: {
@@ -791,7 +791,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   submitBtn: {
     backgroundColor: Colors.primary,
