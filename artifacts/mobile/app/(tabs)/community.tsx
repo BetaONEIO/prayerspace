@@ -65,6 +65,7 @@ import { LightColors as Colors, ThemeColors } from "@/constants/colors";
 const CommunityColorsCtx = React.createContext<ThemeColors>(Colors);
 const useCColors = () => React.useContext(CommunityColorsCtx);
 import StatusUpdateModal from "@/components/StatusUpdateModal";
+import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import ImageAttachment from "@/components/ImageAttachment";
@@ -110,6 +111,7 @@ interface FeedPost {
   timeLabel: string;
   postedAt: string;
   isTimeSensitive?: boolean;
+  eventDate?: string | null;
   content: string;
   prayerCount: number;
   commentCount: number;
@@ -698,7 +700,7 @@ export default function CommunityScreen() {
     setRepostTarget(post);
   }, []);
 
-  const handleStatusSubmit = useCallback((text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null) => {
+  const handleStatusSubmit = useCallback((text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const newPost: FeedPost = {
       id: `status_${Date.now()}`,
@@ -711,6 +713,7 @@ export default function CommunityScreen() {
       timeLabel: "JUST NOW",
       postedAt: "Just now",
       isTimeSensitive: isTimeSensitive,
+      eventDate: eventDate ?? null,
       content: text,
       prayerCount: 0,
       commentCount: 0,
@@ -720,7 +723,7 @@ export default function CommunityScreen() {
     };
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
-    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri);
+    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "eventDate:", eventDate);
   }, [activeCommunity.id]);
 
   const handleSubmitRepost = useCallback((originalPost: FeedPost, updateText: string, updateTag?: UpdateTag) => {
@@ -2437,6 +2440,11 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             {post.isTimeSensitive && (
               <View style={styles.timeSensitiveBadge}>
                 <Text style={styles.timeSensitiveText}>TIME SENSITIVE</Text>
+              </View>
+            )}
+            {post.eventDate && !isNaN(daysUntil(post.eventDate)) && daysUntil(post.eventDate) >= 0 && (
+              <View style={styles.eventDateBadge}>
+                <Text style={styles.eventDateBadgeText}>{formatPrayerDateFeed(post.eventDate).toUpperCase()}</Text>
               </View>
             )}
           </View>
@@ -4934,6 +4942,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800" as const,
     color: Colors.primary,
+    letterSpacing: 0.5,
+  },
+  eventDateBadge: {
+    backgroundColor: Colors.secondary,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  eventDateBadgeText: {
+    fontSize: 9,
+    fontWeight: "700" as const,
+    color: Colors.mutedForeground,
     letterSpacing: 0.5,
   },
   cardMetaRow: {
