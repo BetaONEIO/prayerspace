@@ -33,7 +33,12 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
   - **Email OTP registration setup (one-time, in Supabase Dashboard):**
     1. Authentication → Providers → Email: keep "Confirm email" enabled.
     2. Authentication → Email Templates → Confirm signup: edit the body to include the 6-digit token, e.g. `Your Prayer Space verification code is {{ .Token }}`. Without this, the email will only contain the magic link and the OTP screen will reject every code.
-    3. (Production only) Authentication → SMTP Settings: configure custom SMTP.
+    3. **Age verification (13+) — run the SQL block in `artifacts/mobile/lib/supabase.ts`:**
+       - Adds `date_of_birth date` column to `public.profiles` (and updates `handle_new_user` to copy it from signup metadata).
+       - Installs a `before insert on auth.users` trigger (`enforce_min_signup_age`) that **unconditionally requires** a valid `raw_user_meta_data.date_of_birth` for email signups and rejects users younger than 13. The mobile signup form sends the DOB in metadata; this trigger is the authoritative server-side check that cannot be bypassed by client tampering.
+       - The trigger skips enforcement for OAuth providers (e.g. Google) because their flow does not include DOB at signup — DOB still needs to be collected for those users in a post-signup completion screen (not yet implemented).
+       - If you add an admin user-creation endpoint using the service role, it must include `date_of_birth` in `user_metadata` for the trigger to accept it. The current admin route (`/api/admin/delete-users`) only deletes users, so it is unaffected.
+    4. (Production only) Authentication → SMTP Settings: configure custom SMTP.
        - Brevo host: `smtp-relay.brevo.com`
        - Port: `587`
        - Username: `892523002@smtp-brevo.com`

@@ -13,8 +13,33 @@ export interface UserProfile {
   avatar_url: string | null;
   bio: string | null;
   favorite_verse: string | null;
+  date_of_birth: string | null;
   updated_at: string | null;
   deletion_requested_at: string | null;
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split("-").map((n) => Number(n));
+  if (!y || !m || !d) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y &&
+    dt.getUTCMonth() === m - 1 &&
+    dt.getUTCDate() === d &&
+    dt.getTime() <= Date.now()
+  );
+}
+
+function calculateAgeFromIso(iso: string): number {
+  const [y, m, d] = iso.split("-").map((n) => Number(n));
+  const today = new Date();
+  let age = today.getFullYear() - y;
+  const monthDiff = today.getMonth() + 1 - m;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+    age -= 1;
+  }
+  return age;
 }
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -134,8 +159,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     return data;
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (
+    email: string,
+    password: string,
+    fullName: string,
+    dateOfBirth: string,
+  ) => {
     console.log("[Auth] Signing up:", email);
+
+    if (!isValidIsoDate(dateOfBirth)) {
+      throw new Error("Please enter a valid date of birth.");
+    }
+    const age = calculateAgeFromIso(dateOfBirth);
+    if (age < 13) {
+      throw new Error("You must be at least 13 years old to create an account.");
+    }
 
     let data: Awaited<ReturnType<typeof supabase.auth.signUp>>["data"];
     let error: Awaited<ReturnType<typeof supabase.auth.signUp>>["error"];
@@ -143,7 +181,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const res = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName } },
+        options: {
+          data: {
+            full_name: fullName,
+            date_of_birth: dateOfBirth,
+            age_verified: true,
+          },
+        },
       });
       data = res.data;
       error = res.error;
@@ -164,6 +208,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error("Unable to reach authentication server. Please check your internet connection and try again.");
       }
       const lower = (error.message ?? "").toLowerCase();
+      if (lower.includes("at least 13") || lower.includes("age_verification_failed")) {
+        throw new Error("You must be at least 13 years old to create an account.");
+      }
+      if (lower.includes("date of birth") || lower.includes("dob_required")) {
+        throw new Error("Date of birth is required to create an account.");
+      }
       if (lower.includes("database error") || lower.includes("saving new user")) {
         throw new Error("We couldn't create your account due to a server issue. Please try again or contact support.");
       }
@@ -179,6 +229,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         {
           id: data.user.id,
           full_name: fullName,
+          date_of_birth: dateOfBirth,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }

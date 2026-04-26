@@ -62,6 +62,7 @@ export const mailer = {
     avatar_url text,
     bio text,
     favorite_verse text,
+    date_of_birth date,
     deletion_requested_at timestamptz default null,
     updated_at timestamptz default now()
   );
@@ -71,17 +72,31 @@ export const mailer = {
   create policy "Users update own profile" on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);
   create policy "Users delete own profile" on public.profiles for delete using (auth.uid() = id);
 
+  -- If profiles table already exists, add the DOB column:
+  -- alter table public.profiles add column if not exists date_of_birth date;
+
   -- Auto-create profile on signup (IMPORTANT — run this too)
   create or replace function public.handle_new_user()
   returns trigger
   language plpgsql
   security definer set search_path = public
   as $
+  declare
+    dob_text text;
+    dob_value date;
   begin
-    insert into public.profiles (id, full_name, updated_at)
+    dob_text := new.raw_user_meta_data->>'date_of_birth';
+    begin
+      dob_value := nullif(dob_text, '')::date;
+    exception when others then
+      dob_value := null;
+    end;
+
+    insert into public.profiles (id, full_name, date_of_birth, updated_at)
     values (
       new.id,
       coalesce(new.raw_user_meta_data->>'full_name', ''),
+      dob_value,
       now()
     )
     on conflict (id) do nothing;
@@ -93,6 +108,76 @@ export const mailer = {
   create trigger on_auth_user_created
     after insert on auth.users
     for each row execute procedure public.handle_new_user();
+
+  -- ============================================================
+  -- AGE VERIFICATION (server-side, authoritative)
+  -- Rejects ANY auth.users insert without a valid date_of_birth in
+  -- raw_user_meta_data, or whose age computes to less than 13.
+  -- This trigger is the source of truth — the frontend check is
+  -- only there for UX. Anyone calling supabase.auth.signUp must
+  -- include date_of_birth in options.data, or signup fails.
+  --
+  -- IMPORTANT — admin-created users (service role) MUST also include
+  -- a valid date_of_birth in user_metadata when calling
+  -- /auth/v1/admin/users (POST). The current admin route in this
+  -- app (/api/admin/delete-users) only deletes users, so it is not
+  -- affected. If you add an admin user-creation endpoint later, be
+  -- sure to pass user_metadata: { full_name, date_of_birth } where
+  -- date_of_birth is an ISO yyyy-mm-dd string for someone aged 13+.
+  -- ============================================================
+  create or replace function public.enforce_min_signup_age()
+  returns trigger
+  language plpgsql
+  security definer set search_path = public
+  as $
+  declare
+    dob_text text;
+    dob_value date;
+    age_years integer;
+    auth_provider text;
+  begin
+    -- OAuth signups (e.g. Google, Apple) do not pass DOB through the
+    -- /signup endpoint — the user is created by the OAuth callback.
+    -- Skip the trigger for non-email providers; DOB must be collected
+    -- in a post-signup completion screen for those users.
+    auth_provider := coalesce(new.raw_app_meta_data->>'provider', 'email');
+    if auth_provider <> 'email' then
+      return new;
+    end if;
+
+    dob_text := new.raw_user_meta_data->>'date_of_birth';
+
+    if dob_text is null or dob_text = '' then
+      raise exception 'dob_required: Date of birth is required to create an account.'
+        using errcode = 'P0001';
+    end if;
+
+    begin
+      dob_value := dob_text::date;
+    exception when others then
+      raise exception 'dob_required: Date of birth is invalid.'
+        using errcode = 'P0001';
+    end;
+
+    if dob_value > current_date then
+      raise exception 'dob_required: Date of birth is invalid.'
+        using errcode = 'P0001';
+    end if;
+
+    age_years := extract(year from age(current_date, dob_value))::int;
+    if age_years < 13 then
+      raise exception 'age_verification_failed: You must be at least 13 years old to create an account.'
+        using errcode = 'P0001';
+    end if;
+
+    return new;
+  end;
+  $;
+
+  drop trigger if exists on_auth_user_age_check on auth.users;
+  create trigger on_auth_user_age_check
+    before insert on auth.users
+    for each row execute procedure public.enforce_min_signup_age();
 
   -- notification_preferences
   create table public.notification_preferences (

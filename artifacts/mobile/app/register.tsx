@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Mail, Lock, Eye, EyeOff, User, Check } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff, User, Check, Calendar } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
@@ -24,6 +24,44 @@ import * as WebBrowser from "expo-web-browser";
 WebBrowser.maybeCompleteAuthSession();
 
 const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
+const MIN_AGE_YEARS = 13;
+
+function pad2(n: string): string {
+  if (!n) return "";
+  return n.length === 1 ? `0${n}` : n;
+}
+
+function buildIsoDate(day: string, month: string, year: string): string | null {
+  if (day.length === 0 || month.length === 0 || year.length !== 4) return null;
+  const d = Number(day);
+  const m = Number(month);
+  const y = Number(year);
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  if (y < 1900) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (
+    dt.getUTCFullYear() !== y ||
+    dt.getUTCMonth() !== m - 1 ||
+    dt.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  if (dt.getTime() > Date.now()) return null;
+  return `${y.toString().padStart(4, "0")}-${pad2(String(m))}-${pad2(String(d))}`;
+}
+
+function calculateAge(iso: string): number {
+  const [y, m, d] = iso.split("-").map((n) => Number(n));
+  const today = new Date();
+  let age = today.getFullYear() - y;
+  const monthDiff = today.getMonth() + 1 - m;
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
+    age -= 1;
+  }
+  return age;
+}
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -35,7 +73,35 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [dobDay, setDobDay] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobYear, setDobYear] = useState("");
+  const [dobError, setDobError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const monthRef = useRef<TextInput | null>(null);
+  const yearRef = useRef<TextInput | null>(null);
+
+  const handleDayChange = useCallback((text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
+    setDobDay(cleaned);
+    setDobError("");
+    if (cleaned.length === 2) monthRef.current?.focus();
+  }, []);
+
+  const handleMonthChange = useCallback((text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
+    setDobMonth(cleaned);
+    setDobError("");
+    if (cleaned.length === 2) yearRef.current?.focus();
+  }, []);
+
+  const handleYearChange = useCallback((text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 4);
+    setDobYear(cleaned);
+    setDobError("");
+  }, []);
 
   const handleSignUp = useCallback(async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
@@ -46,14 +112,31 @@ export default function RegisterScreen() {
       Alert.alert("Weak Password", "Password must be at least 6 characters.");
       return;
     }
+
+    const iso = buildIsoDate(dobDay, dobMonth, dobYear);
+    if (!iso) {
+      setDobError("Please enter a valid date of birth.");
+      Alert.alert("Invalid Date of Birth", "Please enter a valid date of birth.");
+      return;
+    }
+    const age = calculateAge(iso);
+    if (age < MIN_AGE_YEARS) {
+      setDobError(`You must be at least ${MIN_AGE_YEARS} years old to create an account.`);
+      Alert.alert(
+        "Age Requirement",
+        `You must be at least ${MIN_AGE_YEARS} years old to create an account.`
+      );
+      return;
+    }
     if (!agreed) {
       Alert.alert("Terms Required", "Please agree to the Terms of Service.");
       return;
     }
+
     setIsLoading(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await signUp(normalizedEmail, password, name.trim());
+      await signUp(normalizedEmail, password, name.trim(), iso);
       console.log("[Register] Sign up successful, redirecting to OTP verification");
       router.replace({ pathname: "/verify-otp", params: { email: normalizedEmail } });
       return;
@@ -69,7 +152,15 @@ export default function RegisterScreen() {
       let title = "Registration Failed";
       let message = "Something went wrong. Please try again.";
 
-      if (lower.includes("rate limit") || lower.includes("too many")) {
+      if (lower.includes("at least 13") || lower.includes("age requirement")) {
+        title = "Age Requirement";
+        message = `You must be at least ${MIN_AGE_YEARS} years old to create an account.`;
+        setDobError(message);
+      } else if (lower.includes("date of birth")) {
+        title = "Invalid Date of Birth";
+        message = "Please enter a valid date of birth.";
+        setDobError(message);
+      } else if (lower.includes("rate limit") || lower.includes("too many")) {
         title = "Please Wait";
         message = "Too many sign up attempts. Please wait a few minutes.";
       } else if (lower.includes("already registered") || lower.includes("user already")) {
@@ -86,7 +177,7 @@ export default function RegisterScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [name, email, password, agreed, signUp, router]);
+  }, [name, email, password, dobDay, dobMonth, dobYear, agreed, signUp, router]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -167,7 +258,80 @@ export default function RegisterScreen() {
                 </Pressable>
               </View>
             </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Date of birth</Text>
+              <View
+                style={[
+                  styles.inputWrap,
+                  styles.dobWrap,
+                  dobError ? styles.dobWrapError : undefined,
+                ]}
+              >
+                <Calendar size={18} color={colors.mutedForeground} />
+                <TextInput
+                  style={[styles.input, styles.dobSegment]}
+                  placeholder="DD"
+                  placeholderTextColor={colors.mutedForeground + "90"}
+                  value={dobDay}
+                  onChangeText={handleDayChange}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  testID="register-dob-day"
+                  editable={!isLoading}
+                />
+                <Text style={styles.dobSeparator}>/</Text>
+                <TextInput
+                  ref={monthRef}
+                  style={[styles.input, styles.dobSegment]}
+                  placeholder="MM"
+                  placeholderTextColor={colors.mutedForeground + "90"}
+                  value={dobMonth}
+                  onChangeText={handleMonthChange}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  testID="register-dob-month"
+                  editable={!isLoading}
+                />
+                <Text style={styles.dobSeparator}>/</Text>
+                <TextInput
+                  ref={yearRef}
+                  style={[styles.input, styles.dobYear]}
+                  placeholder="YYYY"
+                  placeholderTextColor={colors.mutedForeground + "90"}
+                  value={dobYear}
+                  onChangeText={handleYearChange}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  testID="register-dob-year"
+                  editable={!isLoading}
+                />
+              </View>
+              {dobError ? (
+                <Text style={styles.dobErrorText} testID="register-dob-error">
+                  {dobError}
+                </Text>
+              ) : (
+                <Text style={styles.helperText}>
+                  You must be at least {MIN_AGE_YEARS} years old to use Prayer Space.
+                </Text>
+              )}
+            </View>
           </View>
+
+          <Pressable
+            style={styles.confirmRow}
+            onPress={() => setAgeConfirmed((p) => !p)}
+            disabled={isLoading}
+            testID="register-age-confirm"
+          >
+            <View style={[styles.checkbox, ageConfirmed && styles.checkboxChecked]}>
+              {ageConfirmed && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
+            </View>
+            <Text style={styles.termsText}>
+              I confirm I am {MIN_AGE_YEARS} years or older.
+            </Text>
+          </Pressable>
 
           <Pressable
             style={styles.termsRow}
@@ -294,6 +458,47 @@ function createStyles(colors: ThemeColors) {
       fontSize: 15,
       color: colors.foreground,
       padding: 0,
+    },
+    dobWrap: {
+      gap: 8,
+    },
+    dobWrapError: {
+      borderColor: "#D9534F",
+    },
+    dobSegment: {
+      flex: 0,
+      width: 36,
+      textAlign: "center" as const,
+    },
+    dobYear: {
+      flex: 0,
+      width: 64,
+      textAlign: "center" as const,
+    },
+    dobSeparator: {
+      fontSize: 15,
+      color: colors.mutedForeground,
+      fontWeight: "600" as const,
+    },
+    helperText: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      marginLeft: 4,
+      lineHeight: 18,
+    },
+    dobErrorText: {
+      fontSize: 12,
+      color: "#D9534F",
+      marginLeft: 4,
+      lineHeight: 18,
+      fontWeight: "600" as const,
+    },
+    confirmRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      marginBottom: 12,
+      paddingHorizontal: 4,
     },
     termsRow: {
       flexDirection: "row",
