@@ -17,6 +17,7 @@ import {
   Modal,
   TouchableOpacity,
   Clipboard,
+  PanResponder,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -77,6 +78,13 @@ interface MessageRead {
   deliveredAt?: string;
 }
 
+interface ReplyTo {
+  id: string;
+  senderName: string;
+  text: string;
+  imageUrl?: string;
+}
+
 interface ChatMessage {
   id: string;
   senderId: string;
@@ -90,7 +98,10 @@ interface ChatMessage {
   imageUrl?: string;
   reactions?: MessageReaction[];
   readBy?: MessageRead[];
+  replyTo?: ReplyTo;
 }
+
+const EMOJI_REACTIONS = ["❤️", "😂", "😮", "😢", "😡", "🤗", "🙏"];
 
 interface Member {
   id: string;
@@ -361,11 +372,26 @@ export default function GroupDetailScreen() {
   const [viewingGroupImage, setViewingGroupImage] = useState<string | null>(null);
   const [contextMsg, setContextMsg] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
+  const msgPositionsRef = useRef<Map<string, number>>(new Map());
   const injectedRef = useRef<boolean>(false);
+  const chatScrollRef = useRef<ScrollView>(null);
 
   const handleLongPress = useCallback((msg: ChatMessage) => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setContextMsg(msg);
+  }, []);
+
+  const handleReply = useCallback((msg: ChatMessage) => {
+    setReplyingTo({ id: msg.id, senderName: msg.isOwn ? "You" : msg.senderName, text: msg.text, imageUrl: msg.imageUrl });
+    setContextMsg(null);
+  }, []);
+
+  const handleScrollToMessage = useCallback((msgId: string) => {
+    const y = msgPositionsRef.current.get(msgId);
+    if (y !== undefined) {
+      chatScrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+    }
   }, []);
 
   const handleAddPrayReaction = useCallback((msgId: string) => {
@@ -379,6 +405,26 @@ export default function GroupDetailScreen() {
           reactions: [
             ...(m.reactions ?? []),
             { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "pray" as const, createdAt: "Just now" },
+          ],
+        };
+      })
+    );
+    setContextMsg(null);
+  }, []);
+
+  const handleAddEmojiReaction = useCallback((msgId: string, emoji: string) => {
+    setChatMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== msgId) return m;
+        const existing = (m.reactions ?? []).find((r) => r.userId === "me" && r.type === "emoji" && r.emoji === emoji);
+        if (existing) {
+          return { ...m, reactions: (m.reactions ?? []).filter((r) => !(r.userId === "me" && r.type === "emoji" && r.emoji === emoji)) };
+        }
+        return {
+          ...m,
+          reactions: [
+            ...(m.reactions ?? []),
+            { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "emoji" as const, emoji, createdAt: "Just now" },
           ],
         };
       })
@@ -425,7 +471,6 @@ export default function GroupDetailScreen() {
     setChatMessages((prev) => [...prev, sharedMsg]);
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 150);
   }, []);
-  const chatScrollRef = useRef<ScrollView>(null);
 
   const handleTabPress = useCallback((tab: GroupTab) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -445,12 +490,14 @@ export default function GroupDetailScreen() {
       imageUrl: groupImageUri ?? undefined,
       time: "Just now",
       isOwn: true,
+      replyTo: replyingTo ?? undefined,
     };
     setChatMessages((prev) => [...prev, newMsg]);
     setChatInput("");
     setGroupImageUri(null);
+    setReplyingTo(null);
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [chatInput, groupImageUri]);
+  }, [chatInput, groupImageUri, replyingTo]);
 
   const filteredMembers = MEMBERS.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
@@ -567,6 +614,9 @@ export default function GroupDetailScreen() {
                   message={msg}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
+                  onReply={handleReply}
+                  onScrollToMessage={handleScrollToMessage}
+                  onLayout={(y) => msgPositionsRef.current.set(msg.id, y)}
                 />
               ) : (
                 <OtherMessage
@@ -574,12 +624,28 @@ export default function GroupDetailScreen() {
                   message={msg}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
+                  onReply={handleReply}
+                  onScrollToMessage={handleScrollToMessage}
+                  onLayout={(y) => msgPositionsRef.current.set(msg.id, y)}
                 />
               )
             )}
           </ScrollView>
 
           <View style={styles.chatInputOuter}>
+            {replyingTo && (
+              <View style={styles.replyBanner}>
+                <View style={styles.replyBannerBar} />
+                <View style={styles.replyBannerBody}>
+                  <Text style={styles.replyBannerName}>{replyingTo.senderName}</Text>
+                  {replyingTo.imageUrl && !replyingTo.text && <Text style={styles.replyBannerText}>📷 Photo</Text>}
+                  {replyingTo.text ? <Text style={styles.replyBannerText} numberOfLines={1}>{replyingTo.text}</Text> : null}
+                </View>
+                <Pressable onPress={() => setReplyingTo(null)} style={styles.replyBannerClose} hitSlop={10}>
+                  <Text style={styles.replyBannerCloseText}>✕</Text>
+                </Pressable>
+              </View>
+            )}
             {groupImageUri && (
               <View style={styles.groupImagePreviewRow}>
                 <ImageAttachment
@@ -633,7 +699,9 @@ export default function GroupDetailScreen() {
         message={contextMsg}
         visible={!!contextMsg}
         onClose={() => setContextMsg(null)}
+        onReply={(msg) => handleReply(msg)}
         onPray={(id) => handleAddPrayReaction(id)}
+        onReact={(id, emoji) => handleAddEmojiReaction(id, emoji)}
         onCopy={(text) => {
           try { Clipboard.setString(text); } catch {}
           setContextMsg(null);
@@ -784,6 +852,106 @@ function SharedPrayerCardView({ card }: { card: SharedPrayerCard }) {
   );
 }
 
+function SwipeableMessage({
+  children,
+  onReply,
+}: {
+  children: React.ReactNode;
+  onReply: () => void;
+}) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const triggeredRef = useRef(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5 && gs.dx > 0,
+      onPanResponderMove: (_, gs) => {
+        const clamped = Math.min(Math.max(gs.dx, 0), 80);
+        translateX.setValue(clamped);
+        if (clamped >= 65 && !triggeredRef.current) {
+          triggeredRef.current = true;
+          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        if (gs.dx >= 65) onReply();
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          tension: 120,
+          friction: 10,
+        }).start();
+        triggeredRef.current = false;
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+        triggeredRef.current = false;
+      },
+    })
+  ).current;
+
+  const iconOpacity = translateX.interpolate({ inputRange: [0, 30, 70], outputRange: [0, 0.5, 1] });
+  const iconScale = translateX.interpolate({ inputRange: [0, 40, 70], outputRange: [0.6, 0.85, 1] });
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <Animated.View style={[styles.swipeReplyIcon, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
+        <Reply size={18} color={Colors.primary} />
+      </Animated.View>
+      <Animated.View style={{ flex: 1, transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+function QuoteView({ replyTo, isOwn, onPress }: { replyTo: ReplyTo; isOwn: boolean; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.quoteWrap, isOwn && styles.quoteWrapOwn]}>
+      <View style={[styles.quoteBar, isOwn && styles.quoteBarOwn]} />
+      <View style={styles.quoteBody}>
+        <Text style={[styles.quoteSenderName, isOwn && styles.quoteSenderNameOwn]}>{replyTo.senderName}</Text>
+        {replyTo.imageUrl && !replyTo.text
+          ? <Text style={[styles.quoteText, isOwn && styles.quoteTextOwn]}>📷 Photo</Text>
+          : <Text style={[styles.quoteText, isOwn && styles.quoteTextOwn]} numberOfLines={2}>{replyTo.text || "Message"}</Text>
+        }
+      </View>
+      {replyTo.imageUrl && (
+        <Image source={{ uri: replyTo.imageUrl }} style={styles.quoteThumb} contentFit="cover" />
+      )}
+    </Pressable>
+  );
+}
+
+function EmojiReactions({ reactions, onPress }: { reactions?: MessageReaction[]; onPress?: (emoji: string) => void }) {
+  const emojiReactions = (reactions ?? []).filter((r) => r.type === "emoji" && r.emoji);
+  if (emojiReactions.length === 0) return null;
+
+  const counts: Record<string, { count: number; isMine: boolean }> = {};
+  for (const r of emojiReactions) {
+    const e = r.emoji!;
+    if (!counts[e]) counts[e] = { count: 0, isMine: false };
+    counts[e].count++;
+    if (r.userId === "me") counts[e].isMine = true;
+  }
+
+  return (
+    <View style={styles.emojiReactionRow}>
+      {Object.entries(counts).map(([emoji, { count, isMine }]) => (
+        <Pressable
+          key={emoji}
+          onPress={() => onPress?.(emoji)}
+          style={[styles.emojiReactionBubble, isMine && styles.emojiReactionBubbleMine]}
+        >
+          <Text style={styles.emojiReactionEmoji}>{emoji}</Text>
+          {count > 1 && <Text style={[styles.emojiReactionCount, isMine && styles.emojiReactionCountMine]}>{count}</Text>}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 function ReadReceipt({ readBy, totalMembers }: { readBy?: MessageRead[]; totalMembers: number }) {
   const count = (readBy ?? []).length;
   const allRead = count >= totalMembers - 1;
@@ -845,106 +1013,126 @@ function PrayingReactions({ reactions }: { reactions?: MessageReaction[] }) {
   );
 }
 
-function OwnMessage({ message, onImagePress, onLongPress }: {
+function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
   message: ChatMessage;
   onImagePress?: (uri: string) => void;
   onLongPress?: (msg: ChatMessage) => void;
+  onReply?: (msg: ChatMessage) => void;
+  onScrollToMessage?: (id: string) => void;
+  onLayout?: (y: number) => void;
 }) {
   const hasText = (message.text ?? "").trim().length > 0;
-  if (message.sharedPrayer) {
-    return (
-      <View style={styles.ownMessageWrap}>
-        <Pressable
-          onLongPress={() => onLongPress?.(message)}
-          delayLongPress={400}
-          style={styles.ownSharedBubble}
-        >
-          {hasText && (
-            <Text style={[styles.ownBubbleText, styles.ownSharedText]}>
-              {message.text}
-            </Text>
-          )}
-          <SharedPrayerCardView card={message.sharedPrayer} />
-        </Pressable>
+  return (
+    <SwipeableMessage onReply={() => onReply?.(message)}>
+      <View
+        style={styles.ownMessageWrap}
+        onLayout={(e) => onLayout?.(e.nativeEvent.layout.y)}
+      >
+        {message.replyTo && (
+          <QuoteView
+            replyTo={message.replyTo}
+            isOwn
+            onPress={() => onScrollToMessage?.(message.replyTo!.id)}
+          />
+        )}
+        {message.sharedPrayer ? (
+          <Pressable
+            onLongPress={() => onLongPress?.(message)}
+            delayLongPress={300}
+            style={styles.ownSharedBubble}
+          >
+            {hasText && <Text style={[styles.ownBubbleText, styles.ownSharedText]}>{message.text}</Text>}
+            <SharedPrayerCardView card={message.sharedPrayer} />
+          </Pressable>
+        ) : (
+          <Pressable
+            onLongPress={() => onLongPress?.(message)}
+            delayLongPress={300}
+            style={[styles.ownBubble, message.imageUrl && styles.ownBubbleWithImage]}
+          >
+            {message.imageUrl && (
+              <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
+                <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
+              </Pressable>
+            )}
+            {hasText && (
+              <Text style={[styles.ownBubbleText, message.imageUrl && styles.groupBubbleTextWithImage]}>{message.text}</Text>
+            )}
+          </Pressable>
+        )}
+        <EmojiReactions reactions={message.reactions} />
         <PrayingReactions reactions={message.reactions} />
         <View style={styles.ownMeta}>
           <Text style={styles.ownTime}>{message.time}</Text>
           <ReadReceipt readBy={message.readBy} totalMembers={TOTAL_GROUP_MEMBERS} />
         </View>
       </View>
-    );
-  }
-  return (
-    <View style={styles.ownMessageWrap}>
-      <Pressable
-        onLongPress={() => onLongPress?.(message)}
-        delayLongPress={400}
-        style={[styles.ownBubble, message.imageUrl && styles.ownBubbleWithImage]}
-      >
-        {message.imageUrl && (
-          <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
-            <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
-          </Pressable>
-        )}
-        {hasText && (
-          <Text style={[styles.ownBubbleText, message.imageUrl && styles.groupBubbleTextWithImage]}>{message.text}</Text>
-        )}
-      </Pressable>
-      <PrayingReactions reactions={message.reactions} />
-      <View style={styles.ownMeta}>
-        <Text style={styles.ownTime}>{message.time}</Text>
-        <ReadReceipt readBy={message.readBy} totalMembers={TOTAL_GROUP_MEMBERS} />
-      </View>
-    </View>
+    </SwipeableMessage>
   );
 }
 
-function OtherMessage({ message, onImagePress, onLongPress }: {
+function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
   message: ChatMessage;
   onImagePress?: (uri: string) => void;
   onLongPress?: (msg: ChatMessage) => void;
+  onReply?: (msg: ChatMessage) => void;
+  onScrollToMessage?: (id: string) => void;
+  onLayout?: (y: number) => void;
 }) {
   return (
-    <View style={styles.otherMessageWrap}>
-      <Image source={{ uri: message.senderAvatar }} style={styles.otherAvatar} />
-      <View style={styles.otherContent}>
-        <Text style={styles.otherSenderName}>{message.senderName}</Text>
-        {message.isVoice ? (
-          <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={400} style={styles.voiceBubble}>
-            <Pressable style={styles.voicePlayBtn}>
-              <Text style={{ fontSize: 14 }}>▶</Text>
+    <SwipeableMessage onReply={() => onReply?.(message)}>
+      <View
+        style={styles.otherMessageWrap}
+        onLayout={(e) => onLayout?.(e.nativeEvent.layout.y)}
+      >
+        <Image source={{ uri: message.senderAvatar }} style={styles.otherAvatar} />
+        <View style={styles.otherContent}>
+          <Text style={styles.otherSenderName}>{message.senderName}</Text>
+          {message.replyTo && (
+            <QuoteView
+              replyTo={message.replyTo}
+              isOwn={false}
+              onPress={() => onScrollToMessage?.(message.replyTo!.id)}
+            />
+          )}
+          {message.isVoice ? (
+            <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={300} style={styles.voiceBubble}>
+              <Pressable style={styles.voicePlayBtn}>
+                <Text style={{ fontSize: 14 }}>▶</Text>
+              </Pressable>
+              <View style={styles.voiceWave}>
+                <View style={styles.voiceBar} />
+              </View>
+              <Text style={styles.voiceDuration}>0:12</Text>
             </Pressable>
-            <View style={styles.voiceWave}>
-              <View style={styles.voiceBar} />
-            </View>
-            <Text style={styles.voiceDuration}>0:12</Text>
-          </Pressable>
-        ) : message.imageUrl ? (
-          <Pressable
-            onLongPress={() => onLongPress?.(message)}
-            delayLongPress={400}
-            style={[styles.otherBubble, styles.otherBubbleWithImage]}
-          >
-            <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
-              <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
+          ) : message.imageUrl ? (
+            <Pressable
+              onLongPress={() => onLongPress?.(message)}
+              delayLongPress={300}
+              style={[styles.otherBubble, styles.otherBubbleWithImage]}
+            >
+              <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
+                <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
+              </Pressable>
+              {(message.text ?? "").trim().length > 0 && (
+                <Text style={[styles.otherBubbleText, styles.groupBubbleTextWithImage]}>{message.text}</Text>
+              )}
             </Pressable>
-            {(message.text ?? "").trim().length > 0 && (
-              <Text style={[styles.otherBubbleText, styles.groupBubbleTextWithImage]}>{message.text}</Text>
-            )}
-          </Pressable>
-        ) : (
-          <Pressable
-            onLongPress={() => onLongPress?.(message)}
-            delayLongPress={400}
-            style={styles.otherBubble}
-          >
-            <Text style={styles.otherBubbleText}>{message.text}</Text>
-          </Pressable>
-        )}
-        <PrayingReactions reactions={message.reactions} />
-        <Text style={styles.otherTime}>{message.time}</Text>
+          ) : (
+            <Pressable
+              onLongPress={() => onLongPress?.(message)}
+              delayLongPress={300}
+              style={styles.otherBubble}
+            >
+              <Text style={styles.otherBubbleText}>{message.text}</Text>
+            </Pressable>
+          )}
+          <EmojiReactions reactions={message.reactions} />
+          <PrayingReactions reactions={message.reactions} />
+          <Text style={styles.otherTime}>{message.time}</Text>
+        </View>
       </View>
-    </View>
+    </SwipeableMessage>
   );
 }
 
@@ -952,7 +1140,9 @@ function MessageContextMenu({
   message,
   visible,
   onClose,
+  onReply,
   onPray,
+  onReact,
   onCopy,
   onDelete,
   onInfo,
@@ -961,17 +1151,26 @@ function MessageContextMenu({
   message: ChatMessage | null;
   visible: boolean;
   onClose: () => void;
+  onReply: (msg: ChatMessage) => void;
   onPray: (id: string) => void;
+  onReact: (id: string, emoji: string) => void;
   onCopy: (text: string) => void;
   onDelete: (id: string) => void;
   onInfo: (msg: ChatMessage) => void;
   onReport: () => void;
 }) {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  React.useEffect(() => {
+    if (!visible) setShowEmojiPicker(false);
+  }, [visible]);
+
   if (!message) return null;
   const isOwn = message.isOwn;
+
   const ownActions = [
-    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: onClose },
-    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: onClose },
+    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
+    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
     { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
     { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
@@ -979,8 +1178,8 @@ function MessageContextMenu({
     { icon: <Trash2 size={20} color="#E55" />, label: "Delete", labelStyle: { color: "#E55" }, onPress: () => onDelete(message.id) },
   ];
   const otherActions = [
-    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: onClose },
-    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: onClose },
+    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
+    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
     { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
     { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
@@ -993,16 +1192,35 @@ function MessageContextMenu({
       <TouchableOpacity style={styles.menuOverlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.menuSheet}>
           <View style={styles.menuHandle} />
+
+          {/* Quick emoji reaction bar */}
+          <View style={styles.quickEmojiBar}>
+            {EMOJI_REACTIONS.map((emoji) => {
+              const alreadyReacted = (message.reactions ?? []).some((r) => r.userId === "me" && r.type === "emoji" && r.emoji === emoji);
+              return (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => { onReact(message.id, emoji); }}
+                  style={[styles.quickEmojiBtn, alreadyReacted && styles.quickEmojiBtnActive]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.quickEmojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           {message.text ? (
             <View style={styles.menuPreviewBubble}>
               <Text style={styles.menuPreviewText} numberOfLines={3}>{message.text}</Text>
             </View>
           ) : null}
+
           <View style={styles.menuActions}>
             {actions.map((action, i) => (
               <TouchableOpacity
                 key={i}
-                style={styles.menuActionItem}
+                style={[styles.menuActionItem, action.label === "React" && showEmojiPicker && styles.menuActionItemActive]}
                 onPress={action.onPress}
                 activeOpacity={0.7}
               >
@@ -2087,5 +2305,167 @@ const styles = StyleSheet.create({
     color: Colors.mutedForeground,
     textAlign: "center" as const,
     paddingVertical: 24,
+  },
+
+  swipeReplyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary + "18",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginRight: 4,
+    flexShrink: 0,
+  },
+
+  quoteWrap: {
+    flexDirection: "row" as const,
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    overflow: "hidden" as const,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: Colors.border + "60",
+    maxWidth: "100%",
+  },
+  quoteWrapOwn: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+  quoteBar: {
+    width: 3,
+    backgroundColor: Colors.primary,
+  },
+  quoteBarOwn: {
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+  quoteBody: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 2,
+  },
+  quoteSenderName: {
+    fontSize: 11,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+  },
+  quoteSenderNameOwn: {
+    color: "rgba(255,255,255,0.9)",
+  },
+  quoteText: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+    lineHeight: 17,
+  },
+  quoteTextOwn: {
+    color: "rgba(255,255,255,0.65)",
+  },
+  quoteThumb: {
+    width: 44,
+    height: 44,
+  },
+
+  emojiReactionRow: {
+    flexDirection: "row" as const,
+    flexWrap: "wrap" as const,
+    gap: 4,
+    marginTop: 4,
+  },
+  emojiReactionBubble: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    backgroundColor: Colors.card,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  emojiReactionBubbleMine: {
+    backgroundColor: Colors.primary + "18",
+    borderColor: Colors.primary + "50",
+  },
+  emojiReactionEmoji: {
+    fontSize: 14,
+  },
+  emojiReactionCount: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.mutedForeground,
+  },
+  emojiReactionCountMine: {
+    color: Colors.primary,
+  },
+
+  replyBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: Colors.secondary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  replyBannerBar: {
+    width: 3,
+    height: "100%",
+    minHeight: 28,
+    backgroundColor: Colors.primary,
+    borderRadius: 2,
+  },
+  replyBannerBody: {
+    flex: 1,
+    gap: 1,
+  },
+  replyBannerName: {
+    fontSize: 11,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+  },
+  replyBannerText: {
+    fontSize: 12,
+    color: Colors.mutedForeground,
+  },
+  replyBannerClose: {
+    padding: 4,
+  },
+  replyBannerCloseText: {
+    fontSize: 16,
+    color: Colors.mutedForeground,
+  },
+
+  quickEmojiBar: {
+    flexDirection: "row" as const,
+    justifyContent: "space-around" as const,
+    alignItems: "center" as const,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: Colors.card,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+  },
+  quickEmojiBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: "transparent",
+  },
+  quickEmojiBtnActive: {
+    backgroundColor: Colors.primary + "22",
+    transform: [{ scale: 1.2 }],
+  },
+  quickEmojiText: {
+    fontSize: 22,
+  },
+  menuActionItemActive: {
+    backgroundColor: Colors.primary + "15",
+    borderColor: Colors.primary + "40",
   },
 });

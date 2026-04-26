@@ -29,6 +29,17 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 ## Artifacts
 
 - **mobile** (`artifacts/mobile/`) — Prayer Space, an Expo (React Native) mobile app imported from https://github.com/BetaONEIO/prayerspace. Uses Supabase for auth/storage/chat (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`). Optional secrets: `EXPO_PUBLIC_TOOLKIT_URL` and `EXPO_PUBLIC_RORK_TOOLKIT_SECRET_KEY` for AI transcription/text generation features.
+  - **Group chat enhancements** (all in `artifacts/mobile/app/group/[id].tsx`):
+    - Prayer reactions: 🙏 pill with overlapping avatars (PrayingReactions component)
+    - Read receipt ticks: single/double/orange based on readBy vs totalMembers
+    - Long-press context menu modal: emoji picker bar, Reply, React, Pray, Forward, Copy, Info/Delete/Report
+    - Message info bottom sheet (MessageInfoSheet)
+    - Swipe-to-reply (PanResponder, spring-back animation, haptic at threshold)
+    - Reply quote strip above bubble (QuoteView, tappable to scroll to quoted message)
+    - Emoji reactions display below messages (EmojiReactions, grouped count pills)
+    - Reply banner above input bar while composing a reply
+    - `replyingTo` state, `msgPositionsRef` map for scroll-to-message
+    - `EMOJI_REACTIONS = ["❤️","😂","😮","😢","😡","🤗","🙏"]` constant
   - **`EXPO_PUBLIC_SUPABASE_URL` must be the bare project URL** (e.g. `https://<ref>.supabase.co`) — NOT the REST endpoint. If a path like `/rest/v1/` is included, supabase-js builds malformed auth URLs and every call fails with `Invalid path specified in request URL`. `lib/supabase.ts` defensively strips any path/trailing slash and logs a warning, but the secret should still be cleaned up.
   - **Email OTP registration setup (one-time, in Supabase Dashboard):**
     1. Authentication → Providers → Email: keep "Confirm email" enabled.
