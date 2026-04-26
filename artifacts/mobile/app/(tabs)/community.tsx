@@ -2445,7 +2445,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             {post.eventDate && !isNaN(daysUntil(post.eventDate)) && daysUntil(post.eventDate) >= 0 && (
               <View style={styles.eventDateBadge}>
                 <Clock size={9} color="#FFFFFF" />
-                <Text style={styles.eventDateBadgeText}>{formatPrayerDateFeed(post.eventDate)}</Text>
+                <Text style={styles.eventDateBadgeText}>{formatPrayerDateFeed(post.eventDate).replace(/^Prayer needed\s+/i, "")}</Text>
               </View>
             )}
           </View>
