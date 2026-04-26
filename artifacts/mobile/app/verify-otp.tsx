@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Animated, Keyboard } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Animated, Keyboard, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
@@ -11,6 +11,8 @@ import { supabase } from "@/lib/supabase";
 const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CODE_BOX_SIZE = Math.max(38, Math.min(48, Math.floor((SCREEN_WIDTH - 28 * 2 - 10 * (CODE_LENGTH - 1)) / CODE_LENGTH)));
 
 export default function VerifyOtpScreen() {
   const router = useRouter();
@@ -214,7 +216,7 @@ export default function VerifyOtpScreen() {
                         onChangeText={(t) => handleDigitChange(t, i)}
                         onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
                         keyboardType="number-pad"
-                        maxLength={6}
+                        maxLength={1}
                         textContentType="oneTimeCode"
                         autoComplete="one-time-code"
                         selectTextOnFocus
@@ -260,8 +262,8 @@ function createStyles(colors: ThemeColors) {
     subtitle: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" as const, lineHeight: 21 },
     emailText: { fontSize: 14, fontWeight: "700" as const, color: colors.foreground, marginTop: 4 },
     codeArea: { alignItems: "center" as const, marginBottom: 28 },
-    codeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-    digitBox: { width: 48, height: 58, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center" as const, justifyContent: "center" as const },
+    codeRow: { flexDirection: "row", gap: 8, marginBottom: 14, justifyContent: "center" as const, flexWrap: "nowrap" as const },
+    digitBox: { width: CODE_BOX_SIZE, height: 58, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center" as const, justifyContent: "center" as const },
     digitBoxFilled: { borderColor: colors.primary, backgroundColor: colors.accent },
     digitBoxError: { borderColor: "#D9534F", backgroundColor: "#FEF0EF" },
     digitInput: { fontSize: 24, fontWeight: "800" as const, color: colors.foreground, textAlign: "center" as const, width: "100%" as const, height: "100%" as const, padding: 0 },
