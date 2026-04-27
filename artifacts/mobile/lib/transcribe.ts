@@ -12,6 +12,9 @@ const openai = createOpenAI({
 });
 
 export async function transcribeAudio(audioUri: string): Promise<string> {
+  if (!audioUri) {
+    throw new Error("No audio file was found. Please record again.");
+  }
   console.log("[transcribeAudio] Starting transcription, URI:", audioUri);
   console.log("[transcribeAudio] Platform:", Platform.OS);
   console.log("[transcribeAudio] Toolkit URL:", TOOLKIT_URL);
