@@ -1616,7 +1616,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 2,
   },
   chatScroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
     gap: 16,
@@ -1639,7 +1639,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     textTransform: "uppercase" as const,
   },
   ownMessageWrap: {
+    alignSelf: "flex-end" as const,
     alignItems: "flex-end" as const,
+    maxWidth: "90%",
     gap: 4,
   },
   ownBubble: {
@@ -1648,7 +1650,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopRightRadius: 6,
     paddingHorizontal: 18,
     paddingVertical: 12,
-    maxWidth: "82%",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -1661,7 +1662,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopRightRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    maxWidth: "86%",
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -1766,8 +1766,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   otherMessageWrap: {
     flexDirection: "row" as const,
     alignItems: "flex-end" as const,
+    alignSelf: "flex-start" as const,
     gap: 10,
-    maxWidth: "85%",
+    maxWidth: "90%",
   },
   otherAvatar: {
     width: 32,
