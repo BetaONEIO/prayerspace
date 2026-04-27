@@ -70,9 +70,16 @@ export const ALL_RECIPIENTS: Recipient[] = [
   },
 ];
 
+export type FeedPostMeta = {
+  isAnonymous: boolean;
+  tags: string[];
+  eventDate: string | null;
+};
+
 export const [SelectedRecipientsProvider, useSelectedRecipients] = createContextHook(() => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [draftPrayerText, setDraftPrayerText] = useState<string>("");
+  const [feedPostMeta, setFeedPostMeta] = useState<FeedPostMeta | null>(null);
 
   const toggleRecipient = useCallback((id: string) => {
     setSelectedIds((prev) =>
@@ -91,5 +98,7 @@ export const [SelectedRecipientsProvider, useSelectedRecipients] = createContext
     clearAll,
     draftPrayerText,
     setDraftPrayerText,
-  }), [selectedIds, toggleRecipient, clearAll, draftPrayerText]);
+    feedPostMeta,
+    setFeedPostMeta,
+  }), [selectedIds, toggleRecipient, clearAll, draftPrayerText, feedPostMeta]);
 });

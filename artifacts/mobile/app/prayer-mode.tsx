@@ -93,7 +93,7 @@ export default function PrayerModeScreen() {
   const tagRotate = useRef(new Animated.Value(0)).current;
   const dateAnim = useRef(new Animated.Value(0)).current;
 
-  const { selectedRecipients, selectedIds, toggleRecipient, setDraftPrayerText } = useSelectedRecipients();
+  const { selectedRecipients, selectedIds, toggleRecipient, setDraftPrayerText, setFeedPostMeta } = useSelectedRecipients();
   const { isRecording, duration, startRecording: startAudioRecording, stopRecording: stopAudioRecording } = useAudioRecording();
 
   const insets = useSafeAreaInsets();
@@ -253,6 +253,11 @@ export default function PrayerModeScreen() {
     }
     const text = activeTab === "voice" ? voiceTranscript : textPrayer;
     setDraftPrayerText(text);
+    setFeedPostMeta({
+      isAnonymous,
+      tags: selectedTags,
+      eventDate: eventDate ?? null,
+    });
     router.push({
       pathname: "/delivery-explanation" as never,
       params: {
@@ -264,7 +269,7 @@ export default function PrayerModeScreen() {
         eventDate: String(eventDate ?? ""),
       },
     });
-  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, router, setDraftPrayerText]);
+  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, router, setDraftPrayerText, setFeedPostMeta]);
 
   const handleRemoveRecipient = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();

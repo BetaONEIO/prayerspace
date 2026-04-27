@@ -17,6 +17,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { feedStore, FEED_COMMUNITIES } from "@/lib/feedStore";
 
 type DeliveryChannel = "app" | "whatsapp" | "sms";
 
@@ -229,7 +230,7 @@ export default function MessagePreviewFinalScreen() {
   const router = useRouter();
   const { sendToFeed: sendToFeedParam } = useLocalSearchParams<{ sendToFeed?: string }>();
   const isSendToFeed = sendToFeedParam === "true";
-  const { selectedRecipients, draftPrayerText } = useSelectedRecipients();
+  const { selectedRecipients, draftPrayerText, feedPostMeta } = useSelectedRecipients();
   const { user, profile } = useAuth();
   const [selectedIdx, setSelectedIdx] = useState(0);
 
@@ -281,8 +282,39 @@ export default function MessagePreviewFinalScreen() {
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+    if (isSendToFeed) {
+      const isAnon = feedPostMeta?.isAnonymous ?? false;
+      const tags = feedPostMeta?.tags ?? [];
+      const eventDate = feedPostMeta?.eventDate ?? null;
+      const authorName = isAnon ? "Anonymous" : (
+        profile?.full_name ??
+        user?.user_metadata?.full_name ??
+        user?.email?.split("@")[0] ??
+        "You"
+      );
+      const defaultCommunity = FEED_COMMUNITIES[0];
+      feedStore.addPost({
+        id: `prayer_${Date.now()}`,
+        communityId: defaultCommunity.id,
+        authorId: isAnon ? "anonymous" : (user?.id ?? "current_user"),
+        authorName,
+        authorAvatar: isAnon ? "" : (profile?.avatar_url ?? "https://randomuser.me/api/portraits/women/68.jpg"),
+        category: tags.length > 0 ? tags[0].replace(/_/g, " ").toUpperCase() : "PRAYER REQUEST",
+        tags,
+        timeLabel: "JUST NOW",
+        postedAt: "Just now",
+        isTimeSensitive: false,
+        eventDate,
+        content: prayerMessage,
+        prayerCount: 0,
+        commentCount: 0,
+        prayedByAvatars: [],
+        comments: [],
+      });
+      console.log("[MessagePreviewFinal] Prayer posted to feed, anonymous:", isAnon, "tags:", tags);
+    }
     router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
-  }, [router]);
+  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length]);
 
   return (
     <>
