@@ -370,6 +370,18 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     console.log("[PrayerProvider] Added to Your People:", newPerson.name);
   }, [yourPeople, saveYourPeopleMutation]);
 
+  const addManyYourPeople = useCallback((people: Array<Omit<YourPerson, "id">>) => {
+    const existingNames = new Set(yourPeople.map((p) => p.name.toLowerCase()));
+    const newPeople = people
+      .filter((p) => !existingNames.has(p.name.toLowerCase()))
+      .map((p, i) => ({ ...p, id: `person-${Date.now()}-${i}` } as YourPerson));
+    if (newPeople.length === 0) return;
+    const updated = [...yourPeople, ...newPeople];
+    setYourPeople(updated);
+    saveYourPeopleMutation.mutate(updated);
+    console.log("[PrayerProvider] Batch added to Your People:", newPeople.map((p) => p.name));
+  }, [yourPeople, saveYourPeopleMutation]);
+
   const removeYourPerson = useCallback((id: string) => {
     const updated = yourPeople.filter((p) => p.id !== id);
     setYourPeople(updated);
@@ -461,6 +473,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     addJournalEntry,
     addArchivedPost,
     addYourPerson,
+    addManyYourPeople,
     removeYourPerson,
     markPersonPrayed,
     toggleJournalFavorite,
@@ -469,7 +482,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     setReminder,
     removeReminder,
     getReminderForEntry,
-  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, isLoading, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, updateSetting, setReminder, removeReminder, getReminderForEntry]);
+  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, isLoading, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, updateSetting, setReminder, removeReminder, getReminderForEntry]);
 });
 
 export function useFilteredJournal(filter: string) {

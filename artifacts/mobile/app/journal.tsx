@@ -1249,7 +1249,7 @@ export default function JournalScreen() {
   const [recentlyPrayedId, setRecentlyPrayedId] = useState<string | null>(null);
   const repeatPulse = useRef(new Animated.Value(1)).current;
 
-  const { journal, yourPeople, addYourPerson, removeYourPerson, markPersonPrayed } = usePrayer();
+  const { journal, yourPeople, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed } = usePrayer();
 
   const today = new Date().toISOString().split("T")[0];
   const prayedCount = yourPeople.filter((p) => p.lastPrayedDate === today).length;
@@ -1322,7 +1322,7 @@ export default function JournalScreen() {
   const latestPrayingForId = prayingForEntries.length > 0 ? prayingForEntries[0].id : null;
 
   const handleAddYourPerson = useCallback((people: Array<Omit<YourPerson, "id">>) => {
-    people.forEach((p) => addYourPerson(p));
+    addManyYourPeople(people);
     setAddFromRequest(null);
     setAddPersonVisible(false);
     const msg = people.length === 1 ? `Added ${people[0].name.split(" ")[0]} to Your People` : `Added ${people.length} people to Your People`;
@@ -1333,7 +1333,7 @@ export default function JournalScreen() {
       Animated.delay(2200),
       Animated.timing(addedToastAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
     ]).start(() => setAddedToast(null));
-  }, [addYourPerson, addedToastAnim]);
+  }, [addManyYourPeople, addedToastAnim]);
 
   const handleAddFromRequest = useCallback((entry: JournalEntry) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -2364,8 +2364,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 1,
   },
   personListRowPrayed: {
-    borderColor: "#27A06E30",
-    backgroundColor: "#F8FDFB",
+    borderColor: "#27A06E50",
+    backgroundColor: colors.card,
   },
   personListAvatarWrap: {
     position: "relative" as const,
