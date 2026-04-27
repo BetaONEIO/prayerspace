@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
@@ -30,7 +30,7 @@ import {
   CalendarDays,
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { ThemeColors, LightColors as Colors } from "@/constants/colors";
+import { ThemeColors } from "@/constants/colors";
 import { currentUser } from "@/mocks/data";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
@@ -50,6 +50,7 @@ interface Props {
 
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [text, setText] = useState<string>("");
   const [statusImageUri, setStatusImageUri] = useState<string | null>(null);
   const [viewingStatusImage, setViewingStatusImage] = useState<string | null>(null);
@@ -183,7 +184,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
             <View style={styles.header}>
               <Pressable style={styles.closeBtn} onPress={handleClose}>
-                <X size={18} color={Colors.secondaryForeground} />
+                <X size={18} color={colors.secondaryForeground} />
               </Pressable>
               <Text style={styles.title}>Update Status</Text>
               <View style={styles.headerSpacer} />
@@ -206,12 +207,12 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                     onPress={() => setAudienceOpen((v) => !v)}
                   >
                     {selectedAudience.type === "everyone" ? (
-                      <Globe size={10} color={Colors.primary} />
+                      <Globe size={10} color={colors.primary} />
                     ) : (
-                      <Users size={10} color={Colors.primary} />
+                      <Users size={10} color={colors.primary} />
                     )}
                     <Text style={styles.audienceText}>{selectedAudience.label}</Text>
-                    <ChevronDown size={10} color={Colors.mutedForeground} />
+                    <ChevronDown size={10} color={colors.mutedForeground} />
                   </Pressable>
                 </View>
                 {communityName && (
@@ -240,9 +241,9 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                           ]}
                         >
                           {option.type === "everyone" ? (
-                            <Globe size={14} color={isSelected ? Colors.primaryForeground : Colors.mutedForeground} />
+                            <Globe size={14} color={isSelected ? colors.primaryForeground : colors.mutedForeground} />
                           ) : (
-                            <Users size={14} color={isSelected ? Colors.primaryForeground : Colors.mutedForeground} />
+                            <Users size={14} color={isSelected ? colors.primaryForeground : colors.mutedForeground} />
                           )}
                         </View>
                         <View style={styles.audienceOptionText}>
@@ -259,7 +260,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                           )}
                         </View>
                         {isSelected && (
-                          <Check size={16} color={Colors.primary} />
+                          <Check size={16} color={colors.primary} />
                         )}
                       </Pressable>
                     );
@@ -280,7 +281,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                       >
                         <Text style={styles.selectedTagEmoji}>{tag.emoji}</Text>
                         <Text style={styles.selectedTagText}>{tag.label}</Text>
-                        <X size={10} color={Colors.primary} strokeWidth={3} />
+                        <X size={10} color={colors.primary} strokeWidth={3} />
                       </Pressable>
                     );
                   })}
@@ -291,7 +292,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 <TextInput
                   style={styles.input}
                   placeholder="What's your prayer focus right now?"
-                  placeholderTextColor={Colors.mutedForeground + "88"}
+                  placeholderTextColor={colors.mutedForeground + "88"}
                   multiline
                   maxLength={MAX_CHARS + 10}
                   value={text}
@@ -328,7 +329,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
                   onPress={() => setIsTimeSensitive((v) => !v)}
                 >
-                  <Zap size={14} color={isTimeSensitive ? "#B87A00" : Colors.mutedForeground} />
+                  <Zap size={14} color={isTimeSensitive ? "#B87A00" : colors.mutedForeground} />
                   <Text style={[styles.optionChipText, isTimeSensitive && styles.optionChipTextTimeSensitive]}>
                     Time Sensitive
                   </Text>
@@ -338,7 +339,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   style={[styles.optionChip, isAnonymous && styles.optionChipAnonymous]}
                   onPress={() => setIsAnonymous((v) => !v)}
                 >
-                  <Ghost size={14} color={isAnonymous ? Colors.primary : Colors.mutedForeground} />
+                  <Ghost size={14} color={isAnonymous ? colors.primary : colors.mutedForeground} />
                   <Text style={[styles.optionChipText, isAnonymous && styles.optionChipTextAnonymous]}>
                     Anonymous
                   </Text>
@@ -349,14 +350,14 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
                   <View style={styles.tagsToggleLeft}>
                     <View style={styles.tagsToggleIcon}>
-                      <Tag size={14} color={Colors.primary} />
+                      <Tag size={14} color={colors.primary} />
                     </View>
                     <Text style={styles.tagsToggleLabel}>
                       Add a tag{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : ""}
                     </Text>
                   </View>
                   <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
-                    <ChevronDown size={16} color={Colors.mutedForeground} />
+                    <ChevronDown size={16} color={colors.mutedForeground} />
                   </Animated.View>
                 </Pressable>
 
@@ -387,14 +388,14 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   onPress={() => setDateExpanded((v) => !v)}
                 >
                   <View style={styles.dateSectionIcon}>
-                    <CalendarDays size={14} color={eventDate ? Colors.primary : Colors.mutedForeground} />
+                    <CalendarDays size={14} color={eventDate ? colors.primary : colors.mutedForeground} />
                   </View>
                   <Text style={[styles.dateSectionLabel, eventDate ? styles.dateSectionLabelActive : null]}>
                     {eventDate ? `Prayer date · ${formatPrayerDate(eventDate)}` : "Add prayer date"}
                   </Text>
                   <ChevronDown
                     size={16}
-                    color={Colors.mutedForeground}
+                    color={colors.mutedForeground}
                     style={{ marginLeft: "auto" }}
                   />
                 </Pressable>
@@ -436,7 +437,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   flex: {
     flex: 1,
   },
@@ -446,7 +447,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
   },
   sheet: {
-    backgroundColor: "#FAF8F5",
+    backgroundColor: colors.card,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     shadowColor: "#000",
@@ -460,7 +461,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center",
     marginTop: 12,
     marginBottom: 4,
@@ -476,14 +477,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
@@ -509,12 +510,12 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   userName: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textTransform: "uppercase",
     letterSpacing: -0.3,
   },
@@ -522,26 +523,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: Colors.accent + "80",
+    backgroundColor: colors.accent + "80",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.primary + "18",
+    borderColor: colors.primary + "18",
     alignSelf: "flex-start",
   },
   audienceText: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
     textTransform: "uppercase",
     letterSpacing: 1.2,
   },
   audienceDropdown: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
   audienceDropdownLabel: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase",
     letterSpacing: 1.5,
     paddingHorizontal: 16,
@@ -566,21 +567,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "60",
+    borderTopColor: colors.border + "60",
   },
   audienceOptionSelected: {
-    backgroundColor: Colors.accent + "40",
+    backgroundColor: colors.accent + "40",
   },
   audienceOptionIcon: {
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
   audienceOptionIconSelected: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   audienceOptionText: {
     flex: 1,
@@ -588,14 +589,14 @@ const styles = StyleSheet.create({
   audienceOptionLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   audienceOptionLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   audienceOptionSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 1,
   },
   selectedTagsRow: {
@@ -610,9 +611,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     borderWidth: 1.5,
-    borderColor: Colors.primary + "50",
+    borderColor: colors.primary + "50",
   },
   selectedTagEmoji: {
     fontSize: 12,
@@ -620,16 +621,16 @@ const styles = StyleSheet.create({
   selectedTagText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   inputWrap: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 18,
     minHeight: 130,
     position: "relative" as const,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -642,7 +643,7 @@ const styles = StyleSheet.create({
   },
   input: {
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
     minHeight: 90,
     paddingBottom: 24,
@@ -653,12 +654,12 @@ const styles = StyleSheet.create({
     right: 16,
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground + "88",
+    color: colors.mutedForeground + "88",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   charCountOver: {
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   optionsRow: {
     flexDirection: "row",
@@ -671,36 +672,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   optionChipTimeSensitive: {
     backgroundColor: "#FFF8E7",
     borderColor: "#F0C040",
   },
   optionChipAnonymous: {
-    backgroundColor: Colors.primary + "12",
-    borderColor: Colors.primary + "40",
+    backgroundColor: colors.primary + "12",
+    borderColor: colors.primary + "40",
   },
   optionChipText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   optionChipTextTimeSensitive: {
     color: "#B87A00",
     fontWeight: "700" as const,
   },
   optionChipTextAnonymous: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   tagsSection: {
-    backgroundColor: Colors.secondary + "60",
+    backgroundColor: colors.secondary + "60",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     overflow: "hidden",
   },
   tagsToggleRow: {
@@ -719,14 +720,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
   tagsToggleLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tagsWrap: {
     paddingHorizontal: 14,
@@ -742,13 +743,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   tagChipSelected: {
-    backgroundColor: Colors.primary + "18",
-    borderColor: Colors.primary + "60",
+    backgroundColor: colors.primary + "18",
+    borderColor: colors.primary + "60",
   },
   tagEmoji: {
     fontSize: 13,
@@ -756,17 +757,17 @@ const styles = StyleSheet.create({
   tagLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   tagLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   dateSection: {
-    backgroundColor: Colors.secondary + "60",
+    backgroundColor: colors.secondary + "60",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     overflow: "hidden",
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -780,18 +781,18 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
   dateSectionLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     flex: 1,
   },
   dateSectionLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   footer: {
     paddingHorizontal: 20,
@@ -799,11 +800,11 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   submitBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 17,
     alignItems: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -817,7 +818,7 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     textTransform: "uppercase",
     letterSpacing: 1.5,
   },
