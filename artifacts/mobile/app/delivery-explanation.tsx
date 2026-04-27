@@ -26,9 +26,13 @@ export default function DeliveryExplanationScreen() {
   const [hideChannels, setHideChannels] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const channelOpacity = useRef(new Animated.Value(1)).current;
-  const { contacts, sendToFeed } = useLocalSearchParams<{
+  const { contacts, sendToFeed, isTimeSensitive, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam } = useLocalSearchParams<{
     contacts: string;
     sendToFeed?: string;
+    isTimeSensitive?: string;
+    isAnonymous?: string;
+    eventDate?: string;
+    tags?: string;
   }>();
   const isSendToFeed = sendToFeed === "true";
   const { selectedRecipients, draftPrayerText } = useSelectedRecipients();
@@ -75,7 +79,14 @@ export default function DeliveryExplanationScreen() {
     console.log("[DeliveryExplanation] draftPrayerText in context:", draftPrayerText?.slice(0, 80));
     router.push({
       pathname: "/message-preview-final" as never,
-      params: { contacts, sendToFeed: String(isSendToFeed) },
+      params: {
+        contacts,
+        sendToFeed: String(isSendToFeed),
+        isTimeSensitive: isTimeSensitive ?? "false",
+        isAnonymous: isAnonymousParam ?? "false",
+        eventDate: eventDateParam ?? "",
+        tags: tagsParam ?? "[]",
+      },
     });
   };
 

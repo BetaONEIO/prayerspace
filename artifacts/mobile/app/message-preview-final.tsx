@@ -18,6 +18,7 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { feedStore, FEED_COMMUNITIES } from "@/lib/feedStore";
+import { supabase } from "@/lib/supabase";
 
 type DeliveryChannel = "app" | "whatsapp" | "sms";
 
@@ -228,7 +229,13 @@ export default function MessagePreviewFinalScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const CHANNEL_META = useMemo(() => getChannelMeta(colors), [colors]);
   const router = useRouter();
-  const { sendToFeed: sendToFeedParam } = useLocalSearchParams<{ sendToFeed?: string }>();
+  const { sendToFeed: sendToFeedParam, isTimeSensitive: isTimeSensitiveParam, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam } = useLocalSearchParams<{
+    sendToFeed?: string;
+    isTimeSensitive?: string;
+    isAnonymous?: string;
+    eventDate?: string;
+    tags?: string;
+  }>();
   const isSendToFeed = sendToFeedParam === "true";
   const { selectedRecipients, draftPrayerText, feedPostMeta } = useSelectedRecipients();
   const { user, profile } = useAuth();
@@ -278,14 +285,33 @@ export default function MessagePreviewFinalScreen() {
     return parts.join(" + ");
   }, [hasRecipients, recipients.length, isSendToFeed]);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+    const isAnon = (isAnonymousParam === "true") || (feedPostMeta?.isAnonymous ?? false);
+    const tags = (() => { try { return JSON.parse(tagsParam ?? "[]") as string[]; } catch { return feedPostMeta?.tags ?? []; } })();
+    const eventDate = (eventDateParam && eventDateParam !== "null" && eventDateParam !== "") ? eventDateParam : (feedPostMeta?.eventDate ?? null);
+    const isTimeSensitive = isTimeSensitiveParam === "true";
+
+    if (user?.id) {
+      const { error } = await supabase.from("prayer_requests").insert({
+        author_id: user.id,
+        content: prayerMessage,
+        is_anonymous: isAnon,
+        is_time_sensitive: isTimeSensitive,
+        audience: isSendToFeed ? "everyone" : "private",
+        tags,
+        event_date: eventDate ?? null,
+      });
+      if (error) {
+        console.error("[MessagePreviewFinal] Supabase insert error:", error.message);
+      } else {
+        console.log("[MessagePreviewFinal] Prayer saved to Supabase, audience:", isSendToFeed ? "everyone" : "private");
+      }
+    }
+
     if (isSendToFeed) {
-      const isAnon = feedPostMeta?.isAnonymous ?? false;
-      const tags = feedPostMeta?.tags ?? [];
-      const eventDate = feedPostMeta?.eventDate ?? null;
       const authorName = isAnon ? "Anonymous" : (
         profile?.full_name ??
         user?.user_metadata?.full_name ??
@@ -298,12 +324,12 @@ export default function MessagePreviewFinalScreen() {
         communityId: defaultCommunity.id,
         authorId: isAnon ? "anonymous" : (user?.id ?? "current_user"),
         authorName,
-        authorAvatar: isAnon ? "" : (profile?.avatar_url ?? "https://randomuser.me/api/portraits/women/68.jpg"),
+        authorAvatar: isAnon ? "" : (profile?.avatar_url ?? ""),
         category: tags.length > 0 ? tags[0].replace(/_/g, " ").toUpperCase() : "PRAYER REQUEST",
         tags,
         timeLabel: "JUST NOW",
         postedAt: "Just now",
-        isTimeSensitive: false,
+        isTimeSensitive,
         eventDate,
         content: prayerMessage,
         prayerCount: 0,
@@ -311,10 +337,10 @@ export default function MessagePreviewFinalScreen() {
         prayedByAvatars: [],
         comments: [],
       });
-      console.log("[MessagePreviewFinal] Prayer posted to feed, anonymous:", isAnon, "tags:", tags);
+      console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags);
     }
     router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
-  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length]);
+  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam]);
 
   return (
     <>

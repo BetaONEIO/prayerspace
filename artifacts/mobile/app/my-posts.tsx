@@ -35,6 +35,8 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { ArchivedPost } from "@/providers/PrayerProvider";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 type UpdateTag = "still_need_prayer" | "answered";
 type FilterTab = "All" | "Ongoing" | "Answered" | "Archived";
@@ -127,12 +129,66 @@ const UPDATE_TAG_CONFIG: Record<
   answered: { label: "Answered 🙌", color: "#ffffff", bg: ANSWERED_GREEN },
 };
 
+function formatRelativeDate(iso: string): { timeLabel: string; postedAt: string } {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffMins < 1) return { timeLabel: "JUST NOW", postedAt: "Just now" };
+  if (diffMins < 60) return { timeLabel: "TODAY", postedAt: `${diffMins}m ago` };
+  if (diffDays === 0) return { timeLabel: "TODAY", postedAt: `Today at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` };
+  if (diffDays === 1) return { timeLabel: "YESTERDAY", postedAt: `Yesterday at ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` };
+  if (diffDays < 7) return { timeLabel: `${diffDays} DAYS AGO`, postedAt: d.toLocaleDateString([], { month: "short", day: "numeric" }) };
+  return { timeLabel: d.toLocaleDateString([], { month: "short", day: "numeric" }).toUpperCase(), postedAt: d.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+}
+
 export default function MyPostsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
+  const { user } = useAuth();
   const { archivedPosts } = usePrayer();
   const [posts, setPosts] = useState<MyPost[]>(INITIAL_MY_POSTS);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase
+      .from("prayer_requests")
+      .select("id, content, tags, is_time_sensitive, status, prayer_count, created_at")
+      .eq("author_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50)
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const realPosts: MyPost[] = data.map((row) => {
+          const { timeLabel, postedAt } = formatRelativeDate(row.created_at as string);
+          const tags: string[] = Array.isArray(row.tags) ? row.tags : [];
+          const category = tags.length > 0
+            ? tags[0].replace(/_/g, " ").toUpperCase()
+            : "PRAYER REQUEST";
+          return {
+            id: row.id as string,
+            category,
+            timeLabel,
+            postedAt,
+            content: row.content as string,
+            prayerCount: (row.prayer_count as number) ?? 0,
+            commentCount: 0,
+            prayedByAvatars: [],
+            isTimeSensitive: row.is_time_sensitive as boolean,
+            isAnswered: row.status === "answered",
+            updateTag: row.status === "answered" ? "answered" : undefined,
+          };
+        });
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const newOnes = realPosts.filter((p) => !existingIds.has(p.id));
+          return [...newOnes, ...prev];
+        });
+      });
+  }, [user?.id]);
   const [filter, setFilter] = useState<FilterTab>("All");
   const [repostTarget, setRepostTarget] = useState<MyPost | null>(null);
   const [markAnsweredTarget, setMarkAnsweredTarget] = useState<MyPost | null>(null);

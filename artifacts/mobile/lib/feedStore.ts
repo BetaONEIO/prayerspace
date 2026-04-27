@@ -2,10 +2,15 @@ type PostShape = Record<string, unknown>;
 type PostListener = (post: PostShape) => void;
 
 let _listener: PostListener | null = null;
+const _queue: PostShape[] = [];
 
 export const feedStore = {
   register(fn: PostListener) {
     _listener = fn;
+    while (_queue.length > 0) {
+      const post = _queue.shift();
+      if (post) fn(post);
+    }
   },
   unregister() {
     _listener = null;
@@ -13,6 +18,8 @@ export const feedStore = {
   addPost(post: PostShape) {
     if (_listener) {
       _listener(post);
+    } else {
+      _queue.push(post);
     }
   },
 };
