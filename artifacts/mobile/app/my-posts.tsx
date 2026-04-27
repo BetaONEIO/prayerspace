@@ -136,6 +136,7 @@ export default function MyPostsScreen() {
   const [filter, setFilter] = useState<FilterTab>("All");
   const [repostTarget, setRepostTarget] = useState<MyPost | null>(null);
   const [markAnsweredTarget, setMarkAnsweredTarget] = useState<MyPost | null>(null);
+  const [testimonySuccess, setTestimonySuccess] = useState<{ communityId: string; communityName: string } | null>(null);
 
   const filtered = posts.filter((p) => {
     if (filter === "Ongoing") return !p.isAnswered;
@@ -221,9 +222,13 @@ export default function MyPostsScreen() {
             comments: [],
           },
         });
+        const communityName = FEED_COMMUNITIES.find((c) => c.id === communityId)?.name ?? "your community";
+        setRepostTarget(null);
+        setTimeout(() => setTestimonySuccess({ communityId, communityName }), 350);
         console.log("[MyPosts] Testimony dispatched to community feed:", newPost.id, "community:", communityId);
+      } else {
+        setRepostTarget(null);
       }
-      setRepostTarget(null);
       console.log("[MyPosts] Repost submitted:", newPost.id, "tag:", tag);
     },
     []
@@ -340,6 +345,17 @@ export default function MyPostsScreen() {
           onUpdate={() => {
             setMarkAnsweredTarget(null);
             setTimeout(() => setRepostTarget({ ...markAnsweredTarget, isAnswered: true }), 300);
+          }}
+        />
+      )}
+
+      {testimonySuccess && (
+        <TestimonySuccessModal
+          communityName={testimonySuccess.communityName}
+          onDone={() => setTestimonySuccess(null)}
+          onViewPost={() => {
+            setTestimonySuccess(null);
+            setTimeout(() => router.push("/(tabs)/community?tab=Feed"), 300);
           }}
         />
       )}
@@ -776,6 +792,76 @@ function MarkAnsweredModal({ post, onClose, onConfirm, onUpdate }: MarkAnsweredM
 
           <Pressable style={styles.cancelBtn} onPress={handleClose}>
             <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+interface TestimonySuccessModalProps {
+  communityName: string;
+  onViewPost: () => void;
+  onDone: () => void;
+}
+
+function TestimonySuccessModal({ communityName, onViewPost, onDone }: TestimonySuccessModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(500)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 11, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 11, useNativeDriver: true }),
+    ]).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, { toValue: 1, duration: 1600, useNativeDriver: true }),
+          Animated.timing(glowAnim, { toValue: 0, duration: 1600, useNativeDriver: true }),
+        ])
+      ).start();
+    });
+  }, [fadeAnim, slideAnim, scaleAnim, glowAnim]);
+
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
+
+  return (
+    <Modal visible transparent animationType="none" onRequestClose={onDone} statusBarTranslucent>
+      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+        <Pressable style={styles.modalDismiss} onPress={onDone} />
+        <Animated.View
+          style={[
+            styles.successSheet,
+            { paddingBottom: insets.bottom + 28, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
+          ]}
+        >
+          <View style={styles.composerHandle} />
+
+          <Animated.View style={[styles.successIconWrap, { opacity: glowOpacity }]}>
+            <Text style={styles.successEmoji}>🙌</Text>
+          </Animated.View>
+
+          <Text style={styles.successTitle}>Testimony Shared!</Text>
+          <Text style={styles.successSubtitle}>
+            Your answered prayer has been posted to{"\n"}
+            <Text style={styles.successCommunityName}>{communityName}</Text>
+          </Text>
+          <Text style={styles.successBody}>
+            Others in your community can now see how God has moved and be encouraged in their own faith.
+          </Text>
+
+          <Pressable style={styles.viewPostBtn} onPress={onViewPost}>
+            <Text style={styles.viewPostBtnText}>View Post</Text>
+          </Pressable>
+
+          <Pressable style={styles.successDoneBtn} onPress={onDone}>
+            <Text style={styles.successDoneBtnText}>Done</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>
@@ -1453,6 +1539,78 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 14,
+    color: colors.mutedForeground,
+    fontWeight: "600" as const,
+  },
+  successSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 28,
+    paddingTop: 12,
+    alignItems: "center" as const,
+  },
+  successIconWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: ANSWERED_GREEN + "20",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  successEmoji: {
+    fontSize: 40,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: "800" as const,
+    color: colors.foreground,
+    letterSpacing: -0.5,
+    marginBottom: 8,
+    textAlign: "center" as const,
+  },
+  successSubtitle: {
+    fontSize: 15,
+    color: colors.mutedForeground,
+    textAlign: "center" as const,
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+  successCommunityName: {
+    color: ANSWERED_GREEN,
+    fontWeight: "700" as const,
+  },
+  successBody: {
+    fontSize: 13,
+    color: colors.mutedForeground + "CC",
+    textAlign: "center" as const,
+    lineHeight: 20,
+    marginBottom: 28,
+    marginTop: 4,
+  },
+  viewPostBtn: {
+    width: "100%" as const,
+    backgroundColor: ANSWERED_GREEN,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: "center" as const,
+    marginBottom: 12,
+  },
+  viewPostBtnText: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: "#ffffff",
+    letterSpacing: 0.2,
+  },
+  successDoneBtn: {
+    paddingVertical: 14,
+    width: "100%" as const,
+    alignItems: "center" as const,
+  },
+  successDoneBtnText: {
+    fontSize: 15,
     color: colors.mutedForeground,
     fontWeight: "600" as const,
   },
