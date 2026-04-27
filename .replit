@@ -43,3 +43,4 @@ externalPort = 3001
 
 [userenv.shared]
 SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsYWZ4aHloaXB4amdza2N5ZHVqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTczMTY1MSwiZXhwIjoyMDkxMzA3NjUxfQ.F7ARuGkJmAHZiJQ2eWWfFJNP6A53eSbTsjfFLKOnfZM"
+EXPO_PUBLIC_API_URL = "https://e13ce523-bfed-4619-8eac-27ed5a9ad22f-00-289o5vquu880s.riker.replit.dev:8080"
