@@ -170,16 +170,22 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
     if (mode === "custom") {
       if (!customName.trim()) return;
       onAdd([{ name: customName.trim(), avatar: undefined, prayerFocus: prayerFocuses["__custom__"]?.trim() || undefined }]);
-    } else {
-      const people = selectedContacts.map((r) => ({
-        name: r.name,
-        avatar: r.avatar,
-        prayerFocus: prayerFocuses[r.id]?.trim() || undefined,
-      }));
-      onAdd(people);
+      handleClose();
+      return;
     }
+    if (step === "select") {
+      if (selectedIds.size === 0) return;
+      setStep("focus");
+      return;
+    }
+    const people = selectedContacts.map((r) => ({
+      name: r.name,
+      avatar: r.avatar,
+      prayerFocus: prayerFocuses[r.id]?.trim() || undefined,
+    }));
+    onAdd(people);
     handleClose();
-  }, [mode, customName, selectedContacts, prayerFocuses, onAdd, handleClose]);
+  }, [mode, customName, selectedContacts, prayerFocuses, onAdd, handleClose, step, selectedIds.size]);
 
   const toggleSelect = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -191,7 +197,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
   }, []);
 
   const selCount = mode === "search" ? selectedIds.size : (customName.trim() ? 1 : 0);
-  const btnLabel = selCount > 1 ? `Next (${selCount} selected)` : "Next";
+  const btnLabel = step === "focus" ? "Add to Your People" : selCount > 1 ? `Next (${selCount} selected)` : "Next";
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
@@ -268,8 +274,14 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                             <Text style={addStyles.contactName}>{item.name}</Text>
                             <Text style={addStyles.contactSub}>{item.subtitle}</Text>
                           </View>
-                          <View style={[addStyles.checkCircle, isSelected && addStyles.checkCircleActive]}>
-                            {isSelected && <Check size={12} color="#fff" strokeWidth={3} />}
+                          <View
+                            style={[
+                              addStyles.checkCircle,
+                              isSelected && addStyles.checkCircleActive,
+                              isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                            ]}
+                          >
+                            {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
                           </View>
                         </Pressable>
                       );
