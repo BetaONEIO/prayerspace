@@ -101,6 +101,8 @@ export default function ChatScreen() {
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; content: string } | null>(null);
+  const [mockExtraMessages, setMockExtraMessages] = useState<Message[]>([]);
+  const [mockReactions, setMockReactions] = useState<Record<string, { reaction_type: ReactionType; user_id: string }[]>>({});
   const contextSlide = useRef(new Animated.Value(400)).current;
   const headerMenuSlide = useRef(new Animated.Value(300)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -418,6 +420,36 @@ export default function ChatScreen() {
       setIsImageUploading(false);
     }
 
+    if (!isRealUser) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setMockExtraMessages((prev) => [
+        ...prev,
+        {
+          id: `mock-sent-${Date.now()}`,
+          conversation_id: "mock",
+          sender_id: "user-1",
+          content: text || "",
+          type: "text" as const,
+          prayer_request_content: null,
+          image_url: imageUri ?? null,
+          image_path: null,
+          is_edited: false,
+          edited_at: null,
+          deleted_for_everyone: false,
+          deleted_for_sender: false,
+          created_at: timeStr,
+          message_reactions: [],
+        },
+      ]);
+      setInputText("");
+      setImageUri(null);
+      setImageUploadError(null);
+      setReplyingTo(null);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      return;
+    }
+
     if (isRealUser && conversationId) {
       sendMutation.mutate({
         content: text || "",
@@ -470,11 +502,27 @@ export default function ChatScreen() {
   const handleReact = useCallback(
     (messageId: string, reactionType: ReactionType) => {
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      reactMutation.mutate({ messageId, reactionType });
+      if (!isRealUser) {
+        const MOCK_USER_ID = "user-1";
+        setMockReactions((prev) => {
+          const existing = prev[messageId] ?? [];
+          const alreadyReacted = existing.some(
+            (r) => r.reaction_type === reactionType && r.user_id === MOCK_USER_ID
+          );
+          return {
+            ...prev,
+            [messageId]: alreadyReacted
+              ? existing.filter((r) => !(r.reaction_type === reactionType && r.user_id === MOCK_USER_ID))
+              : [...existing, { reaction_type: reactionType, user_id: MOCK_USER_ID }],
+          };
+        });
+      } else {
+        reactMutation.mutate({ messageId, reactionType });
+      }
       setReactionPickerMessageId(null);
       if (contextMenuVisible) closeContextMenu();
     },
-    [reactMutation, contextMenuVisible, closeContextMenu]
+    [isRealUser, reactMutation, contextMenuVisible, closeContextMenu]
   );
 
   const handleBlock = useCallback(() => {
@@ -554,7 +602,7 @@ export default function ChatScreen() {
 
   const messages: Message[] = useMemo(() => {
     if (!isRealUser) {
-      return chatMessages.map((m) => {
+      const base = chatMessages.map((m) => {
         const raw = m as Record<string, unknown>;
         return {
           id: raw.id as string,
@@ -573,24 +621,29 @@ export default function ChatScreen() {
           message_reactions: [],
         };
       });
+      return [...base, ...mockExtraMessages];
     }
     return (
       messagesQuery.data?.filter(
         (m) => !(m.sender_id === currentUserId && m.deleted_for_sender)
       ) ?? []
     );
-  }, [isRealUser, messagesQuery.data, currentUserId]);
+  }, [isRealUser, messagesQuery.data, currentUserId, mockExtraMessages]);
 
   const isBlocked = blockedQuery.data ?? false;
 
   const renderReactions = useCallback(
     (msg: Message) => {
-      if (!msg.message_reactions?.length) return null;
+      const localReactions = mockReactions[msg.id] ?? [];
+      const allReactions = [...(msg.message_reactions ?? []), ...localReactions];
+      if (!allReactions.length) return null;
+      const MOCK_USER_ID = "user-1";
+      const effectiveUserId = isRealUser ? currentUserId : MOCK_USER_ID;
       const grouped: Partial<Record<ReactionType, { count: number; isMine: boolean }>> = {};
-      for (const r of msg.message_reactions) {
+      for (const r of allReactions) {
         if (!grouped[r.reaction_type]) grouped[r.reaction_type] = { count: 0, isMine: false };
         grouped[r.reaction_type]!.count += 1;
-        if (r.user_id === currentUserId) grouped[r.reaction_type]!.isMine = true;
+        if (r.user_id === effectiveUserId) grouped[r.reaction_type]!.isMine = true;
       }
       return (
         <View style={styles.reactionsRow}>
@@ -621,7 +674,7 @@ export default function ChatScreen() {
         </View>
       );
     },
-    [currentUserId, handleReact]
+    [currentUserId, isRealUser, mockReactions, handleReact]
   );
 
   const renderMessage = useCallback(
@@ -860,7 +913,7 @@ export default function ChatScreen() {
                 imageUri={null}
                 onImageSelected={(uri) => { setImageUri(uri); setImageUploadError(null); }}
                 onRemove={() => {}}
-                disabled={!isRealUser || isBlocked}
+                disabled={isBlocked}
               />
               <View style={styles.inputWrap}>
                 <TextInput
