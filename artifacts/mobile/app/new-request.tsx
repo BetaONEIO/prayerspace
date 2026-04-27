@@ -231,8 +231,8 @@ export default function NewRequestScreen() {
                   imageUri={requestImageUri}
                   onImageSelected={setRequestImageUri}
                   onRemove={() => setRequestImageUri(null)}
+                  onPress={() => setViewingRequestImage(requestImageUri)}
                 />
-                <Pressable onPress={() => setViewingRequestImage(requestImageUri)} style={styles.requestImageTap} />
               </View>
             )}
           </View>
@@ -242,6 +242,7 @@ export default function NewRequestScreen() {
               imageUri={null}
               onImageSelected={(uri) => setRequestImageUri(uri)}
               onRemove={() => {}}
+              chipMode
             />
             <Pressable
               style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
@@ -564,12 +565,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 1,
     gap: 12,
   },
-  requestImagePreview: {
-    position: "relative" as const,
-  },
-  requestImageTap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  requestImagePreview: {},
   textArea: {
     flex: 1,
     fontSize: 16,

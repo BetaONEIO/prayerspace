@@ -26,6 +26,7 @@ export interface JournalEntry {
   contactAvatar?: string;
   prayerRequest?: string;
   eventDate?: string | null;
+  imageUrl?: string | null;
 }
 
 interface AppSettings {

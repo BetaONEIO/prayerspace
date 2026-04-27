@@ -34,6 +34,8 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { transcribeAudio } from "@/lib/transcribe";
+import ImageAttachment from "@/components/ImageAttachment";
+import ImageViewer from "@/components/ImageViewer";
 
 type JournalTag = "gratitude" | "petition" | "reflection" | "praying_for";
 
@@ -62,6 +64,8 @@ export default function RecordPrayerScreen() {
   const [selectedTag, setSelectedTag] = useState<JournalTag>("reflection");
   const [title, setTitle] = useState("");
   const [showTagPicker, setShowTagPicker] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnim1 = useRef(new Animated.Value(0.3)).current;
@@ -204,6 +208,7 @@ export default function RecordPrayerScreen() {
       title: entryTitle,
       body: editedText.trim(),
       tag: selectedTag,
+      imageUrl: imageUri ?? null,
     });
 
     console.log("[RecordPrayer] Prayer saved to journal");
@@ -404,6 +409,27 @@ export default function RecordPrayerScreen() {
                     })}
                   </View>
                 )}
+
+                <View style={styles.imageRow}>
+                  <Text style={styles.imageRowLabel}>ATTACH PHOTO</Text>
+                  <View style={styles.imageRowContent}>
+                    {imageUri ? (
+                      <ImageAttachment
+                        imageUri={imageUri}
+                        onImageSelected={setImageUri}
+                        onRemove={() => setImageUri(null)}
+                        onPress={() => setViewingImage(imageUri)}
+                      />
+                    ) : (
+                      <ImageAttachment
+                        imageUri={null}
+                        onImageSelected={setImageUri}
+                        onRemove={() => {}}
+                        chipMode
+                      />
+                    )}
+                  </View>
+                </View>
               </View>
 
               <Pressable
@@ -421,6 +447,12 @@ export default function RecordPrayerScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ImageViewer
+        uri={viewingImage}
+        visible={!!viewingImage}
+        onClose={() => setViewingImage(null)}
+      />
     </View>
   );
 }
@@ -682,6 +714,21 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tagOptionLabelSelected: {
     color: colors.primary,
     fontWeight: "700" as const,
+  },
+  imageRow: {
+    marginTop: 12,
+    gap: 8,
+  },
+  imageRowLabel: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: colors.mutedForeground,
+    letterSpacing: 1.5,
+  },
+  imageRowContent: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
   },
   saveBtn: {
     flexDirection: "row" as const,

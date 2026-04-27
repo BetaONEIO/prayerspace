@@ -11,13 +11,15 @@ interface ImageAttachmentProps {
   imageUri: string | null;
   onImageSelected: (uri: string) => void;
   onRemove: () => void;
+  onPress?: () => void;
   isUploading?: boolean;
   uploadError?: string | null;
   onRetry?: () => void;
   disabled?: boolean;
+  chipMode?: boolean;
 }
 
-export default function ImageAttachment({ imageUri, onImageSelected, onRemove, isUploading = false, uploadError = null, onRetry, disabled = false }: ImageAttachmentProps) {
+export default function ImageAttachment({ imageUri, onImageSelected, onRemove, onPress, isUploading = false, uploadError = null, onRetry, disabled = false, chipMode = false }: ImageAttachmentProps) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -33,6 +35,19 @@ export default function ImageAttachment({ imageUri, onImageSelected, onRemove, i
   }, [disabled, isUploading, onImageSelected]);
 
   if (!imageUri) {
+    if (chipMode) {
+      return (
+        <Pressable
+          style={({ pressed }) => [styles.chipBtn, disabled && styles.chipBtnDisabled, pressed && styles.chipBtnPressed]}
+          onPress={handlePickImage}
+          disabled={disabled}
+          testID="image-attach-btn"
+        >
+          <ImagePlus size={14} color={disabled ? colors.mutedForeground + "60" : colors.mutedForeground} />
+          <Text style={[styles.chipBtnText, disabled && styles.chipBtnTextDisabled]}>Photo</Text>
+        </Pressable>
+      );
+    }
     return (
       <Pressable style={[styles.addImageBtn, disabled && styles.addImageBtnDisabled]} onPress={handlePickImage} disabled={disabled} testID="image-attach-btn">
         <ImagePlus size={20} color={disabled ? colors.mutedForeground + "60" : colors.primary} />
@@ -42,7 +57,8 @@ export default function ImageAttachment({ imageUri, onImageSelected, onRemove, i
 
   return (
     <View style={styles.previewWrap} testID="image-preview">
-      <Image source={{ uri: imageUri }} style={styles.previewImage} contentFit="cover" />
+      <Pressable style={StyleSheet.absoluteFill} onPress={onPress} disabled={!onPress} />
+      <Image source={{ uri: imageUri }} style={styles.previewImage} contentFit="cover" pointerEvents="none" />
       {isUploading && <View style={styles.uploadingOverlay}><ActivityIndicator size="small" color="#fff" /></View>}
       {uploadError && (
         <View style={styles.errorOverlay}>
@@ -60,6 +76,25 @@ export default function ImageAttachment({ imageUri, onImageSelected, onRemove, i
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    chipBtn: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 999,
+      backgroundColor: colors.card,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+    },
+    chipBtnDisabled: { opacity: 0.5 },
+    chipBtnPressed: { opacity: 0.7 },
+    chipBtnText: {
+      fontSize: 12,
+      fontWeight: "600" as const,
+      color: colors.mutedForeground,
+    },
+    chipBtnTextDisabled: { opacity: 0.5 },
     addImageBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accent, alignItems: "center" as const, justifyContent: "center" as const, borderWidth: 1.5, borderColor: colors.primary + "25", borderStyle: "dashed" as const },
     addImageBtnDisabled: { backgroundColor: colors.muted, borderColor: colors.border },
     previewWrap: { width: 68, height: 68, borderRadius: 14, overflow: "hidden" as const, borderWidth: 1.5, borderColor: colors.primary + "30", position: "relative" as const },
