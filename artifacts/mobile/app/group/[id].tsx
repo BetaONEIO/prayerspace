@@ -1777,7 +1777,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   otherMessageWrap: {
     flexDirection: "row" as const,
-    alignItems: "flex-end" as const,
+    alignItems: "flex-start" as const,
     alignSelf: "flex-start" as const,
     gap: 10,
     maxWidth: "90%",
