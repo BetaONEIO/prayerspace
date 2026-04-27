@@ -2098,7 +2098,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   accordionContainer: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.card,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border + "60",
@@ -2203,7 +2203,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.destructive,
   },
   entryCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22,
+    backgroundColor: colors.card, borderRadius: 24, padding: 22,
     borderWidth: 1, borderColor: colors.border + "50",
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
