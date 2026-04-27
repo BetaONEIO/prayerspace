@@ -22,8 +22,11 @@ export async function transcribeAudio(audioUri: string): Promise<string> {
   let audioData: string;
 
   if (Platform.OS === "web") {
-    console.log("[transcribeAudio] Fetching blob for web...");
     const response = await fetch(audioUri);
+    if (!response.ok) {
+      throw new Error("Could not read the audio file. Please record again.");
+    }
+    console.log("[transcribeAudio] Fetching blob for web...");
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
@@ -35,6 +38,10 @@ export async function transcribeAudio(audioUri: string): Promise<string> {
     console.log("[transcribeAudio] Web base64 length:", audioData.length);
   } else {
     console.log("[transcribeAudio] Reading file as base64...");
+    const info = await FileSystem.getInfoAsync(audioUri);
+    if (!info.exists) {
+      throw new Error("Recorded audio was not available. Please record again.");
+    }
     audioData = await FileSystem.readAsStringAsync(audioUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
