@@ -45,7 +45,6 @@ import {
   Info,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 
@@ -344,15 +343,19 @@ const MEMBERS: Member[] = [
   },
 ];
 
-const UPDATE_TAG_LABELS: Record<string, { label: string; bg: string; color: string }> = {
-  still_need_prayer: { label: "Still need prayer", bg: Colors.accent, color: Colors.primary },
-  answered: { label: "Answered 🙌", bg: "#E8F8F0", color: "#1A7A52" },
-  thank_you: { label: "Thank you", bg: "#EEF2FF", color: "#6366F1" },
-  in_progress: { label: "In progress", bg: "#FFF8E7", color: "#B87A00" },
-};
+function getUpdateTagLabels(colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> {
+  return {
+    still_need_prayer: { label: "Still need prayer", bg: colors.accent, color: colors.primary },
+    answered: { label: "Answered 🙌", bg: "#E8F8F0", color: "#1A7A52" },
+    thank_you: { label: "Thank you", bg: "#EEF2FF", color: "#6366F1" },
+    in_progress: { label: "In progress", bg: "#FFF8E7", color: "#B87A00" },
+  };
+}
 
 export default function GroupDetailScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{
     id: string;
     pendingSharedMessage?: string;
@@ -521,7 +524,7 @@ export default function GroupDetailScreen() {
   const isChatTab = activeTab === "Chat";
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {!isChatTab && (
         <View style={[styles.banner, { paddingTop: insets.top + 12 }]}>
           <Image
@@ -540,7 +543,7 @@ export default function GroupDetailScreen() {
           <View style={styles.bannerBottom}>
             <View style={styles.groupIconWrap}>
               <View style={styles.groupIconInner}>
-                <Users size={24} color={Colors.primary} />
+                <Users size={24} color={colors.primary} />
               </View>
             </View>
             <View style={{ flex: 1 }}>
@@ -548,7 +551,7 @@ export default function GroupDetailScreen() {
               <Text style={styles.groupStats}>128 Members · Active Now</Text>
             </View>
             <Pressable style={styles.settingsBtn}>
-              <Settings size={18} color={Colors.foreground} />
+              <Settings size={18} color={colors.foreground} />
             </Pressable>
           </View>
         </View>
@@ -557,14 +560,14 @@ export default function GroupDetailScreen() {
       {isChatTab && (
         <View style={[styles.chatHeader, { paddingTop: insets.top }]}>
           <Pressable style={styles.chatBackBtn} onPress={() => router.back()}>
-            <ChevronLeft size={20} color={Colors.foreground} />
+            <ChevronLeft size={20} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.chatHeaderName}>Grace Community</Text>
             <Text style={styles.chatHeaderSub}>128 Members · 12 Active</Text>
           </View>
           <Pressable style={styles.settingsBtn}>
-            <Settings size={18} color={Colors.foreground} />
+            <Settings size={18} color={colors.foreground} />
           </Pressable>
         </View>
       )}
@@ -665,7 +668,7 @@ export default function GroupDetailScreen() {
               <TextInput
                 style={styles.chatInput}
                 placeholder="Type a message..."
-                placeholderTextColor={Colors.mutedForeground}
+                placeholderTextColor={colors.mutedForeground}
                 value={chatInput}
                 onChangeText={setChatInput}
                 multiline
@@ -679,9 +682,9 @@ export default function GroupDetailScreen() {
               onPress={handleSendMessage}
             >
               {(chatInput.trim().length > 0 || !!groupImageUri) ? (
-                <Send size={18} color={Colors.primaryForeground} />
+                <Send size={18} color={colors.primaryForeground} />
               ) : (
-                <Mic size={20} color={Colors.primaryForeground} />
+                <Mic size={20} color={colors.primaryForeground} />
               )}
             </Pressable>
           </View>
@@ -731,11 +734,11 @@ export default function GroupDetailScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.memberSearchWrap}>
-            <Search size={16} color={Colors.mutedForeground} />
+            <Search size={16} color={colors.mutedForeground} />
             <TextInput
               style={styles.memberSearchInput}
               placeholder="Search members..."
-              placeholderTextColor={Colors.mutedForeground}
+              placeholderTextColor={colors.mutedForeground}
               value={memberSearch}
               onChangeText={setMemberSearch}
             />
@@ -765,7 +768,7 @@ export default function GroupDetailScreen() {
           {admins.length > 0 && (
             <>
               <View style={styles.memberSectionHeader}>
-                <Crown size={14} color={Colors.primary} />
+                <Crown size={14} color={colors.primary} />
                 <Text style={styles.memberSectionTitle}>Admins</Text>
               </View>
               {admins.map((member) => (
@@ -777,8 +780,8 @@ export default function GroupDetailScreen() {
           {leaders.length > 0 && (
             <>
               <View style={styles.memberSectionHeader}>
-                <Shield size={14} color={Colors.accentForeground} />
-                <Text style={[styles.memberSectionTitle, { color: Colors.accentForeground }]}>
+                <Shield size={14} color={colors.accentForeground} />
+                <Text style={[styles.memberSectionTitle, { color: colors.accentForeground }]}>
                   Leaders
                 </Text>
               </View>
@@ -791,8 +794,8 @@ export default function GroupDetailScreen() {
           {members.length > 0 && (
             <>
               <View style={styles.memberSectionHeader}>
-                <Users size={14} color={Colors.mutedForeground} />
-                <Text style={[styles.memberSectionTitle, { color: Colors.mutedForeground }]}>
+                <Users size={14} color={colors.mutedForeground} />
+                <Text style={[styles.memberSectionTitle, { color: colors.mutedForeground }]}>
                   Members
                 </Text>
               </View>
@@ -810,6 +813,9 @@ export default function GroupDetailScreen() {
 }
 
 function SharedPrayerCardView({ card }: { card: SharedPrayerCard }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const UPDATE_TAG_LABELS = useMemo(() => getUpdateTagLabels(colors), [colors]);
   const tagConfig = card.updateTag ? UPDATE_TAG_LABELS[card.updateTag] : null;
   return (
     <View style={styles.sharedCardWrap}>
@@ -859,6 +865,8 @@ function SwipeableMessage({
   children: React.ReactNode;
   onReply: () => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(0)).current;
   const triggeredRef = useRef(false);
 
@@ -897,7 +905,7 @@ function SwipeableMessage({
   return (
     <View style={{ flexDirection: "row", alignItems: "center" }}>
       <Animated.View style={[styles.swipeReplyIcon, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
-        <Reply size={18} color={Colors.primary} />
+        <Reply size={18} color={colors.primary} />
       </Animated.View>
       <Animated.View style={{ flex: 1, transform: [{ translateX }] }} {...panResponder.panHandlers}>
         {children}
@@ -907,6 +915,8 @@ function SwipeableMessage({
 }
 
 function QuoteView({ replyTo, isOwn, onPress }: { replyTo: ReplyTo; isOwn: boolean; onPress: () => void }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable onPress={onPress} style={[styles.quoteWrap, isOwn && styles.quoteWrapOwn]}>
       <View style={[styles.quoteBar, isOwn && styles.quoteBarOwn]} />
@@ -925,6 +935,8 @@ function QuoteView({ replyTo, isOwn, onPress }: { replyTo: ReplyTo; isOwn: boole
 }
 
 function EmojiReactions({ reactions, onPress }: { reactions?: MessageReaction[]; onPress?: (emoji: string) => void }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const emojiReactions = (reactions ?? []).filter((r) => r.type === "emoji" && r.emoji);
   if (emojiReactions.length === 0) return null;
 
@@ -953,31 +965,35 @@ function EmojiReactions({ reactions, onPress }: { reactions?: MessageReaction[];
 }
 
 function ReadReceipt({ readBy, totalMembers }: { readBy?: MessageRead[]; totalMembers: number }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const count = (readBy ?? []).length;
   const allRead = count >= totalMembers - 1;
   const someRead = count > 0;
   if (allRead) {
     return (
       <View style={styles.receiptRow}>
-        <CheckCheck size={14} color={Colors.primary} strokeWidth={2.5} />
+        <CheckCheck size={14} color={colors.primary} strokeWidth={2.5} />
       </View>
     );
   }
   if (someRead) {
     return (
       <View style={styles.receiptRow}>
-        <CheckCheck size={14} color={Colors.mutedForeground} strokeWidth={2} />
+        <CheckCheck size={14} color={colors.mutedForeground} strokeWidth={2} />
       </View>
     );
   }
   return (
     <View style={styles.receiptRow}>
-      <Check size={14} color={Colors.mutedForeground} strokeWidth={2} />
+      <Check size={14} color={colors.mutedForeground} strokeWidth={2} />
     </View>
   );
 }
 
 function PrayingReactions({ reactions }: { reactions?: MessageReaction[] }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const prayReactions = (reactions ?? []).filter((r) => r.type === "pray");
   if (prayReactions.length === 0) return null;
   const count = prayReactions.length;
@@ -1021,6 +1037,8 @@ function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMes
   onScrollToMessage?: (id: string) => void;
   onLayout?: (y: number) => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const hasText = (message.text ?? "").trim().length > 0;
   return (
     <SwipeableMessage onReply={() => onReply?.(message)}>
@@ -1079,6 +1097,8 @@ function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToM
   onScrollToMessage?: (id: string) => void;
   onLayout?: (y: number) => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <SwipeableMessage onReply={() => onReply?.(message)}>
       <View
@@ -1159,6 +1179,8 @@ function MessageContextMenu({
   onInfo: (msg: ChatMessage) => void;
   onReport: () => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   React.useEffect(() => {
@@ -1169,20 +1191,20 @@ function MessageContextMenu({
   const isOwn = message.isOwn;
 
   const ownActions = [
-    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
-    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
+    { icon: <Reply size={20} color={colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
+    { icon: <SmilePlus size={20} color={colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
-    { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
-    { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
-    { icon: <Info size={20} color={Colors.foreground} />, label: "Info", onPress: () => onInfo(message) },
+    { icon: <Forward size={20} color={colors.foreground} />, label: "Forward", onPress: onClose },
+    { icon: <Copy size={20} color={colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
+    { icon: <Info size={20} color={colors.foreground} />, label: "Info", onPress: () => onInfo(message) },
     { icon: <Trash2 size={20} color="#E55" />, label: "Delete", labelStyle: { color: "#E55" }, onPress: () => onDelete(message.id) },
   ];
   const otherActions = [
-    { icon: <Reply size={20} color={Colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
-    { icon: <SmilePlus size={20} color={Colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
+    { icon: <Reply size={20} color={colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
+    { icon: <SmilePlus size={20} color={colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
-    { icon: <Forward size={20} color={Colors.foreground} />, label: "Forward", onPress: onClose },
-    { icon: <Copy size={20} color={Colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
+    { icon: <Forward size={20} color={colors.foreground} />, label: "Forward", onPress: onClose },
+    { icon: <Copy size={20} color={colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
     { icon: <Flag size={20} color="#E55" />, label: "Report", labelStyle: { color: "#E55" }, onPress: onReport },
   ];
   const actions = isOwn ? ownActions : otherActions;
@@ -1246,6 +1268,8 @@ function MessageInfoSheet({
   totalMembers: number;
   onClose: () => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   if (!message) return null;
   const readBy = message.readBy ?? [];
   const readIds = new Set(readBy.map((r) => r.userId));
@@ -1279,7 +1303,7 @@ function MessageInfoSheet({
                     <Text style={styles.infoUserName}>{r.userName}</Text>
                     <Text style={styles.infoUserTime}>{r.readAt}</Text>
                   </View>
-                  <CheckCheck size={14} color={Colors.primary} />
+                  <CheckCheck size={14} color={colors.primary} />
                 </View>
               ))}
             </>
@@ -1321,11 +1345,13 @@ function MediaGallery({
   images: MediaItem[];
   onImagePress: (uri: string) => void;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   if (images.length === 0) {
     return (
       <View style={styles.mediaEmpty}>
         <View style={styles.mediaEmptyIcon}>
-          <ImageIcon size={32} color={Colors.mutedForeground} />
+          <ImageIcon size={32} color={colors.mutedForeground} />
         </View>
         <Text style={styles.mediaEmptyTitle}>No media yet</Text>
         <Text style={styles.mediaEmptySubtitle}>
@@ -1377,20 +1403,22 @@ function MediaGallery({
 }
 
 function MemberRow({ member }: { member: Member }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isAdmin = member.role === "Admin";
   const isLeader = member.role === "Leader";
 
   const roleBg = isAdmin
-    ? Colors.primary + "18"
+    ? colors.primary + "18"
     : isLeader
-    ? Colors.accentForeground + "15"
-    : Colors.secondary;
+    ? colors.accentForeground + "15"
+    : colors.secondary;
 
   const roleColor = isAdmin
-    ? Colors.primary
+    ? colors.primary
     : isLeader
-    ? Colors.accentForeground
-    : Colors.mutedForeground;
+    ? colors.accentForeground
+    : colors.mutedForeground;
 
   return (
     <View style={styles.memberRow}>
@@ -1410,13 +1438,13 @@ function MemberRow({ member }: { member: Member }) {
         <Text style={[styles.roleText, { color: roleColor }]}>{member.role}</Text>
       </View>
       <Pressable style={styles.memberMoreBtn}>
-        <MoreHorizontal size={16} color={Colors.mutedForeground} />
+        <MoreHorizontal size={16} color={colors.mutedForeground} />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -1427,7 +1455,7 @@ const styles = StyleSheet.create({
   },
   bannerOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     opacity: 0.5,
   },
   backBtn: {
@@ -1467,7 +1495,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     padding: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -1478,19 +1506,19 @@ const styles = StyleSheet.create({
   groupIconInner: {
     flex: 1,
     borderRadius: 12,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   groupName: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
   },
   groupStats: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
     marginTop: 2,
     textTransform: "uppercase" as const,
@@ -1499,8 +1527,8 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: "row" as const,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
   },
   tabItem: {
     flex: 1,
@@ -1514,7 +1542,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   tabBadge: {
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     borderRadius: 999,
     minWidth: 18,
     height: 18,
@@ -1523,24 +1551,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   tabBadgeActive: {
-    backgroundColor: Colors.primary + "20",
+    backgroundColor: colors.primary + "20",
   },
   tabBadgeText: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.2,
   },
   tabBadgeTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   tabText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   tabTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   tabIndicator: {
     position: "absolute" as const,
@@ -1549,7 +1577,7 @@ const styles = StyleSheet.create({
     right: 20,
     height: 3,
     borderRadius: 2,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   chatHeader: {
     flexDirection: "row" as const,
@@ -1557,29 +1585,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     paddingTop: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
     gap: 12,
   },
   chatBackBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   chatHeaderName: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   chatHeaderSub: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
     marginTop: 1,
@@ -1595,18 +1623,18 @@ const styles = StyleSheet.create({
   },
   dateDivider: {
     alignSelf: "center" as const,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     paddingHorizontal: 16,
     paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
     marginBottom: 4,
   },
   dateDividerText: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     textTransform: "uppercase" as const,
   },
@@ -1615,26 +1643,26 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ownBubble: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 22,
     borderTopRightRadius: 6,
     paddingHorizontal: 18,
     paddingVertical: 12,
     maxWidth: "82%",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 3,
   },
   ownSharedBubble: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 22,
     borderTopRightRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 12,
     maxWidth: "86%",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -1655,7 +1683,7 @@ const styles = StyleSheet.create({
   },
   sharedCardBar: {
     width: 3,
-    backgroundColor: Colors.primaryForeground,
+    backgroundColor: colors.primaryForeground,
     opacity: 0.7,
   },
   sharedCardBody: {
@@ -1684,12 +1712,12 @@ const styles = StyleSheet.create({
   sharedCardAvatarInitial: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   sharedCardAuthorName: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   sharedCardAuthorSub: {
     fontSize: 9,
@@ -1721,7 +1749,7 @@ const styles = StyleSheet.create({
   },
   ownBubbleText: {
     fontSize: 14,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     lineHeight: 21,
     fontWeight: "500" as const,
   },
@@ -1732,7 +1760,7 @@ const styles = StyleSheet.create({
   },
   ownTime: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   otherMessageWrap: {
@@ -1746,7 +1774,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   otherContent: {
     flex: 1,
@@ -1755,13 +1783,13 @@ const styles = StyleSheet.create({
   otherSenderName: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     marginLeft: 2,
   },
   otherBubble: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     borderRadius: 22,
     borderBottomLeftRadius: 6,
     paddingHorizontal: 16,
@@ -1774,19 +1802,19 @@ const styles = StyleSheet.create({
   },
   otherBubbleText: {
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 21,
   },
   otherTime: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginLeft: 2,
   },
   voiceBubble: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     borderRadius: 22,
     borderBottomLeftRadius: 6,
     paddingHorizontal: 14,
@@ -1800,32 +1828,32 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   voiceWave: {
     flex: 1,
     height: 4,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 2,
     overflow: "hidden" as const,
   },
   voiceBar: {
     width: "33%",
     height: "100%",
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   voiceDuration: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   chatInputOuter: {
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   groupImagePreviewRow: {
     paddingHorizontal: 16,
@@ -1838,7 +1866,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingTop: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   groupMsgImage: {
     width: 200,
@@ -1864,10 +1892,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.secondary + "70",
+    backgroundColor: colors.secondary + "70",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
@@ -1876,7 +1904,7 @@ const styles = StyleSheet.create({
   chatInput: {
     flex: 1,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     maxHeight: 90,
   },
   emojiBtn: {
@@ -1886,18 +1914,18 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 2,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   chatSendBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   membersScroll: {
     paddingHorizontal: 20,
@@ -1907,10 +1935,10 @@ const styles = StyleSheet.create({
   memberSearchWrap: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 10,
@@ -1919,14 +1947,14 @@ const styles = StyleSheet.create({
   memberSearchInput: {
     flex: 1,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   memberStats: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     padding: 16,
     marginBottom: 24,
     alignItems: "center" as const,
@@ -1944,12 +1972,12 @@ const styles = StyleSheet.create({
   memberStatNum: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   memberStatLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 0.8,
     marginTop: 2,
@@ -1957,7 +1985,7 @@ const styles = StyleSheet.create({
   memberStatDivider: {
     width: 1,
     height: 36,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   memberSectionHeader: {
     flexDirection: "row" as const,
@@ -1969,7 +1997,7 @@ const styles = StyleSheet.create({
   memberSectionTitle: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 1,
   },
@@ -1979,7 +2007,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "40",
+    borderBottomColor: colors.border + "40",
   },
   memberAvatarWrap: {
     position: "relative" as const,
@@ -1989,7 +2017,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   onlineDot: {
     position: "absolute" as const,
@@ -2000,7 +2028,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: "#B85A1D",
     borderWidth: 2,
-    borderColor: Colors.background,
+    borderColor: colors.background,
   },
   memberInfo: {
     flex: 1,
@@ -2008,11 +2036,11 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   memberJoined: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 2,
   },
@@ -2043,12 +2071,12 @@ const styles = StyleSheet.create({
   mediaHeaderTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   mediaHeaderSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   mediaThumb: {
@@ -2057,7 +2085,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
     borderRadius: 8,
     overflow: "hidden" as const,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
   },
   mediaThumbImage: {
     width: "100%",
@@ -2088,7 +2116,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -2096,13 +2124,13 @@ const styles = StyleSheet.create({
   mediaEmptyTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 6,
     textAlign: "center" as const,
   },
   mediaEmptySubtitle: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 20,
   },
@@ -2134,18 +2162,18 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   prayAvatarFallback: {
-    backgroundColor: Colors.primary + "30",
+    backgroundColor: colors.primary + "30",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   prayAvatarInitial: {
     fontSize: 8,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   prayLabel: {
     fontSize: 11,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "600" as const,
   },
   menuOverlay: {
@@ -2154,7 +2182,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   menuSheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -2165,22 +2193,22 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 16,
   },
   menuPreviewBubble: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   menuPreviewText: {
     fontSize: 13,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 19,
   },
   menuActions: {
@@ -2194,17 +2222,17 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     minWidth: 64,
   },
   menuActionIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -2214,7 +2242,7 @@ const styles = StyleSheet.create({
   menuActionLabel: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
   },
   infoOverlay: {
@@ -2223,7 +2251,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   infoSheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -2234,7 +2262,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 16,
   },
@@ -2247,7 +2275,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   infoCloseBtn: {
@@ -2255,12 +2283,12 @@ const styles = StyleSheet.create({
   },
   infoCloseText: {
     fontSize: 16,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   infoSectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 1.2,
     marginBottom: 8,
@@ -2271,38 +2299,38 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "40",
+    borderBottomColor: colors.border + "40",
   },
   infoAvatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   infoAvatarFallback: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   infoAvatarInitial: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   infoUserName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   infoUserTime: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 1,
   },
   infoEmpty: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     paddingVertical: 24,
   },
@@ -2311,7 +2339,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginRight: 4,
@@ -2320,12 +2348,12 @@ const styles = StyleSheet.create({
 
   quoteWrap: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 12,
     overflow: "hidden" as const,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     maxWidth: "100%",
   },
   quoteWrapOwn: {
@@ -2334,7 +2362,7 @@ const styles = StyleSheet.create({
   },
   quoteBar: {
     width: 3,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   quoteBarOwn: {
     backgroundColor: "rgba(255,255,255,0.7)",
@@ -2348,14 +2376,14 @@ const styles = StyleSheet.create({
   quoteSenderName: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   quoteSenderNameOwn: {
     color: "rgba(255,255,255,0.9)",
   },
   quoteText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 17,
   },
   quoteTextOwn: {
@@ -2376,16 +2404,16 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 3,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   emojiReactionBubbleMine: {
-    backgroundColor: Colors.primary + "18",
-    borderColor: Colors.primary + "50",
+    backgroundColor: colors.primary + "18",
+    borderColor: colors.primary + "50",
   },
   emojiReactionEmoji: {
     fontSize: 14,
@@ -2393,18 +2421,18 @@ const styles = StyleSheet.create({
   emojiReactionCount: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   emojiReactionCountMine: {
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   replyBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 8,
@@ -2413,7 +2441,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: "100%",
     minHeight: 28,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   replyBannerBody: {
@@ -2423,18 +2451,18 @@ const styles = StyleSheet.create({
   replyBannerName: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   replyBannerText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   replyBannerClose: {
     padding: 4,
   },
   replyBannerCloseText: {
     fontSize: 16,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 
   quickEmojiBar: {
@@ -2443,10 +2471,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingVertical: 10,
     paddingHorizontal: 8,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
   },
   quickEmojiBtn: {
@@ -2458,14 +2486,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   quickEmojiBtnActive: {
-    backgroundColor: Colors.primary + "22",
+    backgroundColor: colors.primary + "22",
     transform: [{ scale: 1.2 }],
   },
   quickEmojiText: {
     fontSize: 22,
   },
   menuActionItemActive: {
-    backgroundColor: Colors.primary + "15",
-    borderColor: Colors.primary + "40",
+    backgroundColor: colors.primary + "15",
+    borderColor: colors.primary + "40",
   },
 });

@@ -37,7 +37,6 @@ import {
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import { usePrayer } from "@/providers/PrayerProvider";
@@ -51,12 +50,14 @@ const FILTERS = ["My Prayers", "Your People", "Prayer Requests"] as const;
 
 type JournalFilter = (typeof FILTERS)[number];
 
-const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  gratitude: { label: "GRATITUDE", color: Colors.primary, bg: Colors.primary + "18" },
-  petition: { label: "PETITION", color: Colors.accentForeground, bg: Colors.accent },
-  reflection: { label: "REFLECTIONS", color: Colors.primary, bg: Colors.primary + "18" },
-  praying_for: { label: "PRAYING FOR", color: "#D4782F", bg: "#D4782F18" },
-};
+function getTagConfig(colors: ThemeColors): Record<string, { label: string; color: string; bg: string }> {
+  return {
+    gratitude: { label: "GRATITUDE", color: colors.primary, bg: colors.primary + "18" },
+    petition: { label: "PETITION", color: colors.accentForeground, bg: colors.accent },
+    reflection: { label: "REFLECTIONS", color: colors.primary, bg: colors.primary + "18" },
+    praying_for: { label: "PRAYING FOR", color: "#D4782F", bg: "#D4782F18" },
+  };
+}
 
 function isoOffset(days: number): string {
   const d = new Date();
@@ -123,6 +124,8 @@ interface AddPersonModalProps {
 
 function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonModalProps) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const addStyles = useMemo(() => createAddStyles(colors), [colors]);
   const [search, setSearch] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -186,7 +189,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
         <View style={addStyles.header}>
           {step === "focus" ? (
             <Pressable style={addStyles.backBtn} onPress={() => setStep("select")}>
-              <ArrowRight size={18} color={Colors.secondaryForeground} style={{ transform: [{ rotate: "180deg" }] }} />
+              <ArrowRight size={18} color={colors.secondaryForeground} style={{ transform: [{ rotate: "180deg" }] }} />
             </Pressable>
           ) : (
             <View style={{ width: 34 }} />
@@ -195,7 +198,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
             {step === "focus" ? "Prayer Focus" : "Add to Your People"}
           </Text>
           <Pressable style={addStyles.closeBtn} onPress={handleClose}>
-            <X size={18} color={Colors.secondaryForeground} />
+            <X size={18} color={colors.secondaryForeground} />
           </Pressable>
         </View>
 
@@ -219,11 +222,11 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
             {mode === "search" ? (
               <>
                 <View style={addStyles.searchBar}>
-                  <Search size={16} color={Colors.mutedForeground} />
+                  <Search size={16} color={colors.mutedForeground} />
                   <TextInput
                     style={addStyles.searchInput}
                     placeholder="Search contacts..."
-                    placeholderTextColor={Colors.mutedForeground}
+                    placeholderTextColor={colors.mutedForeground}
                     value={search}
                     onChangeText={setSearch}
                     autoFocus
@@ -232,7 +235,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
 
                 {filteredRecipients.length === 0 ? (
                   <View style={addStyles.emptyState}>
-                    <Users size={36} color={Colors.border} />
+                    <Users size={36} color={colors.border} />
                     <Text style={addStyles.emptyText}>{search ? "No contacts found" : "All contacts already added"}</Text>
                   </View>
                 ) : (
@@ -279,7 +282,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                   <TextInput
                     style={addStyles.customInput}
                     placeholder="e.g. Grandma, Pastor Mike..."
-                    placeholderTextColor={Colors.mutedForeground}
+                    placeholderTextColor={colors.mutedForeground}
                     value={customName}
                     onChangeText={setCustomName}
                     autoFocus
@@ -328,7 +331,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
               <TextInput
                 style={addStyles.focusTextArea}
                 placeholder="e.g. health, wisdom, family, peace..."
-                placeholderTextColor={Colors.mutedForeground + "80"}
+                placeholderTextColor={colors.mutedForeground + "80"}
                 value={prayerFocus}
                 onChangeText={setPrayerFocus}
                 multiline
@@ -363,6 +366,8 @@ interface PrayerSelectionModalProps {
 
 function PrayerSelectionModal({ visible, people, onClose, onBegin }: PrayerSelectionModalProps) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const selStyles = useMemo(() => createSelStyles(colors), [colors]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -418,7 +423,7 @@ function PrayerSelectionModal({ visible, people, onClose, onBegin }: PrayerSelec
               <Text style={selStyles.subtitle}>Choose people for your prayer time</Text>
             </View>
             <Pressable style={selStyles.closeBtn} onPress={onClose}>
-              <X size={16} color={Colors.secondaryForeground} />
+              <X size={16} color={colors.secondaryForeground} />
             </Pressable>
           </View>
 
@@ -483,14 +488,14 @@ function PrayerSelectionModal({ visible, people, onClose, onBegin }: PrayerSelec
   );
 }
 
-const selStyles = StyleSheet.create({
+const createSelStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(28,25,20,0.52)",
     justifyContent: "flex-end" as const,
   },
   sheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     paddingHorizontal: 24,
@@ -504,7 +509,7 @@ const selStyles = StyleSheet.create({
   },
   handle: {
     width: 36, height: 4, borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 24,
   },
@@ -518,19 +523,19 @@ const selStyles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     marginBottom: 6,
     lineHeight: 30,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   closeBtn: {
     width: 32, height: 32, borderRadius: 16,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const, justifyContent: "center" as const,
     marginTop: 4,
   },
@@ -541,22 +546,22 @@ const selStyles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "60",
+    borderBottomColor: colors.border + "60",
   },
   selectAllCheck: {
     width: 22, height: 22, borderRadius: 6,
-    borderWidth: 1.5, borderColor: Colors.border,
+    borderWidth: 1.5, borderColor: colors.border,
     alignItems: "center" as const, justifyContent: "center" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   selectAllCheckActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   selectAllText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   personsList: {
     flex: 1,
@@ -568,51 +573,51 @@ const selStyles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
   },
   personRowSelected: {
-    borderColor: Colors.primary + "50",
-    backgroundColor: Colors.primary + "07",
+    borderColor: colors.primary + "50",
+    backgroundColor: colors.primary + "07",
   },
   selAvatar: { width: 46, height: 46, borderRadius: 14 },
   selAvatarFallback: {
     width: 46, height: 46, borderRadius: 14,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const, justifyContent: "center" as const,
   },
-  selAvatarInitial: { fontSize: 18, fontWeight: "700" as const, color: Colors.primary },
+  selAvatarInitial: { fontSize: 18, fontWeight: "700" as const, color: colors.primary },
   personInfo: { flex: 1, gap: 3 },
-  personName: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
-  personFocus: { fontSize: 12, color: Colors.mutedForeground, fontStyle: "italic" as const },
+  personName: { fontSize: 15, fontWeight: "700" as const, color: colors.foreground },
+  personFocus: { fontSize: 12, color: colors.mutedForeground, fontStyle: "italic" as const },
   checkbox: {
     width: 24, height: 24, borderRadius: 12,
-    borderWidth: 1.5, borderColor: Colors.border,
+    borderWidth: 1.5, borderColor: colors.border,
     alignItems: "center" as const, justifyContent: "center" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   checkboxActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   beginBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 18,
     marginTop: 8,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 8,
   },
   beginBtnDisabled: {
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -639,6 +644,8 @@ interface ActivePrayerModalProps {
 
 function ActivePrayerModal({ visible, people, selectedIds, onEnd }: ActivePrayerModalProps) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const activeStyles = useMemo(() => createActiveStyles(colors), [colors]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const breatheLoop = useRef<Animated.CompositeAnimation | null>(null);
@@ -684,7 +691,7 @@ function ActivePrayerModal({ visible, people, selectedIds, onEnd }: ActivePrayer
           <View style={activeStyles.headerRow}>
             <Text style={activeStyles.inPrayerLabel}>IN PRAYER</Text>
             <Pressable style={activeStyles.endHeaderBtn} onPress={handleEnd}>
-              <X size={16} color={Colors.mutedForeground} />
+              <X size={16} color={colors.mutedForeground} />
             </Pressable>
           </View>
         </View>
@@ -732,13 +739,13 @@ function ActivePrayerModal({ visible, people, selectedIds, onEnd }: ActivePrayer
   );
 }
 
-const activeStyles = StyleSheet.create({
+const createActiveStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
   },
   warmBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#FAF6EE",
+    backgroundColor: colors.background,
   },
   topGlow: {
     position: "absolute" as const,
@@ -747,7 +754,7 @@ const activeStyles = StyleSheet.create({
     width: 340,
     height: 340,
     borderRadius: 170,
-    backgroundColor: Colors.primary + "16",
+    backgroundColor: colors.primary + "16",
   },
   safeTop: {
     paddingHorizontal: 24,
@@ -761,12 +768,12 @@ const activeStyles = StyleSheet.create({
   inPrayerLabel: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 2.8,
   },
   endHeaderBtn: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const, justifyContent: "center" as const,
   },
   orbSection: {
@@ -780,11 +787,11 @@ const activeStyles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primary + "1E",
+    backgroundColor: colors.primary + "1E",
     borderWidth: 1.5,
-    borderColor: Colors.primary + "35",
+    borderColor: colors.primary + "35",
     marginBottom: 6,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.22,
     shadowRadius: 24,
@@ -793,13 +800,13 @@ const activeStyles = StyleSheet.create({
   inviteText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
     letterSpacing: -0.3,
   },
   inviteSub: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     fontWeight: "500" as const,
@@ -817,24 +824,24 @@ const activeStyles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
   },
   personAvatar: { width: 46, height: 46, borderRadius: 14 },
   personAvatarFallback: {
     width: 46, height: 46, borderRadius: 14,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const, justifyContent: "center" as const,
   },
-  personInitial: { fontSize: 18, fontWeight: "700" as const, color: Colors.primary },
+  personInitial: { fontSize: 18, fontWeight: "700" as const, color: colors.primary },
   personInfo: { flex: 1, gap: 4 },
   personName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   personFocus: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontStyle: "italic" as const,
     lineHeight: 18,
   },
@@ -842,11 +849,11 @@ const activeStyles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "40",
+    borderTopColor: colors.border + "40",
     backgroundColor: "rgba(250,246,238,0.96)",
   },
   endBtn: {
-    backgroundColor: Colors.foreground,
+    backgroundColor: colors.foreground,
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: "center" as const,
@@ -860,7 +867,7 @@ const activeStyles = StyleSheet.create({
   endBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
 });
@@ -873,6 +880,8 @@ interface PostPrayerPromptProps {
 }
 
 function PostPrayerPrompt({ visible, count, onReflect, onDismiss }: PostPrayerPromptProps) {
+  const colors = useThemeColors();
+  const postStyles = useMemo(() => createPostStyles(colors), [colors]);
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -918,7 +927,7 @@ function PostPrayerPrompt({ visible, count, onReflect, onDismiss }: PostPrayerPr
   );
 }
 
-const postStyles = StyleSheet.create({
+const createPostStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(28,25,20,0.52)",
@@ -927,7 +936,7 @@ const postStyles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   card: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 32,
     padding: 32,
     width: "100%" as const,
@@ -940,24 +949,24 @@ const postStyles = StyleSheet.create({
   },
   iconRing: {
     width: 76, height: 76, borderRadius: 38,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const, justifyContent: "center" as const,
     marginBottom: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   emoji: { fontSize: 34 },
   title: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
     letterSpacing: -0.4,
     marginBottom: 10,
   },
   body: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     fontWeight: "500" as const,
@@ -965,16 +974,16 @@ const postStyles = StyleSheet.create({
   },
   bodyEmphasis: {
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   reflectBtn: {
     width: "100%" as const,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: "center" as const,
     marginBottom: 10,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 14,
@@ -992,12 +1001,12 @@ const postStyles = StyleSheet.create({
   dismissBtnText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });
 
-const addStyles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+const createAddStyles = (colors: ThemeColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1005,17 +1014,17 @@ const addStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
-  title: { fontSize: 20, fontWeight: "800" as const, color: Colors.foreground, letterSpacing: -0.3, flex: 1, textAlign: "center" as const },
+  title: { fontSize: 20, fontWeight: "800" as const, color: colors.foreground, letterSpacing: -0.3, flex: 1, textAlign: "center" as const },
   closeBtn: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center", justifyContent: "center",
   },
   backBtn: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center", justifyContent: "center",
   },
   focusStep: {
@@ -1028,56 +1037,56 @@ const addStyles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   focusAvatar: {
     width: 48, height: 48, borderRadius: 14,
   },
   focusAvatarFallback: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const, justifyContent: "center" as const,
   },
   focusAvatarInitial: {
-    fontSize: 20, fontWeight: "700" as const, color: Colors.primary,
+    fontSize: 20, fontWeight: "700" as const, color: colors.primary,
   },
   focusPersonName: {
-    fontSize: 17, fontWeight: "700" as const, color: Colors.foreground, flex: 1,
+    fontSize: 17, fontWeight: "700" as const, color: colors.foreground, flex: 1,
   },
   focusQuestion: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 30,
     letterSpacing: -0.3,
   },
   focusTextArea: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     fontSize: 16,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 24,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     minHeight: 120,
     fontWeight: "400" as const,
     textAlignVertical: "top" as const,
   },
   focusHint: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
     fontWeight: "400" as const,
   },
   modeTabs: {
     flexDirection: "row",
     margin: 16,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 14,
     padding: 3,
   },
@@ -1085,86 +1094,86 @@ const addStyles = StyleSheet.create({
     flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 12,
   },
   modeTabActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
   },
-  modeTabText: { fontSize: 14, fontWeight: "600" as const, color: Colors.mutedForeground },
-  modeTabTextActive: { color: Colors.foreground, fontWeight: "700" as const },
+  modeTabText: { fontSize: 14, fontWeight: "600" as const, color: colors.mutedForeground },
+  modeTabTextActive: { color: colors.foreground, fontWeight: "700" as const },
   searchBar: {
     flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: Colors.card, borderRadius: 16,
+    backgroundColor: colors.card, borderRadius: 16,
     paddingHorizontal: 14, paddingVertical: 12,
     marginHorizontal: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
-  searchInput: { flex: 1, fontSize: 15, color: Colors.foreground, fontWeight: "500" as const },
+  searchInput: { flex: 1, fontSize: 15, color: colors.foreground, fontWeight: "500" as const },
   list: { paddingHorizontal: 16, gap: 8 },
   contactRow: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: Colors.card, borderRadius: 18,
-    padding: 14, borderWidth: 1, borderColor: Colors.border + "80",
+    backgroundColor: colors.card, borderRadius: 18,
+    padding: 14, borderWidth: 1, borderColor: colors.border + "80",
   },
   contactRowSelected: {
-    borderColor: Colors.primary + "60",
-    backgroundColor: Colors.primary + "08",
+    borderColor: colors.primary + "60",
+    backgroundColor: colors.primary + "08",
   },
   contactAvatar: { width: 46, height: 46, borderRadius: 23 },
   initialsAvatar: {
     width: 46, height: 46, borderRadius: 23,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center", justifyContent: "center",
   },
-  initialsText: { fontSize: 16, fontWeight: "700" as const, color: Colors.secondaryForeground },
+  initialsText: { fontSize: 16, fontWeight: "700" as const, color: colors.secondaryForeground },
   contactInfo: { flex: 1, gap: 3 },
-  contactName: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
-  contactSub: { fontSize: 12, color: Colors.mutedForeground },
+  contactName: { fontSize: 15, fontWeight: "700" as const, color: colors.foreground },
+  contactSub: { fontSize: 12, color: colors.mutedForeground },
   checkCircle: {
     width: 26, height: 26, borderRadius: 13,
-    borderWidth: 2, borderColor: Colors.border,
+    borderWidth: 2, borderColor: colors.border,
     alignItems: "center", justifyContent: "center",
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   checkCircleActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   emptyState: {
     flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingBottom: 80,
   },
-  emptyText: { fontSize: 15, color: Colors.mutedForeground, fontWeight: "600" as const },
+  emptyText: { fontSize: 15, color: colors.mutedForeground, fontWeight: "600" as const },
   customWrap: { paddingHorizontal: 20, paddingTop: 8, gap: 12 },
-  customLabel: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
+  customLabel: { fontSize: 15, fontWeight: "700" as const, color: colors.foreground },
   customInput: {
-    backgroundColor: Colors.card, borderRadius: 16,
+    backgroundColor: colors.card, borderRadius: 16,
     paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 17, color: Colors.foreground,
-    borderWidth: 1.5, borderColor: Colors.border,
+    fontSize: 17, color: colors.foreground,
+    borderWidth: 1.5, borderColor: colors.border,
     fontWeight: "500" as const,
   },
-  customHint: { fontSize: 13, color: Colors.mutedForeground, lineHeight: 20 },
+  customHint: { fontSize: 13, color: colors.mutedForeground, lineHeight: 20 },
   footer: {
     paddingHorizontal: 20, paddingTop: 12,
-    borderTopWidth: 1, borderTopColor: Colors.border,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
   addBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, backgroundColor: Colors.primary, borderRadius: 999,
+    gap: 8, backgroundColor: colors.primary, borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
   },
   addBtnDisabled: { opacity: 0.45, shadowOpacity: 0 },
   addBtnText: { fontSize: 16, fontWeight: "700" as const, color: "#fff" },
   focusInput: {
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     fontWeight: "500" as const,
     marginBottom: 10,
   },
@@ -1173,6 +1182,9 @@ const addStyles = StyleSheet.create({
 export default function JournalScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
+  const colors = themeColors;
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tagConfig = useMemo(() => getTagConfig(colors), [colors]);
   const { tab, highlightId } = useLocalSearchParams<{ tab?: string; highlightId?: string }>();
   const [activeFilter, setActiveFilter] = useState<JournalFilter>("My Prayers");
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
@@ -1388,14 +1400,14 @@ export default function JournalScreen() {
       }}
     >
       <View style={styles.personAddCircle}>
-        <Plus size={22} color={Colors.primary} strokeWidth={2} />
+        <Plus size={22} color={colors.primary} strokeWidth={2} />
       </View>
       <Text style={styles.personNameMuted}>Add</Text>
     </Pressable>
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]} edges={["top"]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: themecolors.background }]} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <NavigationDrawer
         visible={drawerVisible}
@@ -1434,16 +1446,16 @@ export default function JournalScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Pressable style={styles.iconBtn} onPress={() => router.push("/(tabs)/(home)")}>
-            <ArrowLeft size={20} color={Colors.secondaryForeground} />
+            <ArrowLeft size={20} color={colors.secondaryForeground} />
           </Pressable>
           <Text style={styles.headerTitle}>Prayer Journal</Text>
         </View>
         <View style={styles.headerRight}>
           <Pressable style={styles.newBtn} onPress={() => router.push("/journal-entry")}>
-            <PenSquare size={20} color={Colors.primaryForeground} />
+            <PenSquare size={20} color={colors.primaryForeground} />
           </Pressable>
           <Pressable style={styles.iconBtn} onPress={() => setDrawerVisible(true)}>
-            <Menu size={20} color={Colors.secondaryForeground} />
+            <Menu size={20} color={colors.secondaryForeground} />
           </Pressable>
         </View>
       </View>
@@ -1499,9 +1511,9 @@ export default function JournalScreen() {
                 setSelectionVisible(true);
               }}
             >
-              <Sparkles size={14} color={Colors.primary} />
+              <Sparkles size={14} color={colors.primary} />
               <Text style={styles.startPrayerBtnText}>Begin prayer time</Text>
-              <ChevronRight size={14} color={Colors.primary} />
+              <ChevronRight size={14} color={colors.primary} />
             </Pressable>
           )}
 
@@ -1511,14 +1523,14 @@ export default function JournalScreen() {
                 {[0, 1, 2, 3].map((i) => (
                   <Pressable key={i} style={styles.personGridEmptyCard} onPress={() => setAddPersonVisible(true)}>
                     <View style={styles.personGridEmptyCircle}>
-                      <Plus size={20} color={Colors.primary} strokeWidth={1.8} />
+                      <Plus size={20} color={colors.primary} strokeWidth={1.8} />
                     </View>
                     <Text style={styles.personGridEmptyLabel}>{i === 0 ? "Add" : ""}</Text>
                   </Pressable>
                 ))}
               </View>
               <Pressable style={styles.addPeoplePrompt} onPress={() => setAddPersonVisible(true)}>
-                <UserPlus size={15} color={Colors.primary} />
+                <UserPlus size={15} color={colors.primary} />
                 <Text style={styles.addPeoplePromptText}>Add people you're praying for</Text>
               </Pressable>
             </View>
@@ -1612,7 +1624,7 @@ export default function JournalScreen() {
                 onPress={() => { setAddFromRequest(null); setAddPersonVisible(true); }}
               >
                 <View style={styles.personListAddCircle}>
-                  <Plus size={16} color={Colors.primary} strokeWidth={2} />
+                  <Plus size={16} color={colors.primary} strokeWidth={2} />
                 </View>
                 <Text style={styles.personListAddLabel}>Add person</Text>
               </Pressable>
@@ -1716,14 +1728,14 @@ export default function JournalScreen() {
                         >
                           {alreadyAdded ? (
                             <>
-                              <Check size={11} color={isLatest ? "#fff" : Colors.primary} strokeWidth={2.5} />
+                              <Check size={11} color={isLatest ? "#fff" : colors.primary} strokeWidth={2.5} />
                               <Text style={[styles.addToPeopleBtnText, alreadyAdded && styles.addToPeopleBtnTextAdded, isLatest && { color: "#fff" }]}>
                                 In Your People
                               </Text>
                             </>
                           ) : (
                             <>
-                              <UserPlus size={11} color={isLatest ? "#fff" : Colors.primary} />
+                              <UserPlus size={11} color={isLatest ? "#fff" : colors.primary} />
                               <Text style={[styles.addToPeopleBtnText, isLatest && { color: "#fff" }]}>
                                 Add to Your People
                               </Text>
@@ -1749,7 +1761,7 @@ export default function JournalScreen() {
           ) : (
             <View style={styles.accordionContainer}>
               {myPrayerEntries.map((entry, index) => {
-                const tagCfg = TAG_CONFIG[entry.tag] ?? TAG_CONFIG.reflection;
+                const tagCfg = tagConfig[entry.tag] ?? tagConfig.reflection;
                 const isExpanded = expandedIds.has(entry.id);
                 const isLast = index === myPrayerEntries.length - 1;
                 return (
@@ -1784,8 +1796,8 @@ export default function JournalScreen() {
                         hitSlop={10}
                       >
                         {isExpanded
-                          ? <Minus size={15} color={Colors.mutedForeground} />
-                          : <Plus size={15} color={Colors.primary} />
+                          ? <Minus size={15} color={colors.mutedForeground} />
+                          : <Plus size={15} color={colors.primary} />
                         }
                       </Pressable>
                     </Pressable>
@@ -1797,7 +1809,7 @@ export default function JournalScreen() {
                         </Text>
                         {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
                           <View style={[styles.entryDateChip, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipUrgent]}>
-                            <CalendarDays size={12} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
+                            <CalendarDays size={12} color={shouldShowReminderBadge(entry.eventDate) ? colors.destructive : colors.primary} />
                             <Text style={[styles.entryDateChipText, shouldShowReminderBadge(entry.eventDate) && styles.entryDateChipTextUrgent]}>
                               {formatPrayerDateFeed(entry.eventDate)}
                             </Text>
@@ -1808,7 +1820,7 @@ export default function JournalScreen() {
                           <View style={styles.accordionFooterTags}>
                             {entry.isFavorite && (
                               <View style={styles.footerTag}>
-                                <Heart size={11} color={Colors.primary} />
+                                <Heart size={11} color={colors.primary} />
                                 <Text style={styles.footerTagText}>Saved</Text>
                               </View>
                             )}
@@ -1834,8 +1846,8 @@ export default function JournalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1846,22 +1858,22 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row" as const, alignItems: "center" as const, gap: 10 },
   headerRight: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
-  headerTitle: { fontSize: 24, fontWeight: "800" as const, color: Colors.foreground },
+  headerTitle: { fontSize: 24, fontWeight: "800" as const, color: colors.foreground },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const, justifyContent: "center" as const,
   },
   newBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const, justifyContent: "center" as const,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
   },
   filterRow: { paddingHorizontal: 20, paddingBottom: 16, marginBottom: 4 },
   filterTrack: {
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 16,
     flexDirection: "row" as const,
     padding: 4,
@@ -1871,12 +1883,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14, borderRadius: 12,
   },
   filterButtonActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
   },
-  filterLabel: { fontSize: 14, fontWeight: "700" as const, color: Colors.mutedForeground },
-  filterLabelActive: { color: Colors.primary },
+  filterLabel: { fontSize: 14, fontWeight: "700" as const, color: colors.mutedForeground },
+  filterLabelActive: { color: colors.primary },
   scrollContent: { paddingHorizontal: 20 },
 
   sectionBlock: { marginBottom: 8 },
@@ -1888,14 +1900,14 @@ const styles = StyleSheet.create({
   },
   sectionLabelRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6 },
   sectionLabel: {
-    fontSize: 10, fontWeight: "800" as const, color: Colors.mutedForeground,
+    fontSize: 10, fontWeight: "800" as const, color: colors.mutedForeground,
     letterSpacing: 1.6, textTransform: "uppercase" as const,
   },
   sectionSub: {
-    fontSize: 12, color: Colors.mutedForeground,
+    fontSize: 12, color: colors.mutedForeground,
     fontWeight: "500" as const, marginBottom: 16,
   },
-  manageLinkText: { fontSize: 13, color: Colors.primary, fontWeight: "600" as const },
+  manageLinkText: { fontSize: 13, color: colors.primary, fontWeight: "600" as const },
   countBadge: {
     backgroundColor: "#D4782F18", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
   },
@@ -1903,7 +1915,7 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: "700" as const, color: "#D4782F",
   },
   dividerLine: {
-    height: 1, backgroundColor: Colors.border + "60",
+    height: 1, backgroundColor: colors.border + "60",
     marginVertical: 20, marginHorizontal: 0,
   },
   personList: { gap: 12, paddingHorizontal: 20 },
@@ -1912,38 +1924,38 @@ const styles = StyleSheet.create({
   personAvatarWrap: { position: "relative" as const },
   personAvatar: {
     width: 60, height: 60, borderRadius: 20,
-    borderWidth: 2.5, borderColor: Colors.primary + "50",
+    borderWidth: 2.5, borderColor: colors.primary + "50",
   },
   personAvatarFallback: {
     width: 60, height: 60, borderRadius: 20,
-    backgroundColor: Colors.primary + "18",
-    borderWidth: 2, borderColor: Colors.primary + "30",
+    backgroundColor: colors.primary + "18",
+    borderWidth: 2, borderColor: colors.primary + "30",
     alignItems: "center" as const, justifyContent: "center" as const,
   },
-  personInitial: { fontSize: 22, fontWeight: "700" as const, color: Colors.primary },
+  personInitial: { fontSize: 22, fontWeight: "700" as const, color: colors.primary },
   personHeartBadge: {
     position: "absolute" as const, bottom: -3, right: -3,
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const, justifyContent: "center" as const,
-    borderWidth: 2, borderColor: Colors.background,
+    borderWidth: 2, borderColor: colors.background,
   },
   personPrayedBadge: {
     position: "absolute" as const, bottom: -3, right: -3,
     width: 18, height: 18, borderRadius: 9,
     backgroundColor: "#27A06E",
     alignItems: "center" as const, justifyContent: "center" as const,
-    borderWidth: 2, borderColor: Colors.background,
+    borderWidth: 2, borderColor: colors.background,
   },
   personPrayedBadgeRepeat: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   personAvatarPrayed: {
     borderColor: "#27A06E60",
     opacity: 0.75,
   },
   personAvatarRepeat: {
-    borderColor: Colors.primary + "80",
+    borderColor: colors.primary + "80",
     opacity: 1,
   },
   personAvatarFallbackPrayed: {
@@ -1951,11 +1963,11 @@ const styles = StyleSheet.create({
     borderColor: "#27A06E40",
   },
   personAvatarFallbackRepeat: {
-    backgroundColor: Colors.primary + "20",
-    borderColor: Colors.primary + "60",
+    backgroundColor: colors.primary + "20",
+    borderColor: colors.primary + "60",
   },
   personNamePrayed: {
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   prayerProgressRow: {
     flexDirection: "row" as const,
@@ -1967,7 +1979,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     overflow: "hidden" as const,
   },
   prayerProgressFill: {
@@ -1978,7 +1990,7 @@ const styles = StyleSheet.create({
   prayerProgressText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     minWidth: 120,
     textAlign: "right" as const,
   },
@@ -1990,23 +2002,23 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: colors.primary + "10",
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     alignSelf: "center" as const,
   },
   startPrayerBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
-  personName: { fontSize: 12, fontWeight: "700" as const, color: Colors.foreground, textAlign: "center" as const },
-  personNameMuted: { fontSize: 12, fontWeight: "600" as const, color: Colors.mutedForeground, textAlign: "center" as const },
+  personName: { fontSize: 12, fontWeight: "700" as const, color: colors.foreground, textAlign: "center" as const },
+  personNameMuted: { fontSize: 12, fontWeight: "600" as const, color: colors.mutedForeground, textAlign: "center" as const },
   personAddCircle: {
     width: 60, height: 60, borderRadius: 20,
-    backgroundColor: Colors.secondary,
-    borderWidth: 1.5, borderColor: Colors.primary + "40",
+    backgroundColor: colors.secondary,
+    borderWidth: 1.5, borderColor: colors.primary + "40",
     borderStyle: "dashed" as const,
     alignItems: "center" as const, justifyContent: "center" as const,
   },
@@ -2015,16 +2027,16 @@ const styles = StyleSheet.create({
   addPeoplePrompt: {
     flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
     alignSelf: "center" as const,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     paddingHorizontal: 18, paddingVertical: 10,
     borderRadius: 999,
-    borderWidth: 1, borderColor: Colors.primary + "25",
+    borderWidth: 1, borderColor: colors.primary + "25",
   },
-  addPeoplePromptText: { fontSize: 13, fontWeight: "700" as const, color: Colors.primary },
+  addPeoplePromptText: { fontSize: 13, fontWeight: "700" as const, color: colors.primary },
 
   requestCard: {
-    backgroundColor: Colors.card, borderRadius: 22, padding: 18,
-    marginBottom: 12, borderWidth: 1, borderColor: Colors.border + "60",
+    backgroundColor: colors.card, borderRadius: 22, padding: 18,
+    marginBottom: 12, borderWidth: 1, borderColor: colors.border + "60",
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
     overflow: "hidden" as const, position: "relative" as const,
@@ -2043,34 +2055,34 @@ const styles = StyleSheet.create({
     gap: 8, marginBottom: 10,
   },
   requestAvatar: { width: 28, height: 28, borderRadius: 14 },
-  requestAuthorName: { fontSize: 13, fontWeight: "700" as const, color: Colors.mutedForeground },
-  requestTitle: { fontSize: 16, fontWeight: "700" as const, color: Colors.foreground, marginBottom: 6 },
+  requestAuthorName: { fontSize: 13, fontWeight: "700" as const, color: colors.mutedForeground },
+  requestTitle: { fontSize: 16, fontWeight: "700" as const, color: colors.foreground, marginBottom: 6 },
   requestTitleLatest: { color: "#fff" },
-  requestExcerpt: { fontSize: 14, color: Colors.secondaryForeground, lineHeight: 21, marginBottom: 14 },
+  requestExcerpt: { fontSize: 14, color: colors.secondaryForeground, lineHeight: 21, marginBottom: 14 },
   requestExcerptLatest: { color: "rgba(255,255,255,0.85)" },
   requestFooter: {
     flexDirection: "row" as const, alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border + "50",
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border + "50",
   },
-  requestTime: { fontSize: 10, fontWeight: "700" as const, color: Colors.mutedForeground, letterSpacing: 0.8 },
+  requestTime: { fontSize: 10, fontWeight: "700" as const, color: colors.mutedForeground, letterSpacing: 0.8 },
   addToPeopleBtn: {
     flexDirection: "row" as const, alignItems: "center" as const, gap: 5,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     paddingHorizontal: 10, paddingVertical: 6,
     borderRadius: 999,
-    borderWidth: 1, borderColor: Colors.primary + "25",
+    borderWidth: 1, borderColor: colors.primary + "25",
   },
   addToPeopleBtnAdded: {
-    backgroundColor: Colors.primary + "08",
-    borderColor: Colors.primary + "20",
+    backgroundColor: colors.primary + "08",
+    borderColor: colors.primary + "20",
   },
   addToPeopleBtnLatest: {
     backgroundColor: "rgba(255,255,255,0.2)",
     borderColor: "rgba(255,255,255,0.3)",
   },
-  addToPeopleBtnText: { fontSize: 11, fontWeight: "700" as const, color: Colors.primary },
-  addToPeopleBtnTextAdded: { color: Colors.primary },
+  addToPeopleBtnText: { fontSize: 11, fontWeight: "700" as const, color: colors.primary },
+  addToPeopleBtnTextAdded: { color: colors.primary },
   newBadge: {
     position: "absolute" as const, top: 14, right: 14,
     backgroundColor: "rgba(255,255,255,0.22)",
@@ -2089,7 +2101,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     overflow: "hidden" as const,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -2099,11 +2111,11 @@ const styles = StyleSheet.create({
   },
   accordionDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "50",
+    borderBottomColor: colors.border + "50",
   },
   accordionHighlight: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: colors.primary + "10",
     borderRadius: 24,
     zIndex: 0,
   },
@@ -2125,7 +2137,7 @@ const styles = StyleSheet.create({
   accordionTitle: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     flex: 1,
     flexShrink: 1,
   },
@@ -2133,9 +2145,9 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     flexShrink: 0,
@@ -2148,7 +2160,7 @@ const styles = StyleSheet.create({
   },
   accordionExcerpt: {
     fontSize: 14,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     lineHeight: 22,
   },
   accordionFooter: {
@@ -2164,7 +2176,7 @@ const styles = StyleSheet.create({
   },
   dateSection: { marginBottom: 20 },
   dateLabel: {
-    fontSize: 11, fontWeight: "800" as const, color: Colors.mutedForeground,
+    fontSize: 11, fontWeight: "800" as const, color: colors.mutedForeground,
     letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 12,
   },
   entryDateChip: {
@@ -2172,7 +2184,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     gap: 5,
     alignSelf: "flex-start" as const,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -2180,19 +2192,19 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   entryDateChipUrgent: {
-    backgroundColor: Colors.destructive + "12",
+    backgroundColor: colors.destructive + "12",
   },
   entryDateChipText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   entryDateChipTextUrgent: {
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   entryCard: {
     backgroundColor: "#FFFFFF", borderRadius: 24, padding: 22,
-    borderWidth: 1, borderColor: Colors.border + "50",
+    borderWidth: 1, borderColor: colors.border + "50",
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
     marginBottom: 12, overflow: "hidden" as const, position: "relative" as const,
@@ -2201,19 +2213,19 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "flex-start",
     justifyContent: "space-between", marginBottom: 10, gap: 8,
   },
-  entryTitle: { fontSize: 17, fontWeight: "700" as const, color: Colors.foreground, flex: 1 },
+  entryTitle: { fontSize: 17, fontWeight: "700" as const, color: colors.foreground, flex: 1 },
   tagBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   tagText: { fontSize: 9, fontWeight: "700" as const, letterSpacing: 0.5 },
-  entryExcerpt: { fontSize: 14, color: Colors.secondaryForeground, lineHeight: 22, marginBottom: 14 },
+  entryExcerpt: { fontSize: 14, color: colors.secondaryForeground, lineHeight: 22, marginBottom: 14 },
   entryFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  entryTime: { fontSize: 10, fontWeight: "700" as const, color: Colors.mutedForeground, letterSpacing: 1 },
+  entryTime: { fontSize: 10, fontWeight: "700" as const, color: colors.mutedForeground, letterSpacing: 1 },
   footerTag: { flexDirection: "row", alignItems: "center", gap: 4 },
-  footerTagText: { fontSize: 10, fontWeight: "700" as const, color: Colors.primary },
+  footerTagText: { fontSize: 10, fontWeight: "700" as const, color: colors.primary },
   emptyState: {
     alignItems: "center" as const, paddingTop: 40, paddingHorizontal: 32, gap: 12,
   },
-  emptyTitle: { fontSize: 18, fontWeight: "700" as const, color: Colors.foreground, textAlign: "center" as const },
-  emptySub: { fontSize: 14, color: Colors.mutedForeground, textAlign: "center" as const, lineHeight: 21 },
+  emptyTitle: { fontSize: 18, fontWeight: "700" as const, color: colors.foreground, textAlign: "center" as const },
+  emptySub: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" as const, lineHeight: 21 },
 
   yourPeopleTabHeader: {
     paddingTop: 8,
@@ -2222,13 +2234,13 @@ const styles = StyleSheet.create({
   yourPeopleTabTitle: {
     fontSize: 26,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
   yourPeopleTabSub: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     lineHeight: 20,
   },
@@ -2247,16 +2259,16 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     borderStyle: "dashed" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.primary + "06",
+    backgroundColor: colors.primary + "06",
   },
   personGridEmptyLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   yourPeopleListWrap: {
     gap: 10,
@@ -2266,12 +2278,12 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -2291,7 +2303,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
   },
   personListAvatarPrayed: {
     borderColor: "#27A06E40",
@@ -2301,9 +2313,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -2314,7 +2326,7 @@ const styles = StyleSheet.create({
   personListInitial: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   personListPrayedBadge: {
     position: "absolute" as const,
@@ -2327,7 +2339,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   personListHeartBadge: {
     position: "absolute" as const,
@@ -2336,11 +2348,11 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   personListInfo: {
     flex: 1,
@@ -2349,21 +2361,21 @@ const styles = StyleSheet.create({
   personListName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.1,
   },
   personListNamePrayed: {
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   personListFocus: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
     fontWeight: "400" as const,
   },
   personListFocusEmpty: {
     fontSize: 12,
-    color: Colors.border,
+    color: colors.border,
     fontStyle: "italic" as const,
     fontWeight: "400" as const,
   },
@@ -2382,15 +2394,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     flexShrink: 0,
   },
   personListPrayBtnText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   personListAddRow: {
     flexDirection: "row" as const,
@@ -2400,21 +2412,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     borderStyle: "dashed" as const,
-    backgroundColor: Colors.primary + "04",
+    backgroundColor: colors.primary + "04",
   },
   personListAddCircle: {
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: Colors.primary + "14",
+    backgroundColor: colors.primary + "14",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   personListAddLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
 });

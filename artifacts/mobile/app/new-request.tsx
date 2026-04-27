@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
@@ -28,7 +28,6 @@ import {
   CalendarDays,
 } from "lucide-react-native";
 import { Image } from "expo-image";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { currentUser } from "@/mocks/data";
@@ -40,6 +39,7 @@ import { scheduleOwnPrayerReminders } from "@/lib/prayerReminders";
 
 export default function NewRequestScreen() {
   const router = useRouter();
+  const colors = useThemeColors();
   const { addNotification } = useNotifications();
   const [content, setContent] = useState("");
   const [requestImageUri, setRequestImageUri] = useState<string | null>(null);
@@ -54,6 +54,7 @@ export default function NewRequestScreen() {
   const [eventDate, setEventDate] = useState<string | null>(null);
   const tagsHeightAnim = useRef(new Animated.Value(0)).current;
   const dateHeightAnim = useRef(new Animated.Value(0)).current;
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useUnsavedChangesWarning(content.trim().length > 0);
 
@@ -134,7 +135,7 @@ export default function NewRequestScreen() {
       >
         <View style={styles.header}>
           <Pressable style={styles.closeBtn} onPress={() => router.back()}>
-            <X size={18} color={Colors.secondaryForeground} />
+            <X size={18} color={colors.secondaryForeground} />
           </Pressable>
 
           <Pressable
@@ -161,12 +162,12 @@ export default function NewRequestScreen() {
                 onPress={() => setAudienceOpen((v) => !v)}
               >
                 {selectedAudience.type === "everyone" ? (
-                  <Globe size={10} color={Colors.primary} />
+                  <Globe size={10} color={colors.primary} />
                 ) : (
-                  <Users size={10} color={Colors.primary} />
+                  <Users size={10} color={colors.primary} />
                 )}
                 <Text style={styles.audienceText}>{selectedAudience.label}</Text>
-                <ChevronDown size={10} color={Colors.mutedForeground} />
+                <ChevronDown size={10} color={colors.mutedForeground} />
               </Pressable>
             </View>
           </View>
@@ -192,9 +193,9 @@ export default function NewRequestScreen() {
                       ]}
                     >
                       {option.type === "everyone" ? (
-                        <Globe size={14} color={isSelected ? Colors.primaryForeground : Colors.mutedForeground} />
+                        <Globe size={14} color={isSelected ? colors.primaryForeground : colors.mutedForeground} />
                       ) : (
-                        <Users size={14} color={isSelected ? Colors.primaryForeground : Colors.mutedForeground} />
+                        <Users size={14} color={isSelected ? colors.primaryForeground : colors.mutedForeground} />
                       )}
                     </View>
                     <View style={styles.audienceOptionText}>
@@ -205,7 +206,7 @@ export default function NewRequestScreen() {
                         <Text style={styles.audienceOptionSub}>{option.sublabel}</Text>
                       )}
                     </View>
-                    {isSelected && <Check size={16} color={Colors.primary} />}
+                    {isSelected && <Check size={16} color={colors.primary} />}
                   </Pressable>
                 );
               })}
@@ -216,7 +217,7 @@ export default function NewRequestScreen() {
             <TextInput
               style={styles.textArea}
               placeholder="What can your community pray for you about?"
-              placeholderTextColor={Colors.mutedForeground + "60"}
+              placeholderTextColor={colors.mutedForeground + "60"}
               multiline
               value={content}
               onChangeText={setContent}
@@ -245,7 +246,7 @@ export default function NewRequestScreen() {
               style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
               onPress={() => setIsTimeSensitive((v) => !v)}
             >
-              <Zap size={14} color={isTimeSensitive ? "#B87A00" : Colors.mutedForeground} />
+              <Zap size={14} color={isTimeSensitive ? "#B87A00" : colors.mutedForeground} />
               <Text style={[styles.optionChipText, isTimeSensitive && styles.optionChipTextTimeSensitive]}>
                 Time Sensitive
               </Text>
@@ -255,7 +256,7 @@ export default function NewRequestScreen() {
               style={[styles.optionChip, isAnonymous && styles.optionChipAnonymous]}
               onPress={() => setIsAnonymous((v) => !v)}
             >
-              <Ghost size={14} color={isAnonymous ? Colors.primary : Colors.mutedForeground} />
+              <Ghost size={14} color={isAnonymous ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.optionChipText, isAnonymous && styles.optionChipTextAnonymous]}>
                 Anonymous
               </Text>
@@ -269,7 +270,7 @@ export default function NewRequestScreen() {
             >
               <CalendarDays
                 size={15}
-                color={eventDate ? Colors.primary : Colors.mutedForeground}
+                color={eventDate ? colors.primary : colors.mutedForeground}
               />
               <Text
                 style={[
@@ -287,9 +288,9 @@ export default function NewRequestScreen() {
                 </View>
               ) : null}
               {dateExpanded ? (
-                <ChevronUp size={14} color={Colors.mutedForeground} style={{ marginLeft: "auto" }} />
+                <ChevronUp size={14} color={colors.mutedForeground} style={{ marginLeft: "auto" }} />
               ) : (
-                <ChevronDown size={14} color={Colors.mutedForeground} style={{ marginLeft: "auto" }} />
+                <ChevronDown size={14} color={colors.mutedForeground} style={{ marginLeft: "auto" }} />
               )}
             </Pressable>
 
@@ -325,9 +326,9 @@ export default function NewRequestScreen() {
                   </View>
                 )}
                 {tagsExpanded ? (
-                  <ChevronUp size={14} color={Colors.mutedForeground} />
+                  <ChevronUp size={14} color={colors.mutedForeground} />
                 ) : (
-                  <ChevronDown size={14} color={Colors.mutedForeground} />
+                  <ChevronDown size={14} color={colors.mutedForeground} />
                 )}
               </View>
             </Pressable>
@@ -388,10 +389,10 @@ export default function NewRequestScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
@@ -403,28 +404,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "40",
+    borderBottomColor: colors.border + "40",
   },
   closeBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 0.3,
   },
   postBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 22,
     paddingVertical: 10,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -438,7 +439,7 @@ const styles = StyleSheet.create({
   postBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   userInfo: {
     flex: 1,
@@ -465,33 +466,33 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   audienceBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: Colors.accent + "80",
+    backgroundColor: colors.accent + "80",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.primary + "18",
+    borderColor: colors.primary + "18",
     alignSelf: "flex-start",
   },
   audienceText: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 1.2,
   },
   audienceDropdown: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
   audienceDropdownLabel: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 1.5,
     paddingHorizontal: 16,
@@ -516,21 +517,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "60",
+    borderTopColor: colors.border + "60",
   },
   audienceOptionSelected: {
-    backgroundColor: Colors.accent + "40",
+    backgroundColor: colors.accent + "40",
   },
   audienceOptionIcon: {
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
   audienceOptionIconSelected: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   audienceOptionText: {
     flex: 1,
@@ -538,23 +539,23 @@ const styles = StyleSheet.create({
   audienceOptionLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   audienceOptionLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   audienceOptionSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 1,
   },
   inputWrap: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     minHeight: 160,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -571,7 +572,7 @@ const styles = StyleSheet.create({
   textArea: {
     flex: 1,
     fontSize: 16,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 26,
     minHeight: 120,
     padding: 0,
@@ -587,36 +588,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 999,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   optionChipTimeSensitive: {
-    backgroundColor: "#FFF8E7",
-    borderColor: "#F0C040",
+    backgroundColor: colors.accent,
+    borderColor: colors.primary + "50",
   },
   optionChipAnonymous: {
-    backgroundColor: Colors.primary + "12",
-    borderColor: Colors.primary + "40",
+    backgroundColor: colors.primary + "12",
+    borderColor: colors.primary + "40",
   },
   optionChipText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   optionChipTextTimeSensitive: {
     color: "#B87A00",
     fontWeight: "700" as const,
   },
   optionChipTextAnonymous: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   dateSection: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 12,
@@ -630,13 +631,13 @@ const styles = StyleSheet.create({
   dateSectionLabel: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   dateSectionLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   datePill: {
-    backgroundColor: Colors.primary + "14",
+    backgroundColor: colors.primary + "14",
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -644,7 +645,7 @@ const styles = StyleSheet.create({
   datePillText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   dateExpandWrap: {},
   tagsSection: {
@@ -654,17 +655,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   tagsLabel: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   tagsToggleRight: {
     flexDirection: "row",
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tagsSelectedPill: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
   tagsSelectedText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   tagsExpandWrap: {
     overflow: "hidden",
@@ -695,16 +696,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   tagChipSelected: {
-    borderColor: Colors.primary + "60",
-    backgroundColor: Colors.primary + "18",
+    borderColor: colors.primary + "60",
+    backgroundColor: colors.primary + "18",
   },
   tagEmoji: {
     fontSize: 13,
@@ -712,10 +713,10 @@ const styles = StyleSheet.create({
   tagLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   tagLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   selectedTagsPreview: {
@@ -727,12 +728,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   selectedTagEmoji: {
     fontSize: 12,
@@ -740,6 +741,6 @@ const styles = StyleSheet.create({
   selectedTagText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
 });
