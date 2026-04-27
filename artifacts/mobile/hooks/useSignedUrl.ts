@@ -4,7 +4,7 @@ import { getSignedUrl } from '@/lib/storage';
 export function useSignedUrl(path: string | null | undefined, fallback: string): string {
   const getInitial = () => {
     if (!path) return fallback;
-    if (path.startsWith('data:') || path.startsWith('http')) return path;
+    if (path.startsWith('data:') || path.startsWith('http') || path.startsWith('file://')) return path;
     return fallback;
   };
 
@@ -15,7 +15,7 @@ export function useSignedUrl(path: string | null | undefined, fallback: string):
       setUrl(fallback);
       return;
     }
-    if (path.startsWith('data:') || path.startsWith('http')) {
+    if (path.startsWith('data:') || path.startsWith('http') || path.startsWith('file://')) {
       setUrl(path);
       return;
     }

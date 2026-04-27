@@ -1,4 +1,6 @@
 import { supabase } from './supabase';
+import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 
 const BUCKET = 'avatars';
 const SIGNED_URL_EXPIRY = 3600;
@@ -8,22 +10,39 @@ export function isStoragePath(value: string | null | undefined): boolean {
   if (!value) return false;
   if (value.startsWith('data:')) return false;
   if (value.startsWith('http')) return false;
+  if (value.startsWith('file://')) return false;
   return true;
+}
+
+async function uriToUploadable(uri: string, contentType: string): Promise<Blob | Uint8Array> {
+  if (Platform.OS !== 'web' && uri.startsWith('file://')) {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+  const response = await fetch(uri);
+  return response.blob();
 }
 
 export async function uploadAvatar(userId: string, uri: string): Promise<string> {
   console.log('[Storage] Uploading avatar for user:', userId);
-  const response = await fetch(uri);
-  const blob = await response.blob();
 
   const fileExt = uri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
   const safeExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt) ? fileExt : 'jpg';
   const path = `${userId}/avatar-${Date.now()}.${safeExt}`;
   const contentType = safeExt === 'png' ? 'image/png' : 'image/jpeg';
 
+  const uploadData = await uriToUploadable(uri, contentType);
+
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, blob, { contentType, upsert: true });
+    .upload(path, uploadData, { contentType, upsert: true });
 
   if (error) {
     console.error('[Storage] Upload error:', error.message);
@@ -36,17 +55,17 @@ export async function uploadAvatar(userId: string, uri: string): Promise<string>
 
 export async function uploadPostImage(userId: string, uri: string): Promise<{ path: string; url: string }> {
   console.log('[Storage] Uploading post image for user:', userId);
-  const response = await fetch(uri);
-  const blob = await response.blob();
 
   const fileExt = uri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'jpg';
   const safeExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt) ? fileExt : 'jpg';
   const path = `${POST_IMAGE_PREFIX}/${userId}/${Date.now()}.${safeExt}`;
   const contentType = safeExt === 'png' ? 'image/png' : 'image/jpeg';
 
+  const uploadData = await uriToUploadable(uri, contentType);
+
   const { data, error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, blob, { contentType, upsert: false });
+    .upload(path, uploadData, { contentType, upsert: false });
 
   if (error) {
     console.error('[Storage] Post image upload error:', error.message);

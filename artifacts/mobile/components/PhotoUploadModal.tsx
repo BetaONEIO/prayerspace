@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Modal, Animated, ActivityIndicator, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Camera, ImageIcon, Trash2, X } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -47,18 +48,30 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
     }
   }, []);
 
-  const openCropper = useCallback((uri: string) => { setCropUri(uri); setShowCropper(true); }, []);
+  const openCropper = useCallback(async (uri: string) => {
+    try {
+      const resized = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1500 } }],
+        { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setCropUri(resized.uri);
+    } catch {
+      setCropUri(uri);
+    }
+    setShowCropper(true);
+  }, []);
 
   const handleTakePhoto = useCallback(async () => {
     if (Platform.OS !== "web") { const granted = await requestPermission("camera"); if (!granted) return; }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: "images", allowsEditing: false, quality: 1 });
-    if (!result.canceled && result.assets[0]) openCropper(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) await openCropper(result.assets[0].uri);
   }, [requestPermission, openCropper]);
 
   const handleChooseFromLibrary = useCallback(async () => {
     if (Platform.OS !== "web") { const granted = await requestPermission("library"); if (!granted) return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: "images", allowsEditing: false, quality: 1 });
-    if (!result.canceled && result.assets[0]) openCropper(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) await openCropper(result.assets[0].uri);
   }, [requestPermission, openCropper]);
 
   const handleCropConfirm = useCallback((uri: string) => { setShowCropper(false); setCropUri(null); onImageSelected(uri); }, [onImageSelected]);
