@@ -1428,15 +1428,13 @@ export default function JournalScreen() {
               <Text style={styles.personInitial}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
           )}
-          {prayedToday ? (
-            <View style={[styles.personPrayedBadge, isRecentlyPrayed && styles.personPrayedBadgeRepeat]}>
-              <Check size={8} color="#fff" strokeWidth={3} />
-            </View>
-          ) : (
-            <View style={styles.personHeartBadge}>
-              <Heart size={7} color="#fff" fill="#fff" />
-            </View>
-          )}
+          <View style={[
+            styles.personHeartBadge,
+            prayedToday && styles.personHeartBadgePrayed,
+            isRecentlyPrayed && styles.personPrayedBadgeRepeat,
+          ]}>
+            <Heart size={7} color="#fff" fill="#fff" />
+          </View>
         </Animated.View>
         <Text
           style={[styles.personName, prayedToday && styles.personNamePrayed]}
@@ -1539,26 +1537,14 @@ export default function JournalScreen() {
         <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.yourPeopleTabHeader}>
             <Text style={styles.yourPeopleTabTitle}>Your People</Text>
-            <Text style={styles.yourPeopleTabSub}>Take a moment to pray through your people</Text>
+            <Text style={styles.yourPeopleTabSub}>
+              {yourPeople.length === 0
+                ? "Add people you carry in prayer"
+                : prayedCount > 0 && prayedCount === yourPeople.length
+                ? "You've held everyone in prayer today ✦"
+                : "Spend time with these today"}
+            </Text>
           </View>
-
-          {yourPeople.length > 0 && (
-            <View style={styles.prayerProgressRow}>
-              <View style={styles.prayerProgressTrack}>
-                <View
-                  style={[
-                    styles.prayerProgressFill,
-                    { width: `${Math.round((prayedCount / yourPeople.length) * 100)}%` as `${number}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.prayerProgressText}>
-                {prayedCount === yourPeople.length
-                  ? "Everyone prayed for today ✦"
-                  : `${prayedCount} of ${yourPeople.length} today`}
-              </Text>
-            </View>
-          )}
 
           {yourPeople.length > 0 && (
             <Pressable
@@ -1601,26 +1587,21 @@ export default function JournalScreen() {
                     key={item.id}
                     style={[styles.personListRow, prayedToday && styles.personListRowPrayed]}
                     onPress={() => {
-                      if (prayedToday) {
-                        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setRecentlyPrayedId(item.id);
-                        Animated.sequence([
-                          Animated.spring(repeatPulse, { toValue: 1.1, useNativeDriver: true, tension: 200, friction: 8 }),
-                          Animated.spring(repeatPulse, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }),
-                        ]).start(() => setRecentlyPrayedId(null));
-                        markPersonPrayed(item.id);
-                        return;
+                      if (Platform.OS !== "web") {
+                        void Haptics.impactAsync(
+                          prayedToday ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
+                        );
                       }
-                      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       markPersonPrayed(item.id);
                       setRecentlyPrayedId(item.id);
-                      setTimeout(() => setRecentlyPrayedId(null), 1400);
-                      console.log("[Journal] Prayed for:", item.name);
+                      Animated.sequence([
+                        Animated.spring(repeatPulse, { toValue: 1.08, useNativeDriver: true, tension: 180, friction: 8 }),
+                        Animated.spring(repeatPulse, { toValue: 1, useNativeDriver: true, tension: 180, friction: 8 }),
+                      ]).start(() => setTimeout(() => setRecentlyPrayedId(null), 600));
                     }}
                     onLongPress={() => {
                       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                       removeYourPerson(item.id);
-                      console.log("[Journal] Removed from Your People:", item.name);
                     }}
                   >
                     <Animated.View
@@ -1639,15 +1620,9 @@ export default function JournalScreen() {
                           <Text style={styles.personListInitial}>{item.name.charAt(0).toUpperCase()}</Text>
                         </View>
                       )}
-                      {prayedToday ? (
-                        <View style={styles.personListPrayedBadge}>
-                          <Check size={8} color="#fff" strokeWidth={3} />
-                        </View>
-                      ) : (
-                        <View style={styles.personListHeartBadge}>
-                          <Heart size={7} color="#fff" fill="#fff" />
-                        </View>
-                      )}
+                      <View style={[styles.personListHeartBadge, prayedToday && styles.personListHeartBadgePrayed]}>
+                        <Heart size={7} color="#fff" fill="#fff" />
+                      </View>
                     </Animated.View>
                     <View style={styles.personListInfo}>
                       <Text
@@ -1661,18 +1636,17 @@ export default function JournalScreen() {
                           {item.prayerFocus}
                         </Text>
                       ) : (
-                        <Text style={styles.personListFocusEmpty}>No prayer focus added</Text>
+                        <Text style={styles.personListFocusEmpty}>Add a prayer focus</Text>
                       )}
                     </View>
-                    {prayedToday ? (
-                      <View style={styles.personListPrayedIndicator}>
-                        <Check size={14} color="#27A06E" strokeWidth={2.5} />
-                      </View>
-                    ) : (
-                      <View style={styles.personListPrayBtn}>
-                        <Text style={styles.personListPrayBtnText}>Pray</Text>
-                      </View>
-                    )}
+                    <View style={styles.personListHeartAction}>
+                      <Heart
+                        size={18}
+                        color={prayedToday ? "#27A06E" : colors.border}
+                        fill={prayedToday ? "#27A06E22" : "transparent"}
+                        strokeWidth={1.5}
+                      />
+                    </View>
                   </Pressable>
                 );
               })}
@@ -2013,6 +1987,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: "center" as const, justifyContent: "center" as const,
     borderWidth: 2, borderColor: colors.background,
   },
+  personHeartBadgePrayed: {
+    backgroundColor: "#27A06E",
+  },
   personPrayedBadge: {
     position: "absolute" as const, bottom: -3, right: -3,
     width: 18, height: 18, borderRadius: 9,
@@ -2024,8 +2001,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.primary,
   },
   personAvatarPrayed: {
-    borderColor: "#27A06E60",
-    opacity: 0.75,
+    borderColor: "#27A06E55",
   },
   personAvatarRepeat: {
     borderColor: colors.primary + "80",
@@ -2364,8 +2340,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     elevation: 1,
   },
   personListRowPrayed: {
-    borderColor: "#27A06E50",
+    borderColor: "#27A06E40",
     backgroundColor: colors.card,
+    shadowColor: "#27A06E",
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
   },
   personListAvatarWrap: {
     position: "relative" as const,
@@ -2379,8 +2359,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: colors.primary + "40",
   },
   personListAvatarPrayed: {
-    borderColor: "#27A06E40",
-    opacity: 0.8,
+    borderColor: "#27A06E50",
   },
   personListAvatarFallback: {
     width: 52,
@@ -2427,6 +2406,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.card,
   },
+  personListHeartBadgePrayed: {
+    backgroundColor: "#27A06E",
+  },
+  personListHeartAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    flexShrink: 0,
+  },
   personListInfo: {
     flex: 1,
     gap: 3,
@@ -2438,7 +2428,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     letterSpacing: -0.1,
   },
   personListNamePrayed: {
-    color: colors.mutedForeground,
+    color: "#27A06E",
   },
   personListFocus: {
     fontSize: 13,
