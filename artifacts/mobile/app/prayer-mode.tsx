@@ -261,6 +261,7 @@ export default function PrayerModeScreen() {
         isTimeSensitive: String(isTimeSensitive),
         isAnonymous: String(isAnonymous),
         eventDate: String(eventDate ?? ""),
+        photoUrls: JSON.stringify(attachedPhotos),
       },
     });
   }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, router, setDraftPrayerText, setFeedPostMeta]);

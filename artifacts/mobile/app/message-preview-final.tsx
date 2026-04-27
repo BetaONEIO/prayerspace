@@ -229,12 +229,13 @@ export default function MessagePreviewFinalScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const CHANNEL_META = useMemo(() => getChannelMeta(colors), [colors]);
   const router = useRouter();
-  const { sendToFeed: sendToFeedParam, isTimeSensitive: isTimeSensitiveParam, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam } = useLocalSearchParams<{
+  const { sendToFeed: sendToFeedParam, isTimeSensitive: isTimeSensitiveParam, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
     sendToFeed?: string;
     isTimeSensitive?: string;
     isAnonymous?: string;
     eventDate?: string;
     tags?: string;
+    photoUrls?: string;
   }>();
   const isSendToFeed = sendToFeedParam === "true";
   const { selectedRecipients, draftPrayerText, feedPostMeta } = useSelectedRecipients();
@@ -264,7 +265,13 @@ export default function MessagePreviewFinalScreen() {
   const prayerMessage = draftPrayerText?.trim()
     ? draftPrayerText
     : "Praying for peace, strength, and blessing over you today.";
-  const photoUrls = feedPostMeta?.photoUrls ?? [];
+  const photoUrls = useMemo(() => {
+    try {
+      const parsed = photoUrlsParam ? JSON.parse(photoUrlsParam) : [];
+      if (Array.isArray(parsed)) return parsed.filter((item): item is string => typeof item === "string");
+    } catch {}
+    return feedPostMeta?.photoUrls ?? [];
+  }, [feedPostMeta?.photoUrls, photoUrlsParam]);
 
   const safeIdx = Math.min(selectedIdx, Math.max(recipients.length - 1, 0));
   const selected = recipients[safeIdx] || { id: "0", name: "Friend", avatar: PLACEHOLDER_AVATARS[0], channel: "app" as DeliveryChannel };

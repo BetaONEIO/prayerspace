@@ -26,13 +26,14 @@ export default function DeliveryExplanationScreen() {
   const [hideChannels, setHideChannels] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const channelOpacity = useRef(new Animated.Value(1)).current;
-  const { contacts, sendToFeed, isTimeSensitive, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam } = useLocalSearchParams<{
+  const { contacts, sendToFeed, isTimeSensitive, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
     contacts: string;
     sendToFeed?: string;
     isTimeSensitive?: string;
     isAnonymous?: string;
     eventDate?: string;
     tags?: string;
+    photoUrls?: string;
   }>();
   const isSendToFeed = sendToFeed === "true";
   const { selectedRecipients, draftPrayerText } = useSelectedRecipients();
@@ -86,6 +87,7 @@ export default function DeliveryExplanationScreen() {
         isAnonymous: isAnonymousParam ?? "false",
         eventDate: eventDateParam ?? "",
         tags: tagsParam ?? "[]",
+        photoUrls: photoUrlsParam ?? "[]",
       },
     });
   };
