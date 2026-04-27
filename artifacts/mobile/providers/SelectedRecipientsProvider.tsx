@@ -74,6 +74,7 @@ export type FeedPostMeta = {
   isAnonymous: boolean;
   tags: string[];
   eventDate: string | null;
+  photoUrls: string[];
 };
 
 export const [SelectedRecipientsProvider, useSelectedRecipients] = createContextHook(() => {

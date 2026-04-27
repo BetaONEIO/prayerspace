@@ -264,6 +264,7 @@ export default function MessagePreviewFinalScreen() {
   const prayerMessage = draftPrayerText?.trim()
     ? draftPrayerText
     : "Praying for peace, strength, and blessing over you today.";
+  const photoUrls = feedPostMeta?.photoUrls ?? [];
 
   const safeIdx = Math.min(selectedIdx, Math.max(recipients.length - 1, 0));
   const selected = recipients[safeIdx] || { id: "0", name: "Friend", avatar: PLACEHOLDER_AVATARS[0], channel: "app" as DeliveryChannel };
@@ -302,6 +303,7 @@ export default function MessagePreviewFinalScreen() {
         is_time_sensitive: isTimeSensitive,
         audience: isSendToFeed ? "everyone" : "private",
         tags,
+        image_url: photoUrls[0] ?? null,
         event_date: eventDate ?? null,
       });
       if (error) {
@@ -331,6 +333,7 @@ export default function MessagePreviewFinalScreen() {
         postedAt: "Just now",
         isTimeSensitive,
         eventDate,
+        photoUrls,
         content: prayerMessage,
         prayerCount: 0,
         commentCount: 0,
@@ -340,7 +343,7 @@ export default function MessagePreviewFinalScreen() {
       console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags);
     }
     router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
-  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam]);
+  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);
 
   return (
     <>

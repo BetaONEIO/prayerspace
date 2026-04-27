@@ -250,6 +250,7 @@ export default function PrayerModeScreen() {
       isAnonymous,
       tags: selectedTags,
       eventDate: eventDate ?? null,
+      photoUrls: attachedPhotos,
     });
     router.push({
       pathname: "/delivery-explanation" as never,
