@@ -11,7 +11,9 @@ import {
   ActivityIndicator,
   Platform,
   Image as RNImage,
+  StatusBar,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Check, RotateCcw } from "lucide-react-native";
@@ -44,6 +46,7 @@ export default function InAppCropper({
   onCancel,
 }: InAppCropperProps) {
   const themeColors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [cropAreaH, setCropAreaH] = useState(SH * 0.65);
@@ -114,22 +117,20 @@ export default function InAppCropper({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
         gsx.current = cx.current;
         gsy.current = cy.current;
         gss.current = cs.current;
         pinchStarted.current = false;
-        const touches = evt.nativeEvent.touches;
-        if (touches.length >= 2) {
-          gsd.current = getTouchDistance(touches[0], touches[1]) || 1;
-          pinchStarted.current = true;
-        }
       },
       onPanResponderMove: (evt, gs) => {
         const touches = evt.nativeEvent.touches;
         let newUs = cs.current;
 
-        if (touches.length >= 2) {
+        if (touches && touches.length >= 2) {
           const d = getTouchDistance(touches[0], touches[1]) || 1;
           if (!pinchStarted.current) {
             gsd.current = d;
@@ -141,6 +142,12 @@ export default function InAppCropper({
           newUs = Math.max(1, gss.current * (d / gsd.current));
           cs.current = newUs;
           scaleAnim.setValue(newUs);
+        } else {
+          if (pinchStarted.current) {
+            pinchStarted.current = false;
+            gsx.current = cx.current;
+            gsy.current = cy.current;
+          }
         }
 
         const totalScale = bScale.current * newUs;
@@ -149,8 +156,8 @@ export default function InAppCropper({
         const mx = Math.max(0, (dw - CROP_SIZE) / 2);
         const my = Math.max(0, (dh - CROP_SIZE) / 2);
 
-        const rawX = gsx.current + gs.dx;
-        const rawY = gsy.current + gs.dy;
+        const rawX = touches && touches.length >= 2 ? cx.current : gsx.current + gs.dx;
+        const rawY = touches && touches.length >= 2 ? cy.current : gsy.current + gs.dy;
         const newCx = Math.min(mx, Math.max(-mx, rawX));
         const newCy = Math.min(my, Math.max(-my, rawY));
 
@@ -159,7 +166,9 @@ export default function InAppCropper({
         translateX.setValue(newCx);
         translateY.setValue(newCy);
       },
-      onPanResponderRelease: () => {},
+      onPanResponderRelease: () => {
+        pinchStarted.current = false;
+      },
     })
   ).current;
 
@@ -235,7 +244,7 @@ export default function InAppCropper({
       statusBarTranslucent
     >
       <View style={styles.root}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Pressable
             style={styles.cancelBtn}
             onPress={onCancel}
@@ -353,7 +362,7 @@ export default function InAppCropper({
           )}
         </View>
 
-        <View style={styles.bottom}>
+        <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom + 16, 32) }]}>
           <Text style={styles.hint}>Pinch to zoom  ·  Drag to reposition</Text>
 
           <Pressable
@@ -387,7 +396,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0a0a0a",
   },
   header: {
-    paddingTop: Platform.OS === "ios" ? 58 : 38,
+    paddingTop: 12,
     paddingHorizontal: 20,
     paddingBottom: 14,
     flexDirection: "row" as const,
@@ -476,7 +485,7 @@ const styles = StyleSheet.create({
   },
   bottom: {
     paddingHorizontal: 24,
-    paddingBottom: Platform.OS === "ios" ? 48 : 32,
+    paddingBottom: 32,
     paddingTop: 18,
     gap: 14,
     backgroundColor: "#0a0a0a",

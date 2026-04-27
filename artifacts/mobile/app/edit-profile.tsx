@@ -74,6 +74,7 @@ export default function EditProfileScreen() {
     try {
       const publicUrl = await uploadImageToSupabase(uri);
       if (publicUrl) await updateProfile({ avatar_url: publicUrl });
+      setLocalAvatarUri(null);
     } catch (err) {
       Alert.alert("Upload Failed", err instanceof Error ? err.message : "Upload failed.");
       setLocalAvatarUri(null);

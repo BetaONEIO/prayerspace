@@ -379,9 +379,10 @@ function createStyles(colors: ThemeColors) {
     profileAvatar: {
       width: 60,
       height: 60,
-      borderRadius: 16,
+      borderRadius: 9999,
       borderWidth: 2,
       borderColor: colors.card,
+      overflow: "hidden" as const,
     },
     profileInfo: {
       flex: 1,

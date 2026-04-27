@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Modal, Animated, ActivityIndicator, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Camera, ImageIcon, Trash2, X } from "lucide-react-native";
@@ -18,6 +19,7 @@ interface PhotoUploadModalProps {
 
 export default function PhotoUploadModal({ visible, onClose, onImageSelected, onRemovePhoto, hasExistingPhoto = false, isUploading = false }: PhotoUploadModalProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -82,7 +84,7 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
       <Modal visible={visible && !showCropper} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
         <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-          <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+          <Animated.View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom + 16, 32), transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.handle} />
             <View style={styles.header}>
               <Text style={styles.title}>Profile Photo</Text>
@@ -127,7 +129,7 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingBottom: 40, paddingHorizontal: 24, paddingTop: 12 },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 12 },
     handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
     title: { fontSize: 20, fontWeight: "700" as const, color: colors.foreground },
