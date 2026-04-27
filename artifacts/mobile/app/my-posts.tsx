@@ -406,7 +406,7 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
       </View>
 
       {post.updateTag && (
-        <View style={[styles.updateTagBadge, { backgroundColor: UPDATE_TAG_CONFIG[post.updateTag].bg, borderWidth: 1, borderColor: UPDATE_TAG_CONFIG[post.updateTag].color + "25" }]}>
+        <View style={[styles.updateTagBadge, { backgroundColor: UPDATE_TAG_CONFIG[post.updateTag].bg }]}>
           {post.updateTag === "still_need_prayer" && (
             <HeartHandshake size={12} color={UPDATE_TAG_CONFIG[post.updateTag].color} />
           )}
@@ -470,7 +470,7 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
             <Text style={styles.updateBtnText}>Share Update</Text>
           </Pressable>
           <Pressable style={styles.answeredBtn} onPress={onMarkAnswered}>
-            <CheckCircle size={15} color="#34C759" />
+            <CheckCircle size={15} color="#fff" />
             <Text style={styles.answeredBtnText}>Answered</Text>
           </Pressable>
         </View>
@@ -1020,16 +1020,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 7,
-    backgroundColor: ANSWERED_GREEN_BG,
+    backgroundColor: ANSWERED_GREEN,
     borderRadius: 14,
     paddingVertical: 11,
-    borderWidth: 1,
-    borderColor: ANSWERED_GREEN + "35",
   },
   answeredBtnText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: ANSWERED_GREEN,
+    color: "#fff",
   },
   emptyState: {
     alignItems: "center" as const,
