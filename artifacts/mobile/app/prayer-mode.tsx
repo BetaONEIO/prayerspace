@@ -359,7 +359,7 @@ export default function PrayerModeScreen() {
           </View>
         )}
 
-        {attachedPhotos.length > 0 && activeTab === "text" && (
+        {attachedPhotos.length > 0 && (
           <View style={styles.photosRow}>
             {attachedPhotos.map((uri) => (
               <View key={uri} style={styles.photoThumb}>
@@ -503,6 +503,15 @@ export default function PrayerModeScreen() {
               )}
             </View>
           </View>
+        )}
+
+        {activeTab === "voice" && attachedPhotos.length < 4 && (
+          <Pressable style={styles.voiceAttachPhotoBtn} onPress={handleAttachPhoto}>
+            <ImagePlus size={15} color={colors.primary} />
+            <Text style={styles.voiceAttachPhotoBtnText}>
+              {attachedPhotos.length === 0 ? "Attach photo" : "Add another photo"}
+            </Text>
+          </Pressable>
         )}
 
         <View style={styles.optionsRow}>
@@ -1074,6 +1083,25 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "center" as const,
     borderWidth: 1,
     borderColor: colors.primary + "30",
+  },
+  voiceAttachPhotoBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 7,
+    alignSelf: "flex-start" as const,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.primary + "15",
+    borderWidth: 1,
+    borderColor: colors.primary + "30",
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  voiceAttachPhotoBtnText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: colors.primary,
   },
   aiParsingBadge: {},
   aiParsingText: {
