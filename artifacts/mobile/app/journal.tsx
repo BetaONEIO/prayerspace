@@ -118,7 +118,7 @@ function formatTime(timestamp: number): string {
 interface AddPersonModalProps {
   visible: boolean;
   onClose: () => void;
-  onAdd: (person: Omit<YourPerson, "id">) => void;
+  onAdd: (people: Array<Omit<YourPerson, "id">>) => void;
   existingPeople: YourPerson[];
 }
 
@@ -128,12 +128,10 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
   const addStyles = useMemo(() => createAddStyles(colors), [colors]);
   const [search, setSearch] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"search" | "custom">("search");
-  const [prayerFocus, setPrayerFocus] = useState<string>("");
+  const [prayerFocuses, setPrayerFocuses] = useState<Record<string, string>>({});
   const [step, setStep] = useState<"select" | "focus">("select");
-  const [pendingName, setPendingName] = useState<string>("");
-  const [pendingAvatar, setPendingAvatar] = useState<string | undefined>(undefined);
 
   const filteredRecipients = useMemo(() =>
     ALL_RECIPIENTS.filter(
@@ -144,44 +142,56 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
     [search, existingPeople]
   );
 
+  const selectedContacts = useMemo(() =>
+    ALL_RECIPIENTS.filter((r) => selectedIds.has(r.id)),
+    [selectedIds]
+  );
+
   const handleClose = useCallback(() => {
     setSearch("");
     setCustomName("");
-    setSelected(null);
+    setSelectedIds(new Set());
     setMode("search");
-    setPrayerFocus("");
+    setPrayerFocuses({});
     setStep("select");
-    setPendingName("");
-    setPendingAvatar(undefined);
     onClose();
   }, [onClose]);
 
+  const canNext = mode === "custom" ? customName.trim().length > 0 : selectedIds.size > 0;
+
   const handleNext = useCallback(() => {
-    if (mode === "custom") {
-      if (!customName.trim()) return;
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setPendingName(customName.trim());
-      setPendingAvatar(undefined);
-    } else if (selected) {
-      const recipient = ALL_RECIPIENTS.find((r) => r.id === selected);
-      if (!recipient) return;
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setPendingName(recipient.name);
-      setPendingAvatar(recipient.avatar);
-    } else {
-      return;
-    }
+    if (!canNext) return;
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setStep("focus");
-  }, [mode, customName, selected]);
+  }, [canNext]);
 
   const handleConfirm = useCallback(() => {
-    if (!pendingName.trim()) return;
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onAdd({ name: pendingName, avatar: pendingAvatar, prayerFocus: prayerFocus.trim() || undefined });
+    if (mode === "custom") {
+      if (!customName.trim()) return;
+      onAdd([{ name: customName.trim(), avatar: undefined, prayerFocus: prayerFocuses["__custom__"]?.trim() || undefined }]);
+    } else {
+      const people = selectedContacts.map((r) => ({
+        name: r.name,
+        avatar: r.avatar,
+        prayerFocus: prayerFocuses[r.id]?.trim() || undefined,
+      }));
+      onAdd(people);
+    }
     handleClose();
-  }, [pendingName, pendingAvatar, prayerFocus, onAdd, handleClose]);
+  }, [mode, customName, selectedContacts, prayerFocuses, onAdd, handleClose]);
 
-  const canConfirm = mode === "custom" ? customName.trim().length > 0 : selected !== null;
+  const toggleSelect = useCallback((id: string) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selCount = mode === "search" ? selectedIds.size : (customName.trim() ? 1 : 0);
+  const btnLabel = selCount > 1 ? `Next (${selCount} selected)` : "Next";
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
@@ -232,7 +242,6 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                     autoFocus
                   />
                 </View>
-
                 {filteredRecipients.length === 0 ? (
                   <View style={addStyles.emptyState}>
                     <Users size={36} color={colors.border} />
@@ -241,15 +250,12 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                 ) : (
                   <ScrollView contentContainerStyle={addStyles.list} showsVerticalScrollIndicator={false}>
                     {filteredRecipients.map((item) => {
-                      const isSelected = selected === item.id;
+                      const isSelected = selectedIds.has(item.id);
                       return (
                         <Pressable
                           key={item.id}
                           style={[addStyles.contactRow, isSelected && addStyles.contactRowSelected]}
-                          onPress={() => {
-                            if (Platform.OS !== "web") void Haptics.selectionAsync();
-                            setSelected(isSelected ? null : item.id);
-                          }}
+                          onPress={() => toggleSelect(item.id)}
                         >
                           {item.avatar ? (
                             <Image source={{ uri: item.avatar }} style={addStyles.contactAvatar} />
@@ -287,7 +293,7 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                     onChangeText={setCustomName}
                     autoFocus
                     returnKeyType="next"
-                    onSubmitEditing={canConfirm ? handleNext : undefined}
+                    onSubmitEditing={canNext ? handleNext : undefined}
                   />
                   <Text style={addStyles.customHint}>
                     You can add anyone — family, friends, or people you've committed to pray for.
@@ -298,11 +304,11 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
 
             <View style={[addStyles.footer, { paddingBottom: insets.bottom + 16 }]}>
               <Pressable
-                style={[addStyles.addBtn, !canConfirm && addStyles.addBtnDisabled]}
+                style={[addStyles.addBtn, !canNext && addStyles.addBtnDisabled]}
                 onPress={handleNext}
-                disabled={!canConfirm}
+                disabled={!canNext}
               >
-                <Text style={addStyles.addBtnText}>Next</Text>
+                <Text style={addStyles.addBtnText}>{btnLabel}</Text>
                 <ArrowRight size={18} color="#fff" />
               </Pressable>
             </View>
@@ -312,37 +318,65 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             style={{ flex: 1 }}
           >
-            <View style={addStyles.focusStep}>
-              <View style={addStyles.focusPersonRow}>
-                {pendingAvatar ? (
-                  <Image source={{ uri: pendingAvatar }} style={addStyles.focusAvatar} />
-                ) : (
-                  <View style={addStyles.focusAvatarFallback}>
-                    <Text style={addStyles.focusAvatarInitial}>{pendingName.charAt(0).toUpperCase()}</Text>
-                  </View>
-                )}
-                <Text style={addStyles.focusPersonName}>{pendingName}</Text>
-              </View>
-
+            <ScrollView
+              contentContainerStyle={addStyles.focusStep}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
               <Text style={addStyles.focusQuestion}>
-                Is there anything specific{"\n"}to pray for {pendingName.split(" ")[0]}?
+                {mode === "custom" || selectedContacts.length === 1
+                  ? `Anything specific to pray\nfor ${(mode === "custom" ? customName : selectedContacts[0]?.name ?? "").split(" ")[0]}?`
+                  : "Anything specific to pray\nfor each person?"}
               </Text>
-
-              <TextInput
-                style={addStyles.focusTextArea}
-                placeholder="e.g. health, wisdom, family, peace..."
-                placeholderTextColor={colors.mutedForeground + "80"}
-                value={prayerFocus}
-                onChangeText={setPrayerFocus}
-                multiline
-                autoFocus
-                textAlignVertical="top"
-              />
-
               <Text style={addStyles.focusHint}>
                 Optional — helps you pray with intention. Only visible to you.
               </Text>
-            </View>
+
+              {mode === "custom" ? (
+                <View style={addStyles.focusCard}>
+                  <View style={addStyles.focusPersonRow}>
+                    <View style={addStyles.focusAvatarFallback}>
+                      <Text style={addStyles.focusAvatarInitial}>{customName.trim().charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <Text style={addStyles.focusPersonName}>{customName.trim()}</Text>
+                  </View>
+                  <TextInput
+                    style={addStyles.focusTextArea}
+                    placeholder="What would you like to pray for?"
+                    placeholderTextColor={colors.mutedForeground + "80"}
+                    value={prayerFocuses["__custom__"] ?? ""}
+                    onChangeText={(t) => setPrayerFocuses((prev) => ({ ...prev, __custom__: t }))}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </View>
+              ) : (
+                selectedContacts.map((r) => (
+                  <View key={r.id} style={addStyles.focusCard}>
+                    <View style={addStyles.focusPersonRow}>
+                      {r.avatar ? (
+                        <Image source={{ uri: r.avatar }} style={addStyles.focusAvatar} />
+                      ) : (
+                        <View style={addStyles.focusAvatarFallback}>
+                          <Text style={addStyles.focusAvatarInitial}>{r.initials ?? r.name.charAt(0)}</Text>
+                        </View>
+                      )}
+                      <Text style={addStyles.focusPersonName}>{r.name}</Text>
+                    </View>
+                    <TextInput
+                      style={addStyles.focusTextArea}
+                      placeholder="What would you like to pray for?"
+                      placeholderTextColor={colors.mutedForeground + "80"}
+                      value={prayerFocuses[r.id] ?? ""}
+                      onChangeText={(t) => setPrayerFocuses((prev) => ({ ...prev, [r.id]: t }))}
+                      multiline
+                      textAlignVertical="top"
+                    />
+                  </View>
+                ))
+              )}
+              <View style={{ height: 120 }} />
+            </ScrollView>
 
             <View style={[addStyles.footer, { paddingBottom: insets.bottom + 16 }]}>
               <Pressable style={addStyles.addBtn} onPress={handleConfirm}>
@@ -1028,20 +1062,22 @@ const createAddStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   focusStep: {
-    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 24,
-    gap: 20,
+    gap: 16,
+  },
+  focusCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border + "80",
   },
   focusPersonRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 14,
-    backgroundColor: colors.secondary + "80",
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 12,
   },
   focusAvatar: {
     width: 48, height: 48, borderRadius: 14,
@@ -1192,6 +1228,8 @@ export default function JournalScreen() {
   const [dismissedLatestId, setDismissedLatestId] = useState<string | null>(null);
   const [addPersonVisible, setAddPersonVisible] = useState<boolean>(false);
   const [addFromRequest, setAddFromRequest] = useState<{ name: string; avatar?: string } | null>(null);
+  const [addedToast, setAddedToast] = useState<string | null>(null);
+  const addedToastAnim = useRef(new Animated.Value(0)).current;
   const [selectionVisible, setSelectionVisible] = useState<boolean>(false);
   const [prayerActive, setPrayerActive] = useState<boolean>(false);
   const [prayerSelectedIds, setPrayerSelectedIds] = useState<string[]>([]);
@@ -1271,12 +1309,19 @@ export default function JournalScreen() {
 
   const latestPrayingForId = prayingForEntries.length > 0 ? prayingForEntries[0].id : null;
 
-  const handleAddYourPerson = useCallback((person: Omit<YourPerson, "id">) => {
-    addYourPerson(person);
+  const handleAddYourPerson = useCallback((people: Array<Omit<YourPerson, "id">>) => {
+    people.forEach((p) => addYourPerson(p));
     setAddFromRequest(null);
     setAddPersonVisible(false);
-    console.log("[Journal] Added to Your People:", person.name);
-  }, [addYourPerson]);
+    const msg = people.length === 1 ? `Added ${people[0].name.split(" ")[0]} to Your People` : `Added ${people.length} people to Your People`;
+    setAddedToast(msg);
+    addedToastAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(addedToastAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.delay(2200),
+      Animated.timing(addedToastAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
+    ]).start(() => setAddedToast(null));
+  }, [addYourPerson, addedToastAnim]);
 
   const handleAddFromRequest = useCallback((entry: JournalEntry) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -1841,6 +1886,22 @@ export default function JournalScreen() {
           )}
           <View style={{ height: 40 }} />
         </AutoScrollView>
+      )}
+
+      {addedToast && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.addedToast,
+            {
+              opacity: addedToastAnim,
+              transform: [{ translateY: addedToastAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+            },
+          ]}
+        >
+          <UserPlus size={15} color="#fff" />
+          <Text style={styles.addedToastText}>{addedToast}</Text>
+        </Animated.View>
       )}
     </SafeAreaView>
   );
@@ -2428,5 +2489,27 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: "600" as const,
     color: colors.primary,
+  },
+  addedToast: {
+    position: "absolute" as const,
+    bottom: 24,
+    alignSelf: "center" as const,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 999,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  addedToastText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
 });
