@@ -17,7 +17,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
-import { Image } from "expo-image";
+import { Image, ImageSource } from "expo-image";
+const ANON_AVATAR = require("../../assets/images/anon_user.png") as ImageSource;
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -595,6 +596,7 @@ export default function CommunityScreen() {
   }, [newUpdateAnim]);
 
   const handleAvatarPress = useCallback((authorId: string) => {
+    if (authorId === "anonymous") return;
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     router.push(`/user/${authorId}`);
   }, [router]);
@@ -710,7 +712,7 @@ export default function CommunityScreen() {
       communityId: activeCommunity.id,
       authorId: isAnonymous ? "anonymous" : currentUserId,
       authorName: isAnonymous ? "Anonymous" : "Sarah",
-      authorAvatar: isAnonymous ? "https://randomuser.me/api/portraits/lego/1.jpg" : "https://randomuser.me/api/portraits/women/68.jpg",
+      authorAvatar: isAnonymous ? "" : "https://randomuser.me/api/portraits/women/68.jpg",
       category: tags.length > 0 ? tags[0].replace(/_/g, ' ').toUpperCase() : "UPDATE",
       tags: tags,
       timeLabel: "JUST NOW",
@@ -2455,12 +2457,20 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
       )}
 
       <View style={styles.cardHeader}>
-        <Pressable onPress={() => onAvatarPress(post.authorId)}>
+        <Pressable
+          onPress={() => onAvatarPress(post.authorId)}
+          disabled={post.authorId === "anonymous"}
+        >
           <View style={styles.cardAvatarWrapper}>
-            <Image source={{ uri: post.authorAvatar }} style={styles.cardAvatar} />
-            <View style={styles.cardAvatarHeart}>
-              <Text style={styles.cardAvatarHeartEmoji}>🤍</Text>
-            </View>
+            <Image
+              source={post.authorId === "anonymous" ? ANON_AVATAR : { uri: post.authorAvatar }}
+              style={styles.cardAvatar}
+            />
+            {post.authorId !== "anonymous" && (
+              <View style={styles.cardAvatarHeart}>
+                <Text style={styles.cardAvatarHeartEmoji}>🤍</Text>
+              </View>
+            )}
           </View>
         </Pressable>
         <View style={styles.cardAuthorBlock}>
