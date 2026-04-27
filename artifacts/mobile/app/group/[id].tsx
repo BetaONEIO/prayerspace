@@ -903,11 +903,23 @@ function SwipeableMessage({
   const iconScale = translateX.interpolate({ inputRange: [0, 40, 70], outputRange: [0.6, 0.85, 1] });
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center" }}>
-      <Animated.View style={[styles.swipeReplyIcon, { opacity: iconOpacity, transform: [{ scale: iconScale }] }]}>
+    <View style={{ overflow: "visible" }}>
+      <Animated.View
+        style={[
+          styles.swipeReplyIcon,
+          {
+            position: "absolute",
+            left: -44,
+            top: "50%",
+            marginTop: -18,
+            opacity: iconOpacity,
+            transform: [{ scale: iconScale }],
+          },
+        ]}
+      >
         <Reply size={18} color={colors.primary} />
       </Animated.View>
-      <Animated.View style={{ flex: 1, transform: [{ translateX }] }} {...panResponder.panHandlers}>
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
         {children}
       </Animated.View>
     </View>
