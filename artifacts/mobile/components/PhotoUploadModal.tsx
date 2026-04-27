@@ -24,6 +24,7 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [cropUri, setCropUri] = useState<string | null>(null);
+  const [cropDimensions, setCropDimensions] = useState<{ width: number; height: number } | null>(null);
   const [showCropper, setShowCropper] = useState(false);
 
   useEffect(() => {
@@ -58,8 +59,10 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
         { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG }
       );
       setCropUri(resized.uri);
+      setCropDimensions({ width: resized.width, height: resized.height });
     } catch {
       setCropUri(uri);
+      setCropDimensions(null);
     }
     setShowCropper(true);
   }, []);
@@ -76,8 +79,8 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
     if (!result.canceled && result.assets[0]) await openCropper(result.assets[0].uri);
   }, [requestPermission, openCropper]);
 
-  const handleCropConfirm = useCallback((uri: string) => { setShowCropper(false); setCropUri(null); onImageSelected(uri); }, [onImageSelected]);
-  const handleCropCancel = useCallback(() => { setShowCropper(false); setCropUri(null); }, []);
+  const handleCropConfirm = useCallback((uri: string) => { setShowCropper(false); setCropUri(null); setCropDimensions(null); onImageSelected(uri); }, [onImageSelected]);
+  const handleCropCancel = useCallback(() => { setShowCropper(false); setCropUri(null); setCropDimensions(null); }, []);
 
   return (
     <>
@@ -121,7 +124,7 @@ export default function PhotoUploadModal({ visible, onClose, onImageSelected, on
         </Animated.View>
       </Modal>
 
-      <InAppCropper visible={showCropper} imageUri={cropUri} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
+      <InAppCropper visible={showCropper} imageUri={cropUri} imageWidth={cropDimensions?.width} imageHeight={cropDimensions?.height} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
     </>
   );
 }

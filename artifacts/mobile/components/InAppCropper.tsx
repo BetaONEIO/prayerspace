@@ -35,6 +35,8 @@ function getTouchDistance(
 interface InAppCropperProps {
   visible: boolean;
   imageUri: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
   onConfirm: (uri: string) => void;
   onCancel: () => void;
 }
@@ -42,6 +44,8 @@ interface InAppCropperProps {
 export default function InAppCropper({
   visible,
   imageUri,
+  imageWidth,
+  imageHeight,
   onConfirm,
   onCancel,
 }: InAppCropperProps) {
@@ -83,35 +87,34 @@ export default function InAppCropper({
       scaleAnim.setValue(1);
     };
 
-    if (Platform.OS === "web") {
-      imgW.current = 800;
-      imgH.current = 800;
-      bScale.current = CROP_SIZE / 800;
+    const applyDimensions = (w: number, h: number) => {
+      imgW.current = w;
+      imgH.current = h;
+      bScale.current = Math.max(CROP_SIZE / w, CROP_SIZE / h);
       reset();
       setReady(true);
+    };
+
+    if (Platform.OS === "web") {
+      applyDimensions(imageWidth ?? 800, imageHeight ?? 800);
+      return;
+    }
+
+    if (imageWidth && imageHeight) {
+      applyDimensions(imageWidth, imageHeight);
       return;
     }
 
     RNImage.getSize(
       imageUri,
       (w, h) => {
-        console.log("[InAppCropper] image size:", w, h);
-        imgW.current = w;
-        imgH.current = h;
-        bScale.current = Math.max(CROP_SIZE / w, CROP_SIZE / h);
-        reset();
-        setReady(true);
+        applyDimensions(w, h);
       },
-      (err) => {
-        console.error("[InAppCropper] getSize error:", err);
-        imgW.current = 800;
-        imgH.current = 800;
-        bScale.current = CROP_SIZE / 800;
-        reset();
-        setReady(true);
+      () => {
+        applyDimensions(800, 800);
       }
     );
-  }, [visible, imageUri, translateX, translateY, scaleAnim]);
+  }, [visible, imageUri, imageWidth, imageHeight, translateX, translateY, scaleAnim]);
 
   const panResponder = useRef(
     PanResponder.create({
