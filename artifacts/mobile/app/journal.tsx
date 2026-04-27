@@ -1407,7 +1407,7 @@ export default function JournalScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themecolors.background }]} edges={["top"]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <NavigationDrawer
         visible={drawerVisible}
