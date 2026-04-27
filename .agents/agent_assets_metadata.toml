@@ -1,0 +1,13 @@
+uploads = []
+
+[[generated]]
+id = "u1TavJk-LUi2cf7zqLguR"
+uri = "file://attached_assets/generated_images/anon_avatar.png"
+type = "image"
+title = "anonymous user avatar orange"
+
+[[outputs]]
+id = "8MApNXnAlu8Hw_F6ftD_g"
+uri = "file://attached_assets/generated_images/anon_avatar.png"
+type = "image"
+title = "Anonymous user avatar"
