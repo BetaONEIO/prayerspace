@@ -531,6 +531,7 @@ function AvatarBubble({
   name: string;
   size?: number;
 }) {
+  const colors = useThemeColors();
   const radius = size / 2;
   if (uri) {
     return (

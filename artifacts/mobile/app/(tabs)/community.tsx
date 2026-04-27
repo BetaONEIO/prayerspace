@@ -1150,6 +1150,8 @@ interface CommunitySelectorBannerProps {
 }
 
 function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelectorBannerProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -1219,6 +1221,8 @@ interface ComposerPromptProps {
 }
 
 function ComposerPrompt({ communityName, accentColor, isCommunityTab, onPress }: ComposerPromptProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   return (
     <Pressable
       style={[styles.prayerPrompt, { borderColor: accentColor + "40" }]}
@@ -1248,6 +1252,8 @@ interface NoCommunityEmptyStateProps {
 }
 
 function NoCommunityEmptyState({ onJoin }: NoCommunityEmptyStateProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(28)).current;
 
@@ -1286,6 +1292,8 @@ interface InlineBrowseCommunitiesProps {
 }
 
 function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, onCreateCommunity, onOpenBrowse }: InlineBrowseCommunitiesProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [privateExpanded, setPrivateExpanded] = useState<boolean>(false);
   const [privateCode, setPrivateCode] = useState<string>("");
@@ -1564,6 +1572,8 @@ interface NewUpdatesBannerProps {
 }
 
 function NewUpdatesBanner({ animValue, onPress }: NewUpdatesBannerProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   return (
     <Animated.View
       style={[
@@ -1590,6 +1600,8 @@ function NewUpdatesBanner({ animValue, onPress }: NewUpdatesBannerProps) {
 }
 
 function CommunityEmptyState({ communityName }: CommunityEmptyStateProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconWrap}>
@@ -1613,6 +1625,8 @@ interface BrowseCommunitiesModalProps {
 }
 
 function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewProfile, onClose, onCreateCommunity }: BrowseCommunitiesModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(900)).current;
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -1940,6 +1954,8 @@ function CommunitySwitcherModal({
   onClose,
   onBrowse,
 }: CommunitySwitcherModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -2053,6 +2069,8 @@ function CommunitySwitcherModal({
 }
 
 function MyGroupsContent() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const router = useRouter();
   const [myGroups, setMyGroups] = useState<MyGroup[]>(INITIAL_MY_GROUPS);
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
@@ -2164,6 +2182,8 @@ interface JoinGroupModalProps {
 }
 
 function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const [password, setPassword] = useState<string>("");
   const [matchedGroup, setMatchedGroup] = useState<JoinableGroup | null>(null);
@@ -2354,6 +2374,8 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
 }
 
 function MyRequestsBanner({ onPress }: { onPress: () => void }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const handlePressIn = () =>
     Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 20 }).start();
@@ -2387,6 +2409,8 @@ const UPDATE_TAG_CONFIG: Record<UpdateTag, { label: string; icon: 'prayer' | 'an
 };
 
 function PostImage({ uri }: { uri: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [viewing, setViewing] = useState<boolean>(false);
   return (
     <>
@@ -2416,6 +2440,8 @@ interface FeedCardProps {
 }
 
 function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress }: FeedCardProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
   const isUpdatePost = !!post.originalPost;
 
@@ -2603,6 +2629,8 @@ interface PrayingUsersModalProps {
 }
 
 function PrayingUsersModal({ post, onClose }: PrayingUsersModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -2710,6 +2738,8 @@ function getShareMessage(post: FeedPost): string {
 }
 
 function PrayerShareSheet({ post, isAuthor, onClose }: PrayerShareSheetProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const slideAnim = useRef(new Animated.Value(600)).current;
@@ -2947,6 +2977,8 @@ interface RepostComposerModalProps {
 }
 
 function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposerModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [updateText, setUpdateText] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<UpdateTag | null>(null);
   const [repostImageUri, setRepostImageUri] = useState<string | null>(null);
@@ -3128,6 +3160,8 @@ interface PostActionsModalProps {
 }
 
 function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDelete, onHide, onReport, onShare }: PostActionsModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -3356,6 +3390,8 @@ interface CommentsModalProps {
 }
 
 function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const [inputText, setInputText] = useState<string>("");
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-700)).current;
@@ -3479,6 +3515,8 @@ interface StopPrayingModalProps {
 }
 
 function StopPrayingModal({ authorName, onKeep, onStop }: StopPrayingModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -3521,6 +3559,8 @@ interface CreateCommunityPaywallModalProps {
 }
 
 function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywallModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(800)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -3807,6 +3847,8 @@ interface CommunityProfileModalProps {
 }
 
 function CommunityProfileModal({ community, isJoined, onClose, onJoin }: CommunityProfileModalProps) {
+  const colors = useThemeColors();
+  const cpStyles = createCpStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(900)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;

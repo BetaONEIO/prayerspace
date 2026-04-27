@@ -316,6 +316,8 @@ interface ArchivedPostCardProps {
 }
 
 function ArchivedPostCard({ post }: ArchivedPostCardProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const archivedDate = new Date(post.archivedAt);
   const archivedLabel = archivedDate.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -378,6 +380,8 @@ interface MyPostCardProps {
 }
 
 function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const isUpdate = !!post.originalPostId && !post.originalContent?.startsWith('"');
   const isOriginalUpdatePost = !!post.originalPostId;
@@ -492,6 +496,8 @@ interface RepostComposerModalProps {
 }
 
 function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: RepostComposerModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const [text, setText] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<UpdateTag | null>(null);
@@ -653,6 +659,8 @@ interface MarkAnsweredModalProps {
 }
 
 function MarkAnsweredModal({ post, onClose, onConfirm, onUpdate }: MarkAnsweredModalProps) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;

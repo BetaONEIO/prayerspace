@@ -72,6 +72,8 @@ const CHANNEL_META: Record<DeliveryChannel, { label: string; tint: string; softT
 };
 
 function WhatsAppMark({ small = false }: { small?: boolean }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   return (
     <View style={[styles.whatsAppMark, small && styles.whatsAppMarkSmall]}>
       <Text style={[styles.whatsAppMarkText, small && styles.whatsAppMarkTextSmall]}>WA</Text>
@@ -80,6 +82,8 @@ function WhatsAppMark({ small = false }: { small?: boolean }) {
 }
 
 function RecipientChannelIcon({ channel, small = false }: { channel: DeliveryChannel; small?: boolean }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   if (channel === "whatsapp") {
     return <WhatsAppMark small={small} />;
   }
@@ -100,6 +104,8 @@ function RecipientChannelIcon({ channel, small = false }: { channel: DeliveryCha
 }
 
 function ChannelBadge({ channel }: { channel: DeliveryChannel }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const meta = CHANNEL_META[channel];
 
   return (
@@ -111,6 +117,8 @@ function ChannelBadge({ channel }: { channel: DeliveryChannel }) {
 }
 
 function MessageBubble({ channel, message }: { channel: DeliveryChannel; message: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   const meta = CHANNEL_META[channel];
   const bubbleSide = meta.bubbleAlign === "flex-end" ? styles.messageRowEnd : styles.messageRowStart;
 
@@ -140,6 +148,8 @@ function MessageBubble({ channel, message }: { channel: DeliveryChannel; message
 }
 
 function DeliverySurface({ channel, message }: { channel: DeliveryChannel; message: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   if (channel === "whatsapp") {
     return (
       <View style={styles.phoneSurfaceWhatsApp}>
@@ -172,6 +182,8 @@ function DeliverySurface({ channel, message }: { channel: DeliveryChannel; messa
 }
 
 function FeedPreviewCard({ message, avatarPath, displayName }: { message: string; avatarPath: string | null | undefined; displayName: string }) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
   return (
     <View style={styles.previewCard}>
       <View style={styles.previewHeader}>
