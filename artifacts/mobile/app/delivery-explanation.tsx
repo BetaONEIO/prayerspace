@@ -12,7 +12,6 @@ import { ArrowLeft, ArrowRight, Home, MessageCircle, Check, Rss, Share2, Globe }
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
@@ -22,6 +21,7 @@ const DONT_SHOW_KEY = "delivery_explanation_hidden";
 export default function DeliveryExplanationScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [dontShow, setDontShow] = useState(false);
   const [hideChannels, setHideChannels] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -83,7 +83,7 @@ export default function DeliveryExplanationScreen() {
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <View style={{ width: 40 }} />
       </View>
@@ -95,7 +95,7 @@ export default function DeliveryExplanationScreen() {
       >
         <View style={styles.heroContainer}>
           <View style={styles.heroIcon}>
-            <Share2 size={36} color={Colors.primary} />
+            <Share2 size={36} color={colors.primary} />
           </View>
           <Text style={styles.title}>How this will be sent</Text>
           <Text style={styles.subtitle}>
@@ -106,8 +106,8 @@ export default function DeliveryExplanationScreen() {
         {!hideChannels && (
           <Animated.View style={[styles.channelList, { opacity: channelOpacity }]}>
             <View style={styles.channelCard}>
-              <View style={[styles.channelIcon, { backgroundColor: Colors.primary + "18" }]}>
-                <Home size={22} color={Colors.primary} />
+              <View style={[styles.channelIcon, { backgroundColor: colors.primary + "18" }]}>
+                <Home size={22} color={colors.primary} />
               </View>
               <View style={styles.channelText}>
                 <Text style={styles.channelTitle}>Prayer Space users</Text>
@@ -143,11 +143,11 @@ export default function DeliveryExplanationScreen() {
 
             {isSendToFeed && (
               <View style={[styles.channelCard, styles.feedCardHighlight]}>
-                <View style={[styles.channelIcon, { backgroundColor: Colors.primary + "22" }]}>
-                  <Rss size={22} color={Colors.primary} />
+                <View style={[styles.channelIcon, { backgroundColor: colors.primary + "22" }]}>
+                  <Rss size={22} color={colors.primary} />
                 </View>
                 <View style={styles.channelText}>
-                  <Text style={[styles.channelTitle, { color: Colors.primary }]}>Community Feed</Text>
+                  <Text style={[styles.channelTitle, { color: colors.primary }]}>Community Feed</Text>
                   <Text style={styles.channelDesc}>
                     Your prayer will be shared on the community feed for others to see and pray with you.
                   </Text>
@@ -161,7 +161,7 @@ export default function DeliveryExplanationScreen() {
           <Animated.View style={[styles.dontShowRow, { opacity: channelOpacity }]}>
             <Pressable style={styles.dontShowBtn} onPress={handleToggleDontShow}>
               <View style={[styles.dontShowTick, dontShow && styles.dontShowTickActive]}>
-                {dontShow && <Check size={12} color={Colors.primaryForeground} strokeWidth={3} />}
+                {dontShow && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
               </View>
               <Text style={styles.dontShowText}>Don't show this again</Text>
             </Pressable>
@@ -180,7 +180,7 @@ export default function DeliveryExplanationScreen() {
             </View>
             <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
               <Text style={styles.summaryKey}>External</Text>
-              <Text style={[styles.summaryValue, { color: Colors.foreground }]}>{externalCount} {externalCount === 1 ? 'Contact' : 'Contacts'}</Text>
+              <Text style={[styles.summaryValue, { color: colors.foreground }]}>{externalCount} {externalCount === 1 ? 'Contact' : 'Contacts'}</Text>
             </View>
           </View>
         )}
@@ -189,7 +189,7 @@ export default function DeliveryExplanationScreen() {
           <View style={[styles.publicCard, totalCount === 0 && styles.publicCardProminent]}>
             <View style={styles.publicHeader}>
               <View style={styles.publicIconWrap}>
-                <Globe size={22} color={Colors.primary} />
+                <Globe size={22} color={colors.primary} />
               </View>
               <View style={styles.publicTextWrap}>
                 <Text style={styles.publicTitle}>Sharing with Community</Text>
@@ -204,15 +204,15 @@ export default function DeliveryExplanationScreen() {
       <View style={styles.footer}>
         <Pressable style={styles.continueBtn} onPress={handleContinue}>
           <Text style={styles.continueBtnText}>Continue</Text>
-          <ArrowRight size={20} color={Colors.primaryForeground} />
+          <ArrowRight size={20} color={colors.primaryForeground} />
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -243,13 +243,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     lineHeight: 22,
     paddingHorizontal: 16,
@@ -258,11 +258,11 @@ const styles = StyleSheet.create({
   channelCard: {
     flexDirection: "row",
     gap: 16,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -282,35 +282,35 @@ const styles = StyleSheet.create({
   channelTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 4,
   },
   channelDesc: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
   },
   summaryCard: {
     marginTop: 24,
-    backgroundColor: Colors.secondary + "50",
+    backgroundColor: colors.secondary + "50",
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.border + "30",
+    borderColor: colors.border + "30",
   },
   publicCard: {
     marginTop: 16,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   publicCardProminent: {
     marginTop: 24,
-    borderColor: Colors.primary + "35",
-    backgroundColor: Colors.primary + "12",
-    shadowColor: Colors.primary,
+    borderColor: colors.primary + "35",
+    backgroundColor: colors.primary + "12",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     flexShrink: 0,
@@ -336,18 +336,18 @@ const styles = StyleSheet.create({
   publicTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 3,
   },
   publicSubtitle: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
   },
   publicSectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 1,
     marginTop: 14,
   },
@@ -360,13 +360,13 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
   },
   summaryCount: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   summaryRow: {
     flexDirection: "row",
@@ -374,13 +374,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "20",
+    borderBottomColor: colors.border + "20",
   },
-  summaryKey: { fontSize: 14, color: Colors.foreground },
+  summaryKey: { fontSize: 14, color: colors.foreground },
   summaryValue: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   dontShowRow: {
     alignItems: "center" as const,
@@ -388,20 +388,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   feedCardHighlight: {
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     borderWidth: 1.5,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
   },
   footer: { padding: 24, paddingBottom: 16, gap: 12 },
   continueBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 16,
     paddingVertical: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   continueBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   dontShowBtn: {
     flexDirection: "row" as const,
@@ -424,18 +424,18 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   dontShowTickActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   dontShowText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });

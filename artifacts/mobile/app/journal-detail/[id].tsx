@@ -34,7 +34,6 @@ import {
   Repeat,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
@@ -81,9 +80,9 @@ const MOCK_ENTRIES: JournalEntry[] = [
 ];
 
 const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  gratitude: { label: "Gratitude", color: Colors.primary, bg: Colors.primary + "18" },
-  petition: { label: "Petition", color: Colors.accentForeground, bg: Colors.accent },
-  reflection: { label: "Reflection", color: Colors.primary, bg: Colors.primary + "18" },
+  gratitude: { label: "Gratitude", color: colors.primary, bg: colors.primary + "18" },
+  petition: { label: "Petition", color: colors.accentForeground, bg: colors.accent },
+  reflection: { label: "Reflection", color: colors.primary, bg: colors.primary + "18" },
   praying_for: { label: "Praying For", color: "#D4782F", bg: "#D4782F18" },
 };
 
@@ -140,6 +139,8 @@ function frequencyLabel(freq: Frequency): string {
 }
 
 export default function JournalDetailScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { journal, toggleJournalFavorite, markJournalAnswered, setReminder, removeReminder, getReminderForEntry } = usePrayer();
@@ -297,13 +298,13 @@ export default function JournalDetailScreen() {
 
       <View style={styles.header}>
         <Pressable style={styles.iconBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <View style={[styles.tagPill, { backgroundColor: tagCfg.bg }]}>
           <Text style={[styles.tagPillText, { color: tagCfg.color }]}>{tagCfg.label}</Text>
         </View>
         <Pressable style={styles.iconBtn}>
-          <MoreHorizontal size={20} color={Colors.secondaryForeground} />
+          <MoreHorizontal size={20} color={colors.secondaryForeground} />
         </Pressable>
       </View>
 
@@ -346,7 +347,7 @@ export default function JournalDetailScreen() {
         {entry.eventDate && !isNaN(daysUntil(entry.eventDate)) && daysUntil(entry.eventDate) >= 0 && (
           <View style={[styles.dateBanner, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerUrgent]}>
             <View style={[styles.dateBannerIcon, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerIconUrgent]}>
-              <CalendarDays size={18} color={shouldShowReminderBadge(entry.eventDate) ? Colors.destructive : Colors.primary} />
+              <CalendarDays size={18} color={shouldShowReminderBadge(entry.eventDate) ? colors.destructive : colors.primary} />
             </View>
             <View style={styles.dateBannerContent}>
               <Text style={[styles.dateBannerLabel, shouldShowReminderBadge(entry.eventDate) && styles.dateBannerLabelUrgent]}>
@@ -365,8 +366,8 @@ export default function JournalDetailScreen() {
 
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { flex: 0, minWidth: 140 }]}>
-            <View style={[styles.statIconWrap, { backgroundColor: entry.isAnswered ? "#D4782F18" : Colors.muted }]}>
-              <CheckCircle size={18} color={entry.isAnswered ? "#D4782F" : Colors.mutedForeground} />
+            <View style={[styles.statIconWrap, { backgroundColor: entry.isAnswered ? "#D4782F18" : colors.muted }]}>
+              <CheckCircle size={18} color={entry.isAnswered ? "#D4782F" : colors.mutedForeground} />
             </View>
             <Text style={styles.statLabel}>Status</Text>
             <Text style={[styles.statValue, entry.isAnswered && { color: "#D4782F" }]}>
@@ -384,7 +385,7 @@ export default function JournalDetailScreen() {
 
         <View style={styles.reminderSection}>
           <View style={styles.sectionLabelRow}>
-            <Bell size={16} color={Colors.primary} />
+            <Bell size={16} color={colors.primary} />
             <Text style={styles.sectionLabel}>Reminder Settings</Text>
           </View>
           <Pressable
@@ -394,7 +395,7 @@ export default function JournalDetailScreen() {
           >
             <View style={styles.reminderLeft}>
               <View style={[styles.reminderIconWrap, existingReminder && styles.reminderIconWrapActive]}>
-                <Bell size={18} color={existingReminder ? "#fff" : Colors.primary} />
+                <Bell size={18} color={existingReminder ? "#fff" : colors.primary} />
               </View>
               <View>
                 <Text style={[styles.reminderFreq, existingReminder && styles.reminderFreqActive]}>
@@ -430,20 +431,20 @@ export default function JournalDetailScreen() {
             style={styles.editBtn}
             onPress={() => router.push("/journal-entry")}
           >
-            <PenLine size={20} color={Colors.primaryForeground} />
+            <PenLine size={20} color={colors.primaryForeground} />
             <Text style={styles.editBtnText}>Edit Entry</Text>
           </Pressable>
 
           <Pressable style={styles.actionBtn} onPress={handleFavorite}>
             <Heart
               size={20}
-              color={entry.isFavorite ? Colors.primary : Colors.secondaryForeground}
-              fill={entry.isFavorite ? Colors.primary : "transparent"}
+              color={entry.isFavorite ? colors.primary : colors.secondaryForeground}
+              fill={entry.isFavorite ? colors.primary : "transparent"}
             />
           </Pressable>
 
           <Pressable style={styles.actionBtn} onPress={handleShare}>
-            <Share2 size={20} color={Colors.secondaryForeground} />
+            <Share2 size={20} color={colors.secondaryForeground} />
           </Pressable>
         </View>
       )}
@@ -476,7 +477,7 @@ export default function JournalDetailScreen() {
                   <Text style={styles.modalTitle}>Set Reminder</Text>
                 </View>
                 <Pressable style={styles.modalCloseBtn} onPress={closeReminderModal}>
-                  <X size={18} color={Colors.mutedForeground} />
+                  <X size={18} color={colors.mutedForeground} />
                 </Pressable>
               </View>
 
@@ -488,13 +489,13 @@ export default function JournalDetailScreen() {
                 <View style={styles.timePickerContainer}>
                   <View style={styles.timeColumn}>
                     <Pressable style={styles.timeArrowBtn} onPress={incrementHour}>
-                      <ChevronUp size={22} color={Colors.primary} />
+                      <ChevronUp size={22} color={colors.primary} />
                     </Pressable>
                     <View style={styles.timeValueWrap}>
                       <Text style={styles.timeValue}>{padZero(displayHour)}</Text>
                     </View>
                     <Pressable style={styles.timeArrowBtn} onPress={decrementHour}>
-                      <ChevronDown size={22} color={Colors.primary} />
+                      <ChevronDown size={22} color={colors.primary} />
                     </Pressable>
                     <Text style={styles.timeColumnLabel}>Hour</Text>
                   </View>
@@ -503,13 +504,13 @@ export default function JournalDetailScreen() {
 
                   <View style={styles.timeColumn}>
                     <Pressable style={styles.timeArrowBtn} onPress={incrementMinute}>
-                      <ChevronUp size={22} color={Colors.primary} />
+                      <ChevronUp size={22} color={colors.primary} />
                     </Pressable>
                     <View style={styles.timeValueWrap}>
                       <Text style={styles.timeValue}>{padZero(selectedMinute)}</Text>
                     </View>
                     <Pressable style={styles.timeArrowBtn} onPress={decrementMinute}>
-                      <ChevronDown size={22} color={Colors.primary} />
+                      <ChevronDown size={22} color={colors.primary} />
                     </Pressable>
                     <Text style={styles.timeColumnLabel}>Min</Text>
                   </View>
@@ -533,7 +534,7 @@ export default function JournalDetailScreen() {
 
               <View style={styles.frequencySection}>
                 <View style={styles.frequencySectionHeader}>
-                  <Repeat size={14} color={Colors.mutedForeground} />
+                  <Repeat size={14} color={colors.mutedForeground} />
                   <Text style={styles.frequencySectionLabel}>Frequency</Text>
                 </View>
                 <View style={styles.frequencyGrid}>
@@ -548,10 +549,10 @@ export default function JournalDetailScreen() {
                           setSelectedFrequency(opt.value);
                         }}
                       >
-                        {opt.value === "everyday" && <Repeat size={14} color={isSelected ? "#fff" : Colors.mutedForeground} />}
-                        {opt.value === "weekdays" && <Calendar size={14} color={isSelected ? "#fff" : Colors.mutedForeground} />}
-                        {opt.value === "weekends" && <Calendar size={14} color={isSelected ? "#fff" : Colors.mutedForeground} />}
-                        {opt.value === "once" && <Clock size={14} color={isSelected ? "#fff" : Colors.mutedForeground} />}
+                        {opt.value === "everyday" && <Repeat size={14} color={isSelected ? "#fff" : colors.mutedForeground} />}
+                        {opt.value === "weekdays" && <Calendar size={14} color={isSelected ? "#fff" : colors.mutedForeground} />}
+                        {opt.value === "weekends" && <Calendar size={14} color={isSelected ? "#fff" : colors.mutedForeground} />}
+                        {opt.value === "once" && <Clock size={14} color={isSelected ? "#fff" : colors.mutedForeground} />}
                         <Text style={[styles.frequencyChipText, isSelected && styles.frequencyChipTextActive]}>
                           {opt.label}
                         </Text>
@@ -562,7 +563,7 @@ export default function JournalDetailScreen() {
               </View>
 
               <View style={styles.modalPreview}>
-                <Bell size={14} color={Colors.primary} />
+                <Bell size={14} color={colors.primary} />
                 <Text style={styles.modalPreviewText}>
                   You'll be reminded {selectedFrequency === "once" ? "once" : selectedFrequency} at{" "}
                   <Text style={styles.modalPreviewBold}>{formatReminderTime(selectedHour, selectedMinute)}</Text>
@@ -572,7 +573,7 @@ export default function JournalDetailScreen() {
               <View style={styles.modalActions}>
                 {existingReminder && (
                   <Pressable style={styles.removeReminderBtn} onPress={handleRemoveReminder}>
-                    <BellOff size={16} color={Colors.destructive} />
+                    <BellOff size={16} color={colors.destructive} />
                     <Text style={styles.removeReminderText}>Remove</Text>
                   </Pressable>
                 )}
@@ -591,15 +592,15 @@ export default function JournalDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
   gradientOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     height: 280,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     opacity: 0.5,
     zIndex: 0,
   },
@@ -616,7 +617,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.card + "CC",
+    backgroundColor: colors.card + "CC",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -641,21 +642,21 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
   title: {
     fontSize: 30,
     fontWeight: "900",
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 36,
     marginBottom: 24,
   },
   titleSmall: {
     fontSize: 22,
     fontWeight: "800",
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 28,
     flex: 1,
   },
@@ -670,7 +671,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   contactAvatarPlaceholder: {
     width: 44,
@@ -688,24 +689,24 @@ const styles = StyleSheet.create({
     color: "#D4782F",
   },
   bodyCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 28,
     marginBottom: 20,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
     elevation: 3,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
     flexDirection: "row",
     gap: 16,
   },
   quoteAccent: {
     width: 3,
     borderRadius: 99,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     opacity: 0.4,
     alignSelf: "stretch",
   },
@@ -713,7 +714,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     lineHeight: 28,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontWeight: "400" as const,
   },
   statsRow: {
@@ -723,11 +724,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 22,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
     gap: 6,
   },
   statIconWrap: {
@@ -741,40 +742,40 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   statValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   dateBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     padding: 16,
     marginBottom: 16,
   },
   dateBannerUrgent: {
-    backgroundColor: Colors.destructive + "0D",
-    borderColor: Colors.destructive + "40",
+    backgroundColor: colors.destructive + "0D",
+    borderColor: colors.destructive + "40",
   },
   dateBannerIcon: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   dateBannerIconUrgent: {
-    backgroundColor: Colors.destructive + "15",
+    backgroundColor: colors.destructive + "15",
   },
   dateBannerContent: {
     flex: 1,
@@ -783,14 +784,14 @@ const styles = StyleSheet.create({
   dateBannerLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   dateBannerLabelUrgent: {
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   dateBannerSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   prayingBanner: {
@@ -821,12 +822,12 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
   reminderCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 22,
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -834,12 +835,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1.5,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     borderStyle: "dashed",
   },
   reminderCardActive: {
-    backgroundColor: Colors.primary + "0C",
-    borderColor: Colors.primary + "30",
+    backgroundColor: colors.primary + "0C",
+    borderColor: colors.primary + "30",
     borderStyle: "solid",
   },
   reminderLeft: {
@@ -851,27 +852,27 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
   reminderIconWrapActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   reminderFreq: {
     fontSize: 10,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   reminderFreqActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   reminderTime: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.foreground,
+    color: colors.foreground,
     marginTop: 2,
   },
   reminderRight: {},
@@ -884,7 +885,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   reminderSetBtn: {
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
@@ -892,7 +893,7 @@ const styles = StyleSheet.create({
   reminderSetBtnText: {
     fontSize: 12,
     fontWeight: "700",
-    color: Colors.primary,
+    color: colors.primary,
   },
   footer: {
     position: "absolute",
@@ -905,9 +906,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 32,
-    backgroundColor: Colors.background + "F0",
+    backgroundColor: colors.background + "F0",
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "30",
+    borderTopColor: colors.border + "30",
   },
   editBtn: {
     flex: 1,
@@ -915,10 +916,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 18,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -927,13 +928,13 @@ const styles = StyleSheet.create({
   editBtnText: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   actionBtn: {
     width: 56,
     height: 56,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -946,10 +947,10 @@ const styles = StyleSheet.create({
   notFoundText: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   backFallback: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 999,
@@ -957,7 +958,7 @@ const styles = StyleSheet.create({
   backFallbackText: {
     fontSize: 14,
     fontWeight: "700",
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   modalOverlay: {
     flex: 1,
@@ -969,7 +970,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: "100%",
     maxWidth: 380,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 28,
     overflow: "hidden",
   },
@@ -977,7 +978,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center",
     marginTop: 12,
     marginBottom: 8,
@@ -999,26 +1000,26 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   modalCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   modalSubtitle: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     paddingHorizontal: 24,
     marginTop: 4,
     marginBottom: 20,
@@ -1031,12 +1032,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 22,
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
     gap: 8,
   },
   timeColumn: {
@@ -1047,7 +1048,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 36,
     borderRadius: 12,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: colors.primary + "10",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1055,22 +1056,22 @@ const styles = StyleSheet.create({
     width: 72,
     height: 64,
     borderRadius: 18,
-    backgroundColor: Colors.primary + "0C",
+    backgroundColor: colors.primary + "0C",
     borderWidth: 2,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     alignItems: "center",
     justifyContent: "center",
   },
   timeValue: {
     fontSize: 36,
     fontWeight: "900",
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -1,
   },
   timeColumnLabel: {
     fontSize: 9,
     fontWeight: "700",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     textTransform: "uppercase",
     marginTop: 2,
@@ -1078,7 +1079,7 @@ const styles = StyleSheet.create({
   timeSeparator: {
     fontSize: 32,
     fontWeight: "900",
-    color: Colors.primary,
+    color: colors.primary,
     marginHorizontal: 2,
     marginBottom: 20,
   },
@@ -1091,17 +1092,17 @@ const styles = StyleSheet.create({
     width: 50,
     height: 38,
     borderRadius: 12,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   periodBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   periodBtnText: {
     fontSize: 13,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   periodBtnTextActive: {
     color: "#fff",
@@ -1119,7 +1120,7 @@ const styles = StyleSheet.create({
   frequencySectionLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
@@ -1135,18 +1136,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
   },
   frequencyChipActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   frequencyChipText: {
     fontSize: 13,
     fontWeight: "700",
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   frequencyChipTextActive: {
     color: "#fff",
@@ -1156,23 +1157,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginHorizontal: 24,
-    backgroundColor: Colors.primary + "0A",
+    backgroundColor: colors.primary + "0A",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "15",
+    borderColor: colors.primary + "15",
   },
   modalPreviewText: {
     fontSize: 13,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     flex: 1,
     lineHeight: 18,
   },
   modalPreviewBold: {
     fontWeight: "800",
-    color: Colors.primary,
+    color: colors.primary,
   },
   modalActions: {
     flexDirection: "row",
@@ -1188,14 +1189,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
     borderRadius: 999,
-    backgroundColor: Colors.destructive + "12",
+    backgroundColor: colors.destructive + "12",
     borderWidth: 1,
-    borderColor: Colors.destructive + "25",
+    borderColor: colors.destructive + "25",
   },
   removeReminderText: {
     fontSize: 14,
     fontWeight: "700",
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   saveReminderBtn: {
     flex: 1,
@@ -1205,8 +1206,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     borderRadius: 999,
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,

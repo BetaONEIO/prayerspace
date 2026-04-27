@@ -13,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, Clock3, MessageCircle, Send, Smartphone, Rss } from "lucide-react-native";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
@@ -45,10 +44,10 @@ function mapSourceToChannel(source: string, onApp: boolean): DeliveryChannel {
 const CHANNEL_META: Record<DeliveryChannel, { label: string; tint: string; softTint: string; bubbleColor: string; bubbleTextColor: string; bubbleAlign: "flex-start" | "flex-end"; timestamp: string; }> = {
   app: {
     label: "In-app delivery",
-    tint: Colors.primary,
-    softTint: Colors.primary + "18",
-    bubbleColor: Colors.card,
-    bubbleTextColor: Colors.foreground,
+    tint: colors.primary,
+    softTint: colors.primary + "18",
+    bubbleColor: colors.card,
+    bubbleTextColor: colors.foreground,
     bubbleAlign: "flex-start",
     timestamp: "Sent as soon as you tap send",
   },
@@ -95,7 +94,7 @@ function RecipientChannelIcon({ channel, small = false }: { channel: DeliveryCha
 
   return (
     <View style={[styles.appIconWrap, small && styles.appIconWrapSmall]}>
-      <MessageCircle size={small ? 10 : 12} color={Colors.primary} />
+      <MessageCircle size={small ? 10 : 12} color={colors.primary} />
     </View>
   );
 }
@@ -181,7 +180,7 @@ function FeedPreviewCard({ message, avatarPath, displayName }: { message: string
           <View style={styles.previewNameRow}>
             <Text style={styles.previewName}>{displayName}</Text>
             <View style={styles.feedIconWrap}>
-              <Rss size={12} color={Colors.primary} />
+              <Rss size={12} color={colors.primary} />
             </View>
           </View>
           <Text style={styles.previewSubtitle}>Community Feed post</Text>
@@ -197,7 +196,7 @@ function FeedPreviewCard({ message, avatarPath, displayName }: { message: string
 
       <View style={styles.previewFooter}>
         <View style={styles.previewFooterLeft}>
-          <Clock3 size={14} color={Colors.mutedForeground} />
+          <Clock3 size={14} color={colors.mutedForeground} />
           <Text style={styles.previewFooterText}>Shared to community feed</Text>
         </View>
       </View>
@@ -210,6 +209,8 @@ function formatDisplayName(name: string): string {
 }
 
 export default function MessagePreviewFinalScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { sendToFeed: sendToFeedParam } = useLocalSearchParams<{ sendToFeed?: string }>();
   const isSendToFeed = sendToFeedParam === "true";
@@ -274,7 +275,7 @@ export default function MessagePreviewFinalScreen() {
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Preview prayer</Text>
         <View style={{ width: 40 }} />
@@ -298,7 +299,7 @@ export default function MessagePreviewFinalScreen() {
         )}
         {feedOnly && (
           <View style={styles.feedBadgeIcon}>
-            <Rss size={16} color={Colors.primary} />
+            <Rss size={16} color={colors.primary} />
           </View>
         )}
         <Text style={styles.recipientsSummaryText}>
@@ -350,7 +351,7 @@ export default function MessagePreviewFinalScreen() {
 
               <View style={styles.previewFooter}>
                 <View style={styles.previewFooterLeft}>
-                  <Clock3 size={14} color={Colors.mutedForeground} />
+                  <Clock3 size={14} color={colors.mutedForeground} />
                   <Text style={styles.previewFooterText}>{selectedMeta.timestamp}</Text>
                 </View>
               </View>
@@ -393,7 +394,7 @@ export default function MessagePreviewFinalScreen() {
         </Pressable>
         <Pressable style={styles.sendBtn} onPress={handleSend}>
           <Text style={styles.sendBtnText}>Send Prayer</Text>
-          <Send size={18} color={Colors.primaryForeground} />
+          <Send size={18} color={colors.primaryForeground} />
         </Pressable>
       </View>
     </SafeAreaView>
@@ -401,8 +402,8 @@ export default function MessagePreviewFinalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -415,18 +416,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     marginBottom: 16,
     marginTop: 4,
@@ -449,21 +450,21 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.background,
+    borderColor: colors.background,
   },
   recipientsSummaryText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   recipientsSummaryBold: {
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   feedBadgeIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -477,13 +478,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     paddingVertical: 7,
     paddingLeft: 7,
     paddingRight: 14,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -491,8 +492,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   recipientChipActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "08",
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + "08",
   },
   chipAvatar: {
     width: 28,
@@ -502,21 +503,21 @@ const styles = StyleSheet.create({
   chipName: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   chipNameActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   previewHeaderTextWrap: {
     flex: 1,
   },
   previewCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 28,
     borderWidth: 1,
-    borderColor: Colors.border + "30",
-    shadowColor: Colors.primary,
+    borderColor: colors.border + "30",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     borderWidth: 2,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   previewNameRow: {
     flexDirection: "row",
@@ -544,11 +545,11 @@ const styles = StyleSheet.create({
   previewName: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   previewSubtitle: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   channelBadge: {
     flexDirection: "row",
@@ -566,11 +567,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase" as const,
   },
   appSurface: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   phoneSurfaceWhatsApp: {
     backgroundColor: "#E5DDD5",
@@ -603,7 +604,7 @@ const styles = StyleSheet.create({
   messagingTopBarText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   messageRow: {
     width: "100%",
@@ -636,7 +637,7 @@ const styles = StyleSheet.create({
   messageTime: {
     marginTop: 8,
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     alignSelf: "flex-end",
   },
   whatsAppMark: {
@@ -677,7 +678,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -690,19 +691,19 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
   feedSurface: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   feedPostContent: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -710,12 +711,12 @@ const styles = StyleSheet.create({
   feedPostText: {
     fontSize: 16,
     lineHeight: 24,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   feedPostTime: {
     marginTop: 8,
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   feedSectionDivider: {
     flexDirection: "row",
@@ -727,12 +728,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   dividerLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
   },
   previewFooter: {
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "20",
+    borderTopColor: colors.border + "20",
   },
   previewFooterLeft: {
     flexDirection: "row",
@@ -751,7 +752,7 @@ const styles = StyleSheet.create({
   },
   previewFooterText: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   dotsRow: {
     flexDirection: "row",
@@ -763,10 +764,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
   },
   dotActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   footer: {
     flexDirection: "row",
@@ -775,28 +776,28 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   editBtn: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 14,
     paddingVertical: 18,
     paddingHorizontal: 24,
     borderWidth: 1,
-    borderColor: Colors.border + "80",
+    borderColor: colors.border + "80",
   },
   editBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   sendBtn: {
     flex: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -805,6 +806,6 @@ const styles = StyleSheet.create({
   sendBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -41,7 +41,6 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
@@ -65,6 +64,8 @@ const MOCK_TRANSCRIPT =
 export default function JournalEntryScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
+  const colors = themeColors;
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { addJournalEntry } = usePrayer();
 
   const [mode, setMode] = useState<Mode>("text");
@@ -312,7 +313,7 @@ export default function JournalEntryScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={Colors.secondaryForeground} />
+            <ArrowLeft size={20} color={colors.secondaryForeground} />
           </Pressable>
         </View>
         <View style={styles.toggleSection}>
@@ -321,14 +322,14 @@ export default function JournalEntryScreen() {
               style={[styles.toggleTab, mode === "text" && styles.toggleTabActive]}
               onPress={() => switchMode("text")}
             >
-              <Pencil size={14} color={mode === "text" ? Colors.primary : Colors.mutedForeground} />
+              <Pencil size={14} color={mode === "text" ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.toggleTabLabel, mode === "text" && styles.toggleTabLabelActive]}>Text</Text>
             </Pressable>
             <Pressable
               style={[styles.toggleTab, mode === "voice" && styles.toggleTabActive]}
               onPress={() => switchMode("voice")}
             >
-              <Mic size={14} color={mode === "voice" ? Colors.primary : Colors.mutedForeground} />
+              <Mic size={14} color={mode === "voice" ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.toggleTabLabel, mode === "voice" && styles.toggleTabLabelActive]}>Voice</Text>
             </Pressable>
           </View>
@@ -348,7 +349,7 @@ export default function JournalEntryScreen() {
               <TextInput
                 style={styles.titleInput}
                 placeholder="Enter a title..."
-                placeholderTextColor={Colors.mutedForeground + "50"}
+                placeholderTextColor={colors.mutedForeground + "50"}
                 value={title}
                 onChangeText={setTitle}
                 returnKeyType="next"
@@ -368,7 +369,7 @@ export default function JournalEntryScreen() {
                     style={[styles.tagChip, isActive && styles.tagChipActive]}
                     onPress={() => setActiveTag(id)}
                   >
-                    <Icon size={13} color={isActive ? Colors.accentForeground : Colors.mutedForeground} />
+                    <Icon size={13} color={isActive ? colors.accentForeground : colors.mutedForeground} />
                     <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{label}</Text>
                   </Pressable>
                 );
@@ -380,26 +381,26 @@ export default function JournalEntryScreen() {
                 style={styles.fmtBtn}
                 onPress={() => insertFormatting("bold")}
               >
-                <Bold size={15} color={Colors.secondaryForeground} />
+                <Bold size={15} color={colors.secondaryForeground} />
               </Pressable>
               <Pressable
                 style={styles.fmtBtn}
                 onPress={() => insertFormatting("italic")}
               >
-                <Italic size={15} color={Colors.secondaryForeground} />
+                <Italic size={15} color={colors.secondaryForeground} />
               </Pressable>
               <View style={styles.fmtDivider} />
               <Pressable
                 style={styles.fmtBtn}
                 onPress={() => insertFormatting("bullet")}
               >
-                <List size={15} color={Colors.secondaryForeground} />
+                <List size={15} color={colors.secondaryForeground} />
               </Pressable>
               <Pressable
                 style={styles.fmtBtn}
                 onPress={() => insertFormatting("heading")}
               >
-                <Heading2 size={15} color={Colors.secondaryForeground} />
+                <Heading2 size={15} color={colors.secondaryForeground} />
               </Pressable>
               <View style={{ flex: 1 }} />
               {!isBodyFocused && body.length > 0 && (
@@ -410,7 +411,7 @@ export default function JournalEntryScreen() {
                     setTimeout(() => bodyInputRef.current?.focus(), 50);
                   }}
                 >
-                  <Pencil size={12} color={Colors.accentForeground} />
+                  <Pencil size={12} color={colors.accentForeground} />
                   <Text style={styles.fmtEditBtnText}>Edit</Text>
                 </Pressable>
               )}
@@ -430,7 +431,7 @@ export default function JournalEntryScreen() {
                   ref={bodyInputRef}
                   style={[styles.bodyInput, body.length > 0 && { color: "transparent" }]}
                   placeholder="Pour your heart out here..."
-                  placeholderTextColor={Colors.mutedForeground + "35"}
+                  placeholderTextColor={colors.mutedForeground + "35"}
                   multiline
                   value={body}
                   onChangeText={setBody}
@@ -464,7 +465,7 @@ export default function JournalEntryScreen() {
               <TextInput
                 style={styles.titleInput}
                 placeholder="Enter a title..."
-                placeholderTextColor={Colors.mutedForeground + "50"}
+                placeholderTextColor={colors.mutedForeground + "50"}
                 value={title}
                 onChangeText={setTitle}
                 returnKeyType="done"
@@ -499,15 +500,15 @@ export default function JournalEntryScreen() {
                 >
                   {!isRecording && !hasRecorded ? (
                     <Pressable style={styles.micBtnInner} onPress={handleStartRecording}>
-                      <Mic size={40} color={Colors.primaryForeground} />
+                      <Mic size={40} color={colors.primaryForeground} />
                     </Pressable>
                   ) : isRecording ? (
                     <View style={styles.micBtnInner}>
-                      <Mic size={40} color={Colors.primaryForeground} />
+                      <Mic size={40} color={colors.primaryForeground} />
                     </View>
                   ) : (
                     <Pressable style={[styles.micBtnInner, styles.micBtnDone]} onPress={handleStartRecording}>
-                      <Mic size={40} color={Colors.primary} />
+                      <Mic size={40} color={colors.primary} />
                     </Pressable>
                   )}
                 </Animated.View>
@@ -521,13 +522,13 @@ export default function JournalEntryScreen() {
                 <View style={styles.recordingControls}>
                   <Pressable style={styles.ctrlBtn} onPress={handlePauseRecording}>
                     {isPaused ? (
-                      <Play size={22} color={Colors.secondaryForeground} />
+                      <Play size={22} color={colors.secondaryForeground} />
                     ) : (
-                      <Pause size={22} color={Colors.secondaryForeground} />
+                      <Pause size={22} color={colors.secondaryForeground} />
                     )}
                   </Pressable>
                   <Pressable style={styles.stopBtn} onPress={handleStopRecording}>
-                    <Square size={22} color={Colors.primaryForeground} fill={Colors.primaryForeground} />
+                    <Square size={22} color={colors.primaryForeground} fill={colors.primaryForeground} />
                     <Text style={styles.stopBtnText}>Stop & Save</Text>
                   </Pressable>
                 </View>
@@ -559,7 +560,7 @@ export default function JournalEntryScreen() {
                     style={[styles.tagChip, isActive && styles.tagChipActive]}
                     onPress={() => setActiveTag(id)}
                   >
-                    <Icon size={13} color={isActive ? Colors.accentForeground : Colors.mutedForeground} />
+                    <Icon size={13} color={isActive ? colors.accentForeground : colors.mutedForeground} />
                     <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{label}</Text>
                   </Pressable>
                 );
@@ -572,7 +573,7 @@ export default function JournalEntryScreen() {
                 <TextInput
                   style={[styles.bodyInput, { minHeight: 80 }]}
                   placeholder="Add a note to your prayer (optional)..."
-                  placeholderTextColor={Colors.mutedForeground + "35"}
+                  placeholderTextColor={colors.mutedForeground + "35"}
                   multiline
                   value={body}
                   onChangeText={setBody}
@@ -588,7 +589,7 @@ export default function JournalEntryScreen() {
           onPress={handleSave}
           disabled={!canSave}
         >
-          <BookOpen size={18} color={Colors.primaryForeground} />
+          <BookOpen size={18} color={colors.primaryForeground} />
           <Text style={styles.journalBtnText}>Save to Prayer Journal</Text>
         </Pressable>
       </KeyboardAvoidingView>
@@ -606,14 +607,14 @@ export default function JournalEntryScreen() {
 
             <View style={styles.transcriptHeader}>
               <View style={styles.transcriptIconWrap}>
-                <Mic size={22} color={Colors.primaryForeground} />
+                <Mic size={22} color={colors.primaryForeground} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.transcriptTitle}>Voice Prayer Transcribed</Text>
                 <Text style={styles.transcriptSubtitle}>{formatTime(pendingSeconds)} · Review before saving</Text>
               </View>
               <Pressable style={styles.transcriptCloseBtn} onPress={() => setShowTranscriptModal(false)}>
-                <X size={18} color={Colors.mutedForeground} />
+                <X size={18} color={colors.mutedForeground} />
               </Pressable>
             </View>
 
@@ -642,13 +643,13 @@ export default function JournalEntryScreen() {
                 style={styles.transcriptEditBtn}
                 onPress={() => setEditingTranscript((v) => !v)}
               >
-                <Edit3 size={18} color={Colors.accentForeground} />
+                <Edit3 size={18} color={colors.accentForeground} />
                 <Text style={styles.transcriptEditBtnText}>
                   {editingTranscript ? "Done Editing" : "Edit"}
                 </Text>
               </Pressable>
               <Pressable style={styles.transcriptConfirmBtn} onPress={handleConfirmTranscript}>
-                <CheckCircle size={18} color={Colors.primaryForeground} />
+                <CheckCircle size={18} color={colors.primaryForeground} />
                 <Text style={styles.transcriptConfirmBtnText}>Confirm</Text>
               </Pressable>
             </View>
@@ -666,7 +667,7 @@ export default function JournalEntryScreen() {
           pointerEvents="none"
         >
           <View style={styles.savedToastIconWrap}>
-            <CheckCircle size={26} color={Colors.primaryForeground} />
+            <CheckCircle size={26} color={colors.primaryForeground} />
           </View>
           <View>
             <Text style={styles.savedToastTitle}>Journal Entry Saved</Text>
@@ -678,15 +679,15 @@ export default function JournalEntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
   bgAccent: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     height: 260,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     opacity: 0.45,
   },
   header: {
@@ -700,7 +701,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.card + "CC",
+    backgroundColor: colors.card + "CC",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -712,14 +713,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   saveBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -729,7 +730,7 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.5,
   },
   toggleSection: {
@@ -738,7 +739,7 @@ const styles = StyleSheet.create({
   },
   togglePill: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 16,
     padding: 4,
     marginBottom: 14,
@@ -753,7 +754,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   toggleTabActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -763,16 +764,16 @@ const styles = StyleSheet.create({
   toggleTabLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   toggleTabLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   toggleSubtext: {
     fontSize: 13,
     lineHeight: 20,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
     opacity: 0.75,
   },
@@ -785,14 +786,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   titleCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -802,7 +803,7 @@ const styles = StyleSheet.create({
   titleLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 1.2,
     textTransform: "uppercase" as const,
     marginBottom: 6,
@@ -810,7 +811,7 @@ const styles = StyleSheet.create({
   titleInput: {
     fontSize: 17,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     paddingVertical: 0,
   },
   tagRow: {
@@ -824,41 +825,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   tagChipActive: {
-    backgroundColor: Colors.accent,
-    borderColor: Colors.primary + "25",
+    backgroundColor: colors.accent,
+    borderColor: colors.primary + "25",
   },
   tagText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
   },
-  tagTextActive: { color: Colors.accentForeground },
+  tagTextActive: { color: colors.accentForeground },
   bodyCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 24,
     marginBottom: 16,
     flexDirection: "row" as const,
     gap: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
     elevation: 3,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
   },
   quoteBar: {
     width: 3,
     borderRadius: 99,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     opacity: 0.35,
     alignSelf: "stretch",
   },
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     lineHeight: 26,
-    color: Colors.foreground,
+    color: colors.foreground,
     padding: 0,
     minHeight: 200,
   },
@@ -881,13 +882,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
@@ -900,18 +901,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   fmtDivider: {
     width: 1,
     height: 20,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     marginHorizontal: 4,
   },
   fmtHint: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground + "80",
+    color: colors.mutedForeground + "80",
     letterSpacing: 0.8,
     textTransform: "uppercase" as const,
   },
@@ -919,17 +920,17 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 4,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   fmtEditBtnText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
     letterSpacing: 0.3,
   },
   autoSaveRow: {
@@ -949,7 +950,7 @@ const styles = StyleSheet.create({
   autoSaveText: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
   },
   voiceCenter: {
@@ -964,14 +965,14 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 48,
     fontWeight: "200" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -1,
     fontVariant: ["tabular-nums"] as const,
   },
   timerLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 3,
   },
   micOuter: {
@@ -985,13 +986,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   micBtn: {
     width: 110,
     height: 110,
     borderRadius: 55,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
@@ -1001,21 +1002,21 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   micBtnDone: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 2,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     shadowColor: "transparent",
     elevation: 0,
   },
   tapToRecord: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.2,
   },
   recordingControls: {
@@ -1027,17 +1028,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   stopBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.foreground,
+    backgroundColor: colors.foreground,
     borderRadius: 999,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -1045,7 +1046,7 @@ const styles = StyleSheet.create({
   stopBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   recordedBanner: {
     flexDirection: "row",
@@ -1073,7 +1074,7 @@ const styles = StyleSheet.create({
   reRecordText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   journalBtn: {
     flexDirection: "row",
@@ -1083,10 +1084,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: Platform.OS === "ios" ? 16 : 24,
     marginTop: 4,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 18,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -1096,7 +1097,7 @@ const styles = StyleSheet.create({
   journalBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
 
@@ -1107,7 +1108,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   transcriptSheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     paddingHorizontal: 24,
@@ -1125,7 +1126,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 5,
     borderRadius: 99,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignSelf: "center",
     marginBottom: 20,
   },
@@ -1139,10 +1140,10 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -1151,12 +1152,12 @@ const styles = StyleSheet.create({
   transcriptTitle: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   transcriptSubtitle: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
     letterSpacing: 0.3,
   },
@@ -1164,13 +1165,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   transcriptDivider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     marginBottom: 18,
     opacity: 0.6,
   },
@@ -1180,14 +1181,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   transcriptBodyCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     flexDirection: "row",
     gap: 14,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
-    shadowColor: Colors.primary,
+    borderColor: colors.border + "60",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
@@ -1197,7 +1198,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontStyle: "italic" as const,
   },
   transcriptActions: {
@@ -1210,16 +1211,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingVertical: 16,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   transcriptEditBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
   },
   transcriptConfirmBtn: {
     flex: 2,
@@ -1227,10 +1228,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 14,
@@ -1239,7 +1240,7 @@ const styles = StyleSheet.create({
   transcriptConfirmBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
 
   // Saved Toast
@@ -1248,14 +1249,14 @@ const styles = StyleSheet.create({
     bottom: 110,
     left: 24,
     right: 24,
-    backgroundColor: Colors.foreground,
+    backgroundColor: colors.foreground,
     borderRadius: 24,
     paddingVertical: 18,
     paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    shadowColor: Colors.foreground,
+    shadowColor: colors.foreground,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
     shadowRadius: 24,
@@ -1265,19 +1266,19 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   savedToastTitle: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   savedToastSub: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     opacity: 0.6,
     marginTop: 2,
   },

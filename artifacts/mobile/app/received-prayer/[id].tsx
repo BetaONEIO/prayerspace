@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -26,7 +26,6 @@ import {
   CalendarDays,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { receivedPrayerRequests } from "@/mocks/data";
@@ -37,6 +36,8 @@ import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { scheduleReceivedPrayerReminders, shouldShowReminderBadge } from "@/lib/prayerReminders";
 
 export default function ReceivedPrayerScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { addJournalEntry } = usePrayer();
@@ -220,7 +221,7 @@ export default function ReceivedPrayerScreen() {
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
           <View style={styles.header}>
             <Pressable style={styles.headerBtn} onPress={() => router.back()}>
-              <ChevronLeft size={20} color={Colors.foreground} />
+              <ChevronLeft size={20} color={colors.foreground} />
             </Pressable>
           </View>
           <View style={styles.emptyState}>
@@ -289,7 +290,7 @@ export default function ReceivedPrayerScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top"]}>
         <View style={styles.header}>
           <Pressable style={styles.headerBtn} onPress={() => router.back()}>
-            <ChevronLeft size={20} color={Colors.foreground} />
+            <ChevronLeft size={20} color={colors.foreground} />
           </Pressable>
           <Text style={styles.headerTitle}>Prayer Request</Text>
           <View style={styles.headerSpacer} />
@@ -312,7 +313,7 @@ export default function ReceivedPrayerScreen() {
             </Pressable>
             <Text style={styles.senderName}>{prayer.senderName}</Text>
             <View style={styles.timeRow}>
-              <Clock size={13} color={Colors.primary} />
+              <Clock size={13} color={colors.primary} />
               <Text style={styles.timeText}>Sent {prayer.sentAt}</Text>
             </View>
           </View>
@@ -322,9 +323,9 @@ export default function ReceivedPrayerScreen() {
               <View style={styles.playerRow}>
                 <Pressable style={styles.playBtn} onPress={handlePlayPause}>
                   {isPlaying ? (
-                    <Pause size={22} color={Colors.primary} />
+                    <Pause size={22} color={colors.primary} />
                   ) : (
-                    <Play size={22} color={Colors.primary} />
+                    <Play size={22} color={colors.primary} />
                   )}
                 </Pressable>
                 <View style={styles.progressWrap}>
@@ -342,7 +343,7 @@ export default function ReceivedPrayerScreen() {
 
               <View style={styles.transcriptSection}>
                 <View style={styles.transcriptLabelRow}>
-                  <FileText size={13} color={Colors.primary} />
+                  <FileText size={13} color={colors.primary} />
                   <Text style={styles.transcriptLabel}>TRANSCRIPT</Text>
                 </View>
                 <Text style={styles.transcriptText}>"{prayer.content}"</Text>
@@ -351,7 +352,7 @@ export default function ReceivedPrayerScreen() {
           ) : (
             <View style={styles.card}>
               <View style={styles.quoteIconWrap}>
-                <Quote size={32} color={Colors.primary + "18"} />
+                <Quote size={32} color={colors.primary + "18"} />
               </View>
               <Text style={styles.requestText}>"{prayer.content}"</Text>
             </View>
@@ -360,7 +361,7 @@ export default function ReceivedPrayerScreen() {
           {prayer.hasPrayerDate && prayer.eventDate && !isNaN(daysUntil(prayer.eventDate)) && daysUntil(prayer.eventDate) >= 0 && (
             <View style={[styles.dateBanner, shouldShowReminderBadge(prayer.eventDate) && styles.dateBannerUrgent]}>
               <View style={styles.dateBannerIcon}>
-                <CalendarDays size={18} color={shouldShowReminderBadge(prayer.eventDate) ? Colors.destructive : Colors.primary} />
+                <CalendarDays size={18} color={shouldShowReminderBadge(prayer.eventDate) ? colors.destructive : colors.primary} />
               </View>
               <View style={styles.dateBannerContent}>
                 <Text style={[styles.dateBannerLabel, shouldShowReminderBadge(prayer.eventDate) && styles.dateBannerLabelUrgent]}>
@@ -413,7 +414,7 @@ export default function ReceivedPrayerScreen() {
               ]}
             >
               <View style={styles.tooltipContent}>
-                <BookmarkPlus size={18} color={Colors.primary} />
+                <BookmarkPlus size={18} color={colors.primary} />
                 <View style={styles.tooltipTextWrap}>
                   <Text style={styles.tooltipTitle}>Add to Prayer Journal?</Text>
                   <Text style={styles.tooltipSub}>Keep praying for {prayer.senderName.split(" ")[0]}</Text>
@@ -425,7 +426,7 @@ export default function ReceivedPrayerScreen() {
                   <Text style={styles.tooltipYesText}>Add</Text>
                 </Pressable>
                 <Pressable onPress={closeTooltip} style={styles.tooltipCloseBtn}>
-                  <X size={14} color={Colors.mutedForeground} />
+                  <X size={14} color={colors.mutedForeground} />
                 </Pressable>
               </View>
               <View style={styles.tooltipArrow} />
@@ -463,7 +464,7 @@ export default function ReceivedPrayerScreen() {
             </View>
 
             <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${prayer.senderId}`)}>
-              <MessageCircle size={22} color={Colors.secondaryForeground} />
+              <MessageCircle size={22} color={colors.secondaryForeground} />
             </Pressable>
           </View>
         </SafeAreaView>
@@ -472,10 +473,10 @@ export default function ReceivedPrayerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   topGradient: {
     position: "absolute" as const,
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 280,
-    backgroundColor: Colors.primary + "0A",
+    backgroundColor: colors.primary + "0A",
   },
   safeArea: {
     flex: 1,
@@ -499,7 +500,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.card + "CC",
+    backgroundColor: colors.card + "CC",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     shadowColor: "#000",
@@ -514,7 +515,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -534,7 +535,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 28,
     borderWidth: 4,
-    borderColor: Colors.card,
+    borderColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
@@ -547,12 +548,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 2,
-    borderColor: Colors.background,
-    shadowColor: Colors.primary,
+    borderColor: colors.background,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 26,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 6,
   },
   timeRow: {
@@ -574,20 +575,20 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
   },
   card: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 32,
     padding: 28,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 30,
     elevation: 4,
     borderWidth: 1,
-    borderColor: Colors.border + "30",
+    borderColor: colors.border + "30",
     marginBottom: 28,
   },
   quoteIconWrap: {
@@ -598,7 +599,7 @@ const styles = StyleSheet.create({
   requestText: {
     fontSize: 18,
     lineHeight: 28,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontWeight: "500" as const,
     fontStyle: "italic" as const,
     paddingTop: 8,
@@ -613,7 +614,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -622,19 +623,19 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 6,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 3,
     overflow: "hidden" as const,
   },
   progressFill: {
     height: "100%" as const,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 3,
   },
   durationText: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
   },
   transcriptSection: {
@@ -648,13 +649,13 @@ const styles = StyleSheet.create({
   transcriptLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
   },
   transcriptText: {
     fontSize: 17,
     lineHeight: 27,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontWeight: "500" as const,
     fontStyle: "italic" as const,
   },
@@ -662,22 +663,22 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     padding: 16,
     marginBottom: 24,
   },
   dateBannerUrgent: {
-    backgroundColor: Colors.destructive + "0D",
-    borderColor: Colors.destructive + "40",
+    backgroundColor: colors.destructive + "0D",
+    borderColor: colors.destructive + "40",
   },
   dateBannerIcon: {
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -688,14 +689,14 @@ const styles = StyleSheet.create({
   dateBannerLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   dateBannerLabelUrgent: {
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   dateBannerSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   prayedSection: {
@@ -711,32 +712,32 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   stackCount: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   stackCountText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
   },
   prayedText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
   },
   prayedBold: {
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   bottomBar: {
     position: "absolute" as const,
@@ -745,12 +746,12 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 24,
     paddingTop: 12,
-    backgroundColor: Colors.background + "F0",
+    backgroundColor: colors.background + "F0",
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "20",
+    borderTopColor: colors.border + "20",
   },
   tooltip: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     marginBottom: 10,
     shadowColor: "#000",
@@ -759,7 +760,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
   },
   tooltipContent: {
     flexDirection: "row",
@@ -773,15 +774,15 @@ const styles = StyleSheet.create({
   tooltipTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tooltipSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   tooltipYesBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -789,13 +790,13 @@ const styles = StyleSheet.create({
   tooltipYesText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   tooltipCloseBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -805,10 +806,10 @@ const styles = StyleSheet.create({
     left: 52,
     width: 16,
     height: 16,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRightWidth: 1,
     borderBottomWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
     transform: [{ rotate: "45deg" }],
   },
   bottomRow: {
@@ -825,10 +826,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -845,18 +846,18 @@ const styles = StyleSheet.create({
   prayBtnText: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   dotsBtn: {
     position: "absolute" as const,
     top: -6,
     right: 6,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -872,18 +873,18 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   journaledBadge: {
     position: "absolute" as const,
     top: -6,
     right: 6,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -897,7 +898,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -908,7 +909,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   modalOverlay: {
     flex: 1,
@@ -918,7 +919,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   modalCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 32,
     paddingHorizontal: 28,
     paddingTop: 36,
@@ -935,7 +936,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 20,
@@ -946,21 +947,21 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 12,
     textAlign: "center" as const,
   },
   modalBody: {
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     textAlign: "center" as const,
     fontWeight: "500" as const,
     marginBottom: 28,
   },
   modalBold: {
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   modalBtnRow: {
     width: "100%" as const,
@@ -968,13 +969,13 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
   },
   modalBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
     paddingHorizontal: 48,
     width: "100%" as const,
     alignItems: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -983,7 +984,7 @@ const styles = StyleSheet.create({
   modalBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   modalBtnLater: {
     paddingVertical: 12,
@@ -992,7 +993,7 @@ const styles = StyleSheet.create({
   modalBtnLaterText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   prayBtnTextWrap: {
     alignItems: "center" as const,
@@ -1000,7 +1001,7 @@ const styles = StyleSheet.create({
   prayBtnSub: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.primaryForeground + "CC",
+    color: colors.primaryForeground + "CC",
     marginTop: 1,
     letterSpacing: 0.2,
   },

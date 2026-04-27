@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -60,9 +60,9 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { LightColors as Colors, ThemeColors } from "@/constants/colors";
+import { LightColors, ThemeColors } from "@/constants/colors";
 
-const CommunityColorsCtx = React.createContext<ThemeColors>(Colors);
+const CommunityColorsCtx = React.createContext<ThemeColors>(LightColors);
 const useCColors = () => React.useContext(CommunityColorsCtx);
 import StatusUpdateModal from "@/components/StatusUpdateModal";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
@@ -536,6 +536,9 @@ const JOINABLE_GROUPS: Record<string, JoinableGroup> = {
 
 export default function CommunityScreen() {
   const themeColors = useThemeColors();
+  const colors = themeColors;
+  const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<Tab>((tabParam as Tab) ?? "Feed");
 
@@ -849,7 +852,7 @@ export default function CommunityScreen() {
 
   return (
     <CommunityColorsCtx.Provider value={themeColors}>
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]} edges={["top"]} {...swipeHandlers}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={["top"]} {...swipeHandlers}>
       <NavigationDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
@@ -860,7 +863,7 @@ export default function CommunityScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Pressable style={styles.iconBtn} onPress={() => setDrawerVisible(true)}>
-            <Menu size={20} color={Colors.foreground} />
+            <Menu size={20} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Feed</Text>
@@ -875,7 +878,7 @@ export default function CommunityScreen() {
         </View>
         <View style={styles.headerIcons}>
           <Pressable style={styles.iconBtn} onPress={() => setBrowseCommunitiesVisible(true)}>
-            <Search size={20} color={Colors.foreground} />
+            <Search size={20} color={colors.foreground} />
           </Pressable>
           {activeTab === "Community" && (
             <Pressable
@@ -885,7 +888,7 @@ export default function CommunityScreen() {
                 setBrowseCommunitiesVisible(true);
               }}
             >
-              <Users size={20} color={Colors.foreground} />
+              <Users size={20} color={colors.foreground} />
             </Pressable>
           )}
           {activeTab === "My Groups" && (
@@ -896,11 +899,11 @@ export default function CommunityScreen() {
                 router.push("/create-group");
               }}
             >
-              <Plus size={20} color={Colors.foreground} />
+              <Plus size={20} color={colors.foreground} />
             </Pressable>
           )}
           <Pressable style={styles.bellWrap} onPress={() => setNotifVisible(true)}>
-            <Bell size={20} color={Colors.foreground} />
+            <Bell size={20} color={colors.foreground} />
             {notifUnreadCount > 0 && <View style={styles.bellBadge} />}
           </Pressable>
         </View>
@@ -1119,7 +1122,7 @@ export default function CommunityScreen() {
         >
           <View style={styles.prayingForPromptCard}>
             <View style={styles.prayingForPromptLeft}>
-              <HandHeart size={18} color={Colors.primary} />
+              <HandHeart size={18} color={colors.primary} />
               <View style={styles.prayingForPromptText}>
                 <Text style={styles.prayingForPromptTitle}>Keep {prayingForPrompt.post.authorName} in prayer?</Text>
                 <Text style={styles.prayingForPromptSub}>Add them to your personal Praying For list</Text>
@@ -1130,7 +1133,7 @@ export default function CommunityScreen() {
                 <Text style={styles.prayingForPromptAddText}>Add</Text>
               </Pressable>
               <Pressable style={styles.prayingForPromptDismiss} onPress={dismissPrayingForPrompt}>
-                <X size={14} color={Colors.mutedForeground} />
+                <X size={14} color={colors.mutedForeground} />
               </Pressable>
             </View>
           </View>
@@ -1259,7 +1262,7 @@ function NoCommunityEmptyState({ onJoin }: NoCommunityEmptyStateProps) {
     <Animated.View style={[styles.noCommunityWrap, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.noCommunityIconRing}>
         <View style={styles.noCommunityIconInner}>
-          <Globe size={32} color={Colors.primary} />
+          <Globe size={32} color={colors.primary} />
         </View>
       </View>
       <Text style={styles.noCommunityTitle}>No Communities Yet</Text>
@@ -1267,7 +1270,7 @@ function NoCommunityEmptyState({ onJoin }: NoCommunityEmptyStateProps) {
         Join a community to see prayer updates, share requests, and pray together with others.
       </Text>
       <Pressable style={styles.noCommunityBtn} onPress={onJoin}>
-        <Users size={18} color={Colors.primaryForeground} />
+        <Users size={18} color={colors.primaryForeground} />
         <Text style={styles.noCommunityBtnText}>Browse Communities</Text>
       </Pressable>
     </Animated.View>
@@ -1363,7 +1366,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
     <Animated.View style={{ opacity: fadeAnim }}>
       <View style={styles.inlineBrowseHeader}>
         <View style={styles.inlineBrowseIconRing}>
-          <Globe size={26} color={Colors.primary} />
+          <Globe size={26} color={colors.primary} />
         </View>
         <Text style={styles.inlineBrowseTitle}>Find your community</Text>
         <Text style={styles.inlineBrowseSub}>
@@ -1372,11 +1375,11 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
       </View>
 
       <Pressable style={styles.browseSearchWrap} onPress={onOpenBrowse}>
-        <Search size={16} color={Colors.mutedForeground} />
-        <Text style={[styles.browseSearchInput, { color: Colors.mutedForeground }]}>
+        <Search size={16} color={colors.mutedForeground} />
+        <Text style={[styles.browseSearchInput, { color: colors.mutedForeground }]}>
           Search communities...
         </Text>
-        <ChevronRight size={14} color={Colors.mutedForeground} />
+        <ChevronRight size={14} color={colors.mutedForeground} />
       </Pressable>
 
       {filteredPublic.length > 0 ? (
@@ -1409,7 +1412,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
                   )}
                   {community.isPrivate && !community.isOfficial && (
                     <View style={styles.privateBadgeSmall}>
-                      <Lock size={9} color={Colors.mutedForeground} />
+                      <Lock size={9} color={colors.mutedForeground} />
                     </View>
                   )}
                 </View>
@@ -1419,7 +1422,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
                   </Text>
                 ) : null}
                 <View style={styles.browseMemberRow}>
-                  <Users size={10} color={Colors.mutedForeground} />
+                  <Users size={10} color={colors.mutedForeground} />
                   <Text style={styles.switcherItemMeta}>{community.memberCount} members</Text>
                 </View>
               </View>
@@ -1437,7 +1440,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
         })
       ) : (
         <View style={styles.browseNoResults}>
-          <Search size={28} color={Colors.mutedForeground + "60"} />
+          <Search size={28} color={colors.mutedForeground + "60"} />
           <Text style={styles.browseNoResultsText}>No communities found for "{searchQuery}"</Text>
         </View>
       )}
@@ -1451,8 +1454,8 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
 
         <Pressable style={styles.browsePrivateToggle} onPress={handleTogglePrivate}>
           <View style={styles.browsePrivateToggleLeft}>
-            <View style={[styles.browsePrivateLockIcon, privateExpanded && { backgroundColor: Colors.primary }]}>
-              <Lock size={15} color={privateExpanded ? Colors.primaryForeground : Colors.primary} />
+            <View style={[styles.browsePrivateLockIcon, privateExpanded && { backgroundColor: colors.primary }]}>
+              <Lock size={15} color={privateExpanded ? colors.primaryForeground : colors.primary} />
             </View>
             <View>
               <Text style={styles.browsePrivateToggleTitle}>Join with a code</Text>
@@ -1461,19 +1464,19 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
           </View>
           <ChevronDown
             size={16}
-            color={Colors.mutedForeground}
+            color={colors.mutedForeground}
             style={{ transform: [{ rotate: privateExpanded ? "180deg" : "0deg" }] }}
           />
         </Pressable>
 
         <Animated.View style={[styles.browsePrivateContent, { maxHeight: privateContentHeight, overflow: "hidden" }]}>
           <View style={styles.browsePrivateInputWrap}>
-            <Lock size={16} color={matchedPrivate ? Colors.primary : Colors.mutedForeground} />
+            <Lock size={16} color={matchedPrivate ? colors.primary : colors.mutedForeground} />
             <TextInput
               ref={codeInputRef}
               style={styles.browsePrivateInput}
               placeholder="Enter community code"
-              placeholderTextColor={Colors.mutedForeground + "70"}
+              placeholderTextColor={colors.mutedForeground + "70"}
               value={privateCode}
               onChangeText={handlePrivateCodeChange}
               autoCapitalize="characters"
@@ -1481,7 +1484,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
               maxLength={20}
             />
             {matchedPrivate && (
-              <CheckCircle2 size={18} color={Colors.green} />
+              <CheckCircle2 size={18} color={colors.green} />
             )}
           </View>
           {!matchedPrivate && privateCode.length > 0 && (
@@ -1518,7 +1521,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
                 onPress={handleJoinPrivate}
                 disabled={joiningPrivate}
               >
-                <LogIn size={16} color={Colors.primaryForeground} />
+                <LogIn size={16} color={colors.primaryForeground} />
                 <Text style={styles.browsePrivateJoinText}>
                   {joiningPrivate ? "Joining..." : `Join ${matchedPrivate.name}`}
                 </Text>
@@ -1542,7 +1545,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
       </Pressable>
 
       <View style={[styles.switcherFooterHint, { marginTop: 8 }]}>
-        <Sparkles size={13} color={Colors.mutedForeground} />
+        <Sparkles size={13} color={colors.mutedForeground} />
         <Text style={styles.switcherFooterText}>
           You can join multiple communities and switch between them anytime
         </Text>
@@ -1579,7 +1582,7 @@ function NewUpdatesBanner({ animValue, onPress }: NewUpdatesBannerProps) {
       ]}
     >
       <Pressable style={styles.newUpdatesPressable} onPress={onPress}>
-        <ArrowUp size={14} color={Colors.primaryForeground} />
+        <ArrowUp size={14} color={colors.primaryForeground} />
         <Text style={styles.newUpdatesText}>New updates available</Text>
       </Pressable>
     </Animated.View>
@@ -1590,7 +1593,7 @@ function CommunityEmptyState({ communityName }: CommunityEmptyStateProps) {
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconWrap}>
-        <HandHeart size={32} color={Colors.primary} />
+        <HandHeart size={32} color={colors.primary} />
       </View>
       <Text style={styles.emptyTitle}>No posts in {communityName} yet</Text>
       <Text style={styles.emptySubtitle}>
@@ -1716,17 +1719,17 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             <Text style={styles.switcherSub}>Find and join public prayer communities</Text>
           </View>
           <Pressable style={styles.closeBtn} onPress={onClose}>
-            <X size={18} color={Colors.mutedForeground} />
+            <X size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
 
         <View style={styles.browseSearchWrap}>
-          <Search size={16} color={Colors.mutedForeground} />
+          <Search size={16} color={colors.mutedForeground} />
           <TextInput
             ref={searchInputRef}
             style={styles.browseSearchInput}
             placeholder="Search communities..."
-            placeholderTextColor={Colors.mutedForeground + "80"}
+            placeholderTextColor={colors.mutedForeground + "80"}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCorrect={false}
@@ -1735,7 +1738,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")}>
-              <X size={14} color={Colors.mutedForeground} />
+              <X size={14} color={colors.mutedForeground} />
             </Pressable>
           )}
         </View>
@@ -1776,7 +1779,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                         )}
                         {community.isPrivate && !community.isOfficial && (
                           <View style={styles.privateBadgeSmall}>
-                            <Lock size={9} color={Colors.mutedForeground} />
+                            <Lock size={9} color={colors.mutedForeground} />
                           </View>
                         )}
                       </View>
@@ -1786,7 +1789,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                         </Text>
                       ) : null}
                       <View style={styles.browseMemberRow}>
-                        <Users size={10} color={Colors.mutedForeground} />
+                        <Users size={10} color={colors.mutedForeground} />
                         <Text style={styles.switcherItemMeta}>{community.memberCount} members</Text>
                       </View>
                     </View>
@@ -1804,7 +1807,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
               })
             ) : (
               <View style={styles.browseNoResults}>
-                <Search size={28} color={Colors.mutedForeground + "60"} />
+                <Search size={28} color={colors.mutedForeground + "60"} />
                 <Text style={styles.browseNoResultsText}>No communities found for "{searchQuery}"</Text>
               </View>
             )}
@@ -1818,8 +1821,8 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
 
               <Pressable style={styles.browsePrivateToggle} onPress={handleTogglePrivate}>
                 <View style={styles.browsePrivateToggleLeft}>
-                  <View style={[styles.browsePrivateLockIcon, privateExpanded && { backgroundColor: Colors.primary }]}>
-                    <Lock size={15} color={privateExpanded ? Colors.primaryForeground : Colors.primary} />
+                  <View style={[styles.browsePrivateLockIcon, privateExpanded && { backgroundColor: colors.primary }]}>
+                    <Lock size={15} color={privateExpanded ? colors.primaryForeground : colors.primary} />
                   </View>
                   <View>
                     <Text style={styles.browsePrivateToggleTitle}>Join with a code</Text>
@@ -1828,19 +1831,19 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                 </View>
                 <ChevronDown
                   size={16}
-                  color={Colors.mutedForeground}
+                  color={colors.mutedForeground}
                   style={{ transform: [{ rotate: privateExpanded ? "180deg" : "0deg" }] }}
                 />
               </Pressable>
 
               <Animated.View style={[styles.browsePrivateContent, { maxHeight: privateContentHeight, overflow: "hidden" }]}>
                 <View style={styles.browsePrivateInputWrap}>
-                  <Lock size={16} color={matchedPrivate ? Colors.primary : Colors.mutedForeground} />
+                  <Lock size={16} color={matchedPrivate ? colors.primary : colors.mutedForeground} />
                   <TextInput
                     ref={codeInputRef}
                     style={styles.browsePrivateInput}
                     placeholder="Enter community code"
-                    placeholderTextColor={Colors.mutedForeground + "70"}
+                    placeholderTextColor={colors.mutedForeground + "70"}
                     value={privateCode}
                     onChangeText={handlePrivateCodeChange}
                     autoCapitalize="characters"
@@ -1848,7 +1851,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                     maxLength={20}
                   />
                   {matchedPrivate && (
-                    <CheckCircle2 size={18} color={Colors.green} />
+                    <CheckCircle2 size={18} color={colors.green} />
                   )}
                 </View>
                 {!matchedPrivate && privateCode.length > 0 && (
@@ -1885,7 +1888,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                       onPress={handleJoinPrivate}
                       disabled={joiningPrivate}
                     >
-                      <LogIn size={16} color={Colors.primaryForeground} />
+                      <LogIn size={16} color={colors.primaryForeground} />
                       <Text style={styles.browsePrivateJoinText}>
                         {joiningPrivate ? "Joining..." : `Join ${matchedPrivate.name}`}
                       </Text>
@@ -1909,7 +1912,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             </Pressable>
 
             <View style={styles.switcherFooterHint}>
-              <Sparkles size={13} color={Colors.mutedForeground} />
+              <Sparkles size={13} color={colors.mutedForeground} />
               <Text style={styles.switcherFooterText}>
                 You can join multiple communities and switch between them anytime
               </Text>
@@ -1990,7 +1993,7 @@ function CommunitySwitcherModal({
               <Text style={styles.switcherSub}>Choose where you want to pray today</Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={onClose}>
-              <X size={18} color={Colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -2020,7 +2023,7 @@ function CommunitySwitcherModal({
                     <Check size={12} color="#fff" />
                   </View>
                 ) : (
-                  <ChevronRight size={16} color={Colors.mutedForeground} />
+                  <ChevronRight size={16} color={colors.mutedForeground} />
                 )}
               </Pressable>
             );
@@ -2028,17 +2031,17 @@ function CommunitySwitcherModal({
 
           <Pressable style={styles.joinAnotherRow} onPress={onBrowse}>
             <View style={styles.joinAnotherIcon}>
-              <Plus size={18} color={Colors.primary} />
+              <Plus size={18} color={colors.primary} />
             </View>
             <View style={styles.joinAnotherText}>
               <Text style={styles.joinAnotherLabel}>Join another community</Text>
               <Text style={styles.joinAnotherSub}>Browse and discover new communities</Text>
             </View>
-            <ChevronRight size={16} color={Colors.mutedForeground} />
+            <ChevronRight size={16} color={colors.mutedForeground} />
           </Pressable>
 
           <View style={styles.switcherFooterHint}>
-            <Sparkles size={13} color={Colors.mutedForeground} />
+            <Sparkles size={13} color={colors.mutedForeground} />
             <Text style={styles.switcherFooterText}>
               Posts, prayers and comments are scoped to your active community
             </Text>
@@ -2098,11 +2101,11 @@ function MyGroupsContent() {
           <Pressable style={styles.createGroupBtn} onPress={() => router.push("/create-group")}>
             <View style={styles.createGroupInner}>
               <View style={styles.createGroupPlus}>
-                <Plus size={16} color={Colors.primary} />
+                <Plus size={16} color={colors.primary} />
               </View>
               <Text style={styles.createGroupText}>Create a new group</Text>
             </View>
-            <ChevronRight size={18} color={Colors.mutedForeground} />
+            <ChevronRight size={18} color={colors.mutedForeground} />
           </Pressable>
 
           <Pressable
@@ -2114,11 +2117,11 @@ function MyGroupsContent() {
           >
             <View style={styles.createGroupInner}>
               <View style={styles.joinGroupIcon}>
-                <LogIn size={16} color={Colors.primaryForeground} />
+                <LogIn size={16} color={colors.primaryForeground} />
               </View>
               <Text style={styles.joinGroupText}>Join a group</Text>
             </View>
-            <ChevronRight size={18} color={Colors.mutedForeground} />
+            <ChevronRight size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
 
@@ -2139,7 +2142,7 @@ function MyGroupsContent() {
                   <Text style={styles.requestsBadgeText}>{group.activeRequests}</Text>
                 </View>
               )}
-              <ChevronRight size={18} color={Colors.mutedForeground} />
+              <ChevronRight size={18} color={colors.mutedForeground} />
             </View>
           </Pressable>
         ))}
@@ -2258,7 +2261,7 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
         >
           <View style={styles.joinModalHeader}>
             <Pressable style={styles.joinModalBackBtn} onPress={handleClose}>
-              <X size={20} color={Colors.foreground} />
+              <X size={20} color={colors.foreground} />
             </Pressable>
             <View style={styles.joinModalHeaderCenter}>
               <Text style={styles.joinModalTitle}>Join a Group</Text>
@@ -2269,12 +2272,12 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
 
           <View style={styles.joinPasswordSection}>
             <View style={styles.joinPasswordInputWrap}>
-              <Lock size={18} color={matchedGroup ? Colors.primary : Colors.mutedForeground} />
+              <Lock size={18} color={matchedGroup ? colors.primary : colors.mutedForeground} />
               <TextInput
                 ref={inputRef}
                 style={styles.joinPasswordInput}
                 placeholder="Enter group password"
-                placeholderTextColor={Colors.mutedForeground + "70"}
+                placeholderTextColor={colors.mutedForeground + "70"}
                 value={password}
                 onChangeText={handlePasswordChange}
                 autoCapitalize="characters"
@@ -2283,7 +2286,7 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
               />
               {matchedGroup && (
                 <View style={styles.joinPasswordCheck}>
-                  <CheckCircle2 size={20} color={Colors.green} />
+                  <CheckCircle2 size={20} color={colors.green} />
                 </View>
               )}
             </View>
@@ -2337,7 +2340,7 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
                   <Text style={styles.joinConfirmBtnText}>Joining...</Text>
                 ) : (
                   <>
-                    <LogIn size={18} color={Colors.primaryForeground} />
+                    <LogIn size={18} color={colors.primaryForeground} />
                     <Text style={styles.joinConfirmBtnText}>Join {matchedGroup.name}</Text>
                   </>
                 )}
@@ -2365,13 +2368,13 @@ function MyRequestsBanner({ onPress }: { onPress: () => void }) {
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }], flexDirection: "row" as const, alignItems: "center" as const, flex: 1, gap: 12 }}>
         <View style={styles.myRequestsBannerIcon}>
-          <HandHeart size={18} color={Colors.primary} />
+          <HandHeart size={18} color={colors.primary} />
         </View>
         <View style={styles.myRequestsBannerText}>
           <Text style={styles.myRequestsBannerTitle}>My Prayer Requests</Text>
           <Text style={styles.myRequestsBannerSub}>Update, mark answered &amp; share testimonies</Text>
         </View>
-        <ChevronRight size={16} color={Colors.primary} />
+        <ChevronRight size={16} color={colors.primary} />
       </Animated.View>
     </Pressable>
   );
@@ -2420,7 +2423,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
     <View style={styles.card}>
       {isUpdatePost && (
         <View style={styles.updateHeaderBanner}>
-          <Repeat2 size={13} color={Colors.primary} />
+          <Repeat2 size={13} color={colors.primary} />
           <Text style={styles.updateHeaderText}>{post.authorName} shared an update</Text>
         </View>
       )}
@@ -2450,13 +2453,13 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             )}
           </View>
           <View style={styles.cardMetaRow}>
-            <Clock size={10} color={Colors.mutedForeground} />
+            <Clock size={10} color={colors.mutedForeground} />
             <Text style={styles.cardMeta}>{post.postedAt}</Text>
           </View>
         </View>
         <View style={styles.cardHeaderRight}>
           <Pressable style={styles.moreBtn} onPress={() => onMorePress(post)}>
-            <MoreHorizontal size={18} color={Colors.mutedForeground} />
+            <MoreHorizontal size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
       </View>
@@ -2556,13 +2559,13 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             </Pressable>
 
             <Pressable style={styles.encourageBtn} onPress={() => onComment(post)}>
-              <MessageCircle size={16} color={Colors.mutedForeground} />
+              <MessageCircle size={16} color={colors.mutedForeground} />
               <Text style={styles.encourageBtnText}>View</Text>
             </Pressable>
 
             {!isUpdatePost && (
               <Pressable style={styles.repostBtn} onPress={() => onRepost(post)}>
-                <Repeat2 size={16} color={Colors.primary} />
+                <Repeat2 size={16} color={colors.primary} />
                 <Text style={styles.repostBtnText}>Update</Text>
               </Pressable>
             )}
@@ -2575,8 +2578,8 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             >
               <Heart
                 size={16}
-                color={hasPrayed ? Colors.primaryForeground : Colors.primary}
-                fill={hasPrayed ? Colors.primaryForeground : "transparent"}
+                color={hasPrayed ? colors.primaryForeground : colors.primary}
+                fill={hasPrayed ? colors.primaryForeground : "transparent"}
               />
               <Text style={[styles.prayBtnText, hasPrayed && styles.prayBtnTextActive]}>
                 {hasPrayed ? "Praying" : "Pray"}
@@ -2584,7 +2587,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
             </Pressable>
 
             <Pressable style={styles.encourageBtn} onPress={() => onComment(post)}>
-              <MessageCircle size={16} color={Colors.mutedForeground} />
+              <MessageCircle size={16} color={colors.mutedForeground} />
               <Text style={styles.encourageBtnText}>Encourage</Text>
             </Pressable>
           </>
@@ -2645,7 +2648,7 @@ function PrayingUsersModal({ post, onClose }: PrayingUsersModalProps) {
               </View>
             </View>
             <Pressable style={styles.puCloseBtn} onPress={handleClose}>
-              <X size={18} color={Colors.secondaryForeground} />
+              <X size={18} color={colors.secondaryForeground} />
             </Pressable>
           </View>
 
@@ -2845,7 +2848,7 @@ function PrayerShareSheet({ post, isAuthor, onClose }: PrayerShareSheetProps) {
               </View>
             </View>
             <Pressable style={styles.closeBtn} onPress={handleClose}>
-              <X size={18} color={Colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -2875,25 +2878,25 @@ function PrayerShareSheet({ post, isAuthor, onClose }: PrayerShareSheetProps) {
 
           <View style={styles.shareInternalOptions}>
             <Pressable style={styles.shareInternalRow} onPress={handleInternalChat}>
-              <View style={[styles.shareInternalIcon, { backgroundColor: Colors.accent }]}>
-                <MessageCircle size={18} color={Colors.primary} />
+              <View style={[styles.shareInternalIcon, { backgroundColor: colors.accent }]}>
+                <MessageCircle size={18} color={colors.primary} />
               </View>
               <View style={styles.shareInternalText}>
                 <Text style={styles.shareInternalLabel}>Send to Chat</Text>
                 <Text style={styles.shareInternalSub}>Share as a prayer invitation in a conversation</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable style={[styles.shareInternalRow, { borderBottomWidth: 0 }]} onPress={handleInternalGroup}>
-              <View style={[styles.shareInternalIcon, { backgroundColor: Colors.accent }]}>
-                <Users size={18} color={Colors.primary} />
+              <View style={[styles.shareInternalIcon, { backgroundColor: colors.accent }]}>
+                <Users size={18} color={colors.primary} />
               </View>
               <View style={styles.shareInternalText}>
                 <Text style={styles.shareInternalLabel}>Send to Group</Text>
                 <Text style={styles.shareInternalSub}>Pass this update to a prayer group</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -2910,17 +2913,17 @@ function PrayerShareSheet({ post, isAuthor, onClose }: PrayerShareSheetProps) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.shareOptionBtn} onPress={handleSMS} activeOpacity={0.75}>
-              <View style={[styles.shareOptionIcon, { backgroundColor: Colors.primary }]}>
+              <View style={[styles.shareOptionIcon, { backgroundColor: colors.primary }]}>
                 <MessageCircle size={22} color="#fff" />
               </View>
               <Text style={styles.shareOptionLabel}>Text Message</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.shareOptionBtn} onPress={handleCopyLink} activeOpacity={0.75}>
-              <View style={[styles.shareOptionIcon, { backgroundColor: copiedLink ? Colors.green : Colors.secondary }]}>
+              <View style={[styles.shareOptionIcon, { backgroundColor: copiedLink ? colors.green : colors.secondary }]}>
                 {copiedLink
                   ? <Check size={22} color="#fff" />
-                  : <Link2 size={22} color={Colors.foreground} />}
+                  : <Link2 size={22} color={colors.foreground} />}
               </View>
               <Text style={styles.shareOptionLabel}>{copiedLink ? "Copied!" : "Copy Link"}</Text>
             </TouchableOpacity>
@@ -3005,7 +3008,7 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
               <Text style={styles.repostModalSub}>Let others know how this prayer is going</Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={handleClose}>
-              <X size={18} color={Colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -3037,7 +3040,7 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
               <TextInput
                 style={styles.repostInput}
                 placeholder="Share an update..."
-                placeholderTextColor={Colors.mutedForeground + "80"}
+                placeholderTextColor={colors.mutedForeground + "80"}
                 multiline
                 maxLength={500}
                 value={updateText}
@@ -3097,7 +3100,7 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
               onPress={handleSubmit}
               disabled={!canSubmit}
             >
-              <Repeat2 size={18} color={Colors.primaryForeground} />
+              <Repeat2 size={18} color={colors.primaryForeground} />
               <Text style={styles.repostSubmitText}>Share Update</Text>
             </Pressable>
           </View>
@@ -3219,7 +3222,7 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
             {reportSubmitted ? (
               <View style={styles.reportSuccessWrap}>
                 <View style={styles.reportSuccessIcon}>
-                  <CheckCircle size={28} color={Colors.green} />
+                  <CheckCircle size={28} color={colors.green} />
                 </View>
                 <Text style={styles.reportSuccessTitle}>Report Submitted</Text>
                 <Text style={styles.reportSuccessSub}>
@@ -3233,7 +3236,7 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
               <>
                 <View style={styles.reportHeader}>
                   <Pressable onPress={() => setReportStep(false)} style={styles.reportBackBtn}>
-                    <ChevronRight size={18} color={Colors.mutedForeground} style={{ transform: [{ rotate: '180deg' }] }} />
+                    <ChevronRight size={18} color={colors.mutedForeground} style={{ transform: [{ rotate: '180deg' }] }} />
                   </Pressable>
                   <View style={styles.reportHeaderText}>
                     <Text style={styles.actionsTitle}>Report Post</Text>
@@ -3249,7 +3252,7 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
                     <View style={styles.actionTextWrap}>
                       <Text style={styles.actionLabel}>{reason}</Text>
                     </View>
-                    <ChevronRight size={16} color={Colors.mutedForeground} />
+                    <ChevronRight size={16} color={colors.mutedForeground} />
                   </Pressable>
                 ))}
                 <Pressable style={[styles.actionCancelBtn, { marginTop: 12 }]} onPress={handleClose}>
@@ -3263,36 +3266,36 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
             <Text style={styles.actionsTitle}>Your Prayer</Text>
 
             <Pressable style={styles.actionItem} onPress={handleShare}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.accent }]}>
-                <Share2 size={18} color={Colors.primary} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.accent }]}>
+                <Share2 size={18} color={colors.primary} />
               </View>
               <View style={styles.actionTextWrap}>
                 <Text style={styles.actionLabel}>Share</Text>
                 <Text style={styles.actionSub}>Share this prayer request</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable style={styles.actionItem} onPress={handleArchive}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.secondary }]}>
-                <Archive size={18} color={Colors.secondaryForeground} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.secondary }]}>
+                <Archive size={18} color={colors.secondaryForeground} />
               </View>
               <View style={styles.actionTextWrap}>
                 <Text style={styles.actionLabel}>Archive</Text>
                 <Text style={styles.actionSub}>Remove from feed, keep in history</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable style={[styles.actionItem, { borderBottomWidth: 0 }]} onPress={handleDelete}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.destructive + "15" }]}>
-                <Trash2 size={18} color={Colors.destructive} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.destructive + "15" }]}>
+                <Trash2 size={18} color={colors.destructive} />
               </View>
               <View style={styles.actionTextWrap}>
-                <Text style={[styles.actionLabel, { color: Colors.destructive }]}>Delete</Text>
+                <Text style={[styles.actionLabel, { color: colors.destructive }]}>Delete</Text>
                 <Text style={styles.actionSub}>Permanently remove this post</Text>
               </View>
-              <ChevronRight size={16} color={Colors.destructive + "80"} />
+              <ChevronRight size={16} color={colors.destructive + "80"} />
             </Pressable>
 
             <Pressable style={styles.actionCancelBtn} onPress={handleClose}>
@@ -3304,36 +3307,36 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
             <Text style={styles.actionsTitle}>Post Options</Text>
 
             <Pressable style={styles.actionItem} onPress={handleHide}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.secondary }]}>
-                <EyeOff size={18} color={Colors.secondaryForeground} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.secondary }]}>
+                <EyeOff size={18} color={colors.secondaryForeground} />
               </View>
               <View style={styles.actionTextWrap}>
                 <Text style={styles.actionLabel}>Hide Post</Text>
                 <Text style={styles.actionSub}>Remove from your feed only</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable style={styles.actionItem} onPress={handleShare}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.accent }]}>
-                <Share2 size={18} color={Colors.primary} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.accent }]}>
+                <Share2 size={18} color={colors.primary} />
               </View>
               <View style={styles.actionTextWrap}>
                 <Text style={styles.actionLabel}>Share</Text>
                 <Text style={styles.actionSub}>Share this prayer request</Text>
               </View>
-              <ChevronRight size={16} color={Colors.mutedForeground} />
+              <ChevronRight size={16} color={colors.mutedForeground} />
             </Pressable>
 
             <Pressable style={[styles.actionItem, { borderBottomWidth: 0 }]} onPress={() => setReportStep(true)}>
-              <View style={[styles.actionIconWrap, { backgroundColor: Colors.destructive + "15" }]}>
-                <Flag size={18} color={Colors.destructive} />
+              <View style={[styles.actionIconWrap, { backgroundColor: colors.destructive + "15" }]}>
+                <Flag size={18} color={colors.destructive} />
               </View>
               <View style={styles.actionTextWrap}>
-                <Text style={[styles.actionLabel, { color: Colors.destructive }]}>Report</Text>
+                <Text style={[styles.actionLabel, { color: colors.destructive }]}>Report</Text>
                 <Text style={styles.actionSub}>Flag this content for review</Text>
               </View>
-              <ChevronRight size={16} color={Colors.destructive + "80"} />
+              <ChevronRight size={16} color={colors.destructive + "80"} />
             </Pressable>
 
             <Pressable style={styles.actionCancelBtn} onPress={handleClose}>
@@ -3403,7 +3406,7 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
               <Text style={styles.modalSub}>{post.commentCount} responses</Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={handleClose}>
-              <X size={18} color={Colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -3450,7 +3453,7 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
             <TextInput
               style={styles.textInput}
               placeholder="Add an encouragement..."
-              placeholderTextColor={Colors.mutedForeground}
+              placeholderTextColor={colors.mutedForeground}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -3460,7 +3463,7 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
               style={[styles.sendBtn, inputText.trim().length > 0 && styles.sendBtnActive]}
               onPress={handleSend}
             >
-              <Send size={16} color={inputText.trim().length > 0 ? Colors.primaryForeground : Colors.mutedForeground} />
+              <Send size={16} color={inputText.trim().length > 0 ? colors.primaryForeground : colors.mutedForeground} />
             </Pressable>
           </View>
         </Animated.View>
@@ -3492,7 +3495,7 @@ function StopPrayingModal({ authorName, onKeep, onStop }: StopPrayingModalProps)
         <Pressable style={StyleSheet.absoluteFill} onPress={onKeep} />
         <Animated.View style={[styles.stopSheet, { transform: [{ scale: scaleAnim }] }]}>
           <View style={styles.stopIconWrap}>
-            <Heart size={26} color={Colors.primary} fill={Colors.primary} />
+            <Heart size={26} color={colors.primary} fill={colors.primary} />
           </View>
           <Text style={styles.stopTitle}>Stop Praying?</Text>
           <Text style={styles.stopBody}>
@@ -3500,7 +3503,7 @@ function StopPrayingModal({ authorName, onKeep, onStop }: StopPrayingModalProps)
             <Text style={styles.stopNameBold}>{authorName}</Text>'s request?
           </Text>
           <Pressable style={styles.keepBtn} onPress={onKeep}>
-            <Heart size={16} color={Colors.primaryForeground} fill={Colors.primaryForeground} />
+            <Heart size={16} color={colors.primaryForeground} fill={colors.primaryForeground} />
             <Text style={styles.keepBtnText}>Keep Praying</Text>
           </Pressable>
           <Pressable style={styles.stopBtn} onPress={onStop}>
@@ -3588,7 +3591,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
           <View style={styles.paywallHandle} />
 
           <Pressable style={styles.paywallClose} onPress={onClose}>
-            <X size={18} color={Colors.mutedForeground} />
+            <X size={18} color={colors.mutedForeground} />
           </Pressable>
 
           {step === "type" && (
@@ -3608,8 +3611,8 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                 }}
               >
                 <View style={styles.createTypeCardTop}>
-                  <View style={[styles.createTypeIconWrap, { backgroundColor: Colors.accent }]}>
-                    <Globe size={22} color={Colors.primary} />
+                  <View style={[styles.createTypeIconWrap, { backgroundColor: colors.accent }]}>
+                    <Globe size={22} color={colors.primary} />
                   </View>
                   <View style={styles.createTypeCardInfo}>
                     <View style={styles.createTypeCardTitleRow}>
@@ -3620,12 +3623,12 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                     </View>
                     <Text style={styles.createTypeCardSub}>Open to anyone · No approval needed</Text>
                   </View>
-                  <ChevronRight size={18} color={Colors.mutedForeground} />
+                  <ChevronRight size={18} color={colors.mutedForeground} />
                 </View>
                 <View style={styles.createTypeFeatureList}>
                   {(["Edit name & description", "Pin posts", "Basic moderation"] as const).map((f) => (
                     <View key={f} style={styles.createTypeFeatureRow}>
-                      <CheckCircle size={12} color={Colors.primary} />
+                      <CheckCircle size={12} color={colors.primary} />
                       <Text style={styles.createTypeFeatureText}>{f}</Text>
                     </View>
                   ))}
@@ -3653,7 +3656,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                     </View>
                     <Text style={styles.createTypeCardSub}>Password protected · Full admin controls</Text>
                   </View>
-                  <ChevronRight size={18} color={Colors.mutedForeground} />
+                  <ChevronRight size={18} color={colors.mutedForeground} />
                 </View>
                 <View style={styles.createTypeFeatureList}>
                   {(["Approve or remove members", "Control who can post", "Manage community settings"] as const).map((f) => (
@@ -3666,7 +3669,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
               </Pressable>
 
               <View style={styles.createTypeFooter}>
-                <Sparkles size={12} color={Colors.mutedForeground} />
+                <Sparkles size={12} color={colors.mutedForeground} />
                 <Text style={styles.createTypeFooterText}>
                   Official communities are created and verified by Prayer Space directly.
                 </Text>
@@ -3677,13 +3680,13 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
           {step === "public_setup" && (
             <>
               <Pressable style={styles.createBackBtn} onPress={() => setStep("type")}>
-                <ChevronRight size={16} color={Colors.mutedForeground} style={{ transform: [{ rotate: "180deg" }] }} />
+                <ChevronRight size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: "180deg" }] }} />
                 <Text style={styles.createBackText}>Back</Text>
               </Pressable>
 
               <View style={styles.createTypeHeader}>
-                <View style={[styles.createTypeIconWrap, { backgroundColor: Colors.accent, alignSelf: "center" as const, marginBottom: 12 }]}>
-                  <Globe size={26} color={Colors.primary} />
+                <View style={[styles.createTypeIconWrap, { backgroundColor: colors.accent, alignSelf: "center" as const, marginBottom: 12 }]}>
+                  <Globe size={26} color={colors.primary} />
                 </View>
                 <Text style={styles.paywallTitle}>Public Community</Text>
                 <Text style={styles.paywallSubtitle}>
@@ -3696,7 +3699,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                 <TextInput
                   style={styles.createInput}
                   placeholder="e.g. Sunday Prayers, City Intercession..."
-                  placeholderTextColor={Colors.mutedForeground + "70"}
+                  placeholderTextColor={colors.mutedForeground + "70"}
                   value={communityName}
                   onChangeText={setCommunityName}
                   maxLength={50}
@@ -3709,7 +3712,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                 <TextInput
                   style={[styles.createInput, styles.createInputMulti]}
                   placeholder="What is this community about?"
-                  placeholderTextColor={Colors.mutedForeground + "70"}
+                  placeholderTextColor={colors.mutedForeground + "70"}
                   value={communityDesc}
                   onChangeText={setCommunityDesc}
                   maxLength={200}
@@ -3719,7 +3722,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
               </View>
 
               <Pressable
-                style={[styles.paywallUpgradeBtn, { backgroundColor: Colors.primary }, (!communityName.trim() || creating) && { opacity: 0.6 }]}
+                style={[styles.paywallUpgradeBtn, { backgroundColor: colors.primary }, (!communityName.trim() || creating) && { opacity: 0.6 }]}
                 onPress={handleCreatePublic}
                 disabled={!communityName.trim() || creating}
               >
@@ -3738,7 +3741,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
           {step === "private_paywall" && (
             <>
               <Pressable style={styles.createBackBtn} onPress={() => setStep("type")}>
-                <ChevronRight size={16} color={Colors.mutedForeground} style={{ transform: [{ rotate: "180deg" }] }} />
+                <ChevronRight size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: "180deg" }] }} />
                 <Text style={styles.createBackText}>Back</Text>
               </Pressable>
 
@@ -3892,7 +3895,7 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
               contentFit="cover"
             />
             <LinearGradient
-              colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0)", Colors.background]}
+              colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0)", colors.background]}
               locations={[0, 0.45, 1]}
               style={StyleSheet.absoluteFill}
             />
@@ -3928,15 +3931,15 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
               )}
               <Text style={cpStyles.communityName}>{community.name}</Text>
               <View style={cpStyles.metaRow}>
-                <Globe size={11} color={Colors.mutedForeground} />
+                <Globe size={11} color={colors.mutedForeground} />
                 <Text style={cpStyles.metaText}>Community</Text>
                 <View style={cpStyles.metaDot} />
-                <Users size={11} color={Colors.mutedForeground} />
+                <Users size={11} color={colors.mutedForeground} />
                 <Text style={cpStyles.metaText}>{community.memberCount.toLocaleString()} Members</Text>
                 {community.isPrivate && (
                   <>
                     <View style={cpStyles.metaDot} />
-                    <Lock size={11} color={Colors.mutedForeground} />
+                    <Lock size={11} color={colors.mutedForeground} />
                     <Text style={cpStyles.metaText}>Private</Text>
                   </>
                 )}
@@ -3975,8 +3978,8 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
             <View style={cpStyles.section}>
               <Text style={cpStyles.sectionLabel}>RECENT ACTIVITY</Text>
               <View style={cpStyles.activityCard}>
-                <View style={[cpStyles.activityIcon, { backgroundColor: Colors.accent }]}>
-                  <HandHeart size={18} color={Colors.primary} />
+                <View style={[cpStyles.activityIcon, { backgroundColor: colors.accent }]}>
+                  <HandHeart size={18} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={cpStyles.activityTitle}>Community Prayer</Text>
@@ -4027,7 +4030,7 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
 
                 <View style={cpStyles.passwordStepHeader}>
                   <Pressable style={cpStyles.passwordStepBack} onPress={handleClosePasswordStep}>
-                    <ChevronRight size={20} color={Colors.foreground} style={{ transform: [{ rotate: "180deg" }] }} />
+                    <ChevronRight size={20} color={colors.foreground} style={{ transform: [{ rotate: "180deg" }] }} />
                   </Pressable>
                   <View style={cpStyles.passwordStepHeaderCenter}>
                     <Text style={cpStyles.passwordStepTitle}>Enter Password</Text>
@@ -4059,13 +4062,13 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
                 </Text>
 
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-                  <View style={[cpStyles.passwordInputWrap, passwordError && { borderColor: Colors.destructive }]}>
-                    <Lock size={18} color={passwordError ? Colors.destructive : Colors.mutedForeground} />
+                  <View style={[cpStyles.passwordInputWrap, passwordError && { borderColor: colors.destructive }]}>
+                    <Lock size={18} color={passwordError ? colors.destructive : colors.mutedForeground} />
                     <TextInput
                       ref={passwordInputRef}
                       style={cpStyles.passwordInput}
                       placeholder="Enter community password"
-                      placeholderTextColor={Colors.mutedForeground + "70"}
+                      placeholderTextColor={colors.mutedForeground + "70"}
                       value={password}
                       onChangeText={(t) => { setPassword(t.toUpperCase()); setPasswordError(false); }}
                       autoCapitalize="characters"
@@ -4096,9 +4099,9 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
 
           {isJoined && (
             <View style={[cpStyles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-              <View style={[cpStyles.joinBtn, { backgroundColor: Colors.muted }]}>
-                <CheckCircle size={17} color={Colors.primary} />
-                <Text style={[cpStyles.joinBtnText, { color: Colors.primary }]}>Already a Member</Text>
+              <View style={[cpStyles.joinBtn, { backgroundColor: colors.muted }]}>
+                <CheckCircle size={17} color={colors.primary} />
+                <Text style={[cpStyles.joinBtnText, { color: colors.primary }]}>Already a Member</Text>
               </View>
             </View>
           )}
@@ -4108,14 +4111,14 @@ function CommunityProfileModal({ community, isJoined, onClose, onJoin }: Communi
   );
 }
 
-const cpStyles = StyleSheet.create({
+const createCpStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.55)",
   },
   sheet: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     marginTop: 40,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
@@ -4171,7 +4174,7 @@ const cpStyles = StyleSheet.create({
   communityName: {
     fontSize: 30,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     marginBottom: 6,
   },
@@ -4183,13 +4186,13 @@ const cpStyles = StyleSheet.create({
   metaText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: Colors.mutedForeground,
+    backgroundColor: colors.mutedForeground,
   },
   content: {
     flex: 1,
@@ -4201,7 +4204,7 @@ const cpStyles = StyleSheet.create({
   statsRow: {
     flexDirection: "row" as const,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "60",
+    borderBottomColor: colors.border + "60",
     paddingBottom: 20,
     marginBottom: 22,
   },
@@ -4211,18 +4214,18 @@ const cpStyles = StyleSheet.create({
   },
   statBorder: {
     borderLeftWidth: 1,
-    borderLeftColor: Colors.border + "60",
+    borderLeftColor: colors.border + "60",
   },
   statNum: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.2,
   },
   section: {
@@ -4231,26 +4234,26 @@ const cpStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     marginBottom: 10,
   },
   aboutText: {
     fontSize: 14,
     lineHeight: 22,
-    color: Colors.foreground + "CC",
+    color: colors.foreground + "CC",
     fontWeight: "500" as const,
     fontStyle: "italic" as const,
   },
   activityCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 14,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
   },
   activityIcon: {
     width: 40,
@@ -4262,24 +4265,24 @@ const cpStyles = StyleSheet.create({
   activityTitle: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 2,
   },
   activitySub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   activityTime: {
     fontSize: 10,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   privateSection: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     marginBottom: 20,
   },
   privateHeader: {
@@ -4291,11 +4294,11 @@ const cpStyles = StyleSheet.create({
   privateTitle: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   privateSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 20,
     marginBottom: 14,
   },
@@ -4303,7 +4306,7 @@ const cpStyles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 10,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -4314,12 +4317,12 @@ const cpStyles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 2,
   },
   codeError: {
     fontSize: 12,
-    color: Colors.destructive,
+    color: colors.destructive,
     marginTop: 6,
     fontWeight: "600" as const,
   },
@@ -4328,11 +4331,11 @@ const cpStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 24,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "40",
+    borderTopColor: colors.border + "40",
     gap: 8,
   },
   joinBtn: {
@@ -4361,7 +4364,7 @@ const cpStyles = StyleSheet.create({
   cancelText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   passwordStepOverlay: {
     position: "absolute" as const,
@@ -4373,7 +4376,7 @@ const cpStyles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   passwordStepSheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 24,
@@ -4383,7 +4386,7 @@ const cpStyles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 20,
   },
@@ -4396,7 +4399,7 @@ const cpStyles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -4407,25 +4410,25 @@ const cpStyles = StyleSheet.create({
   passwordStepTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   passwordStepSub: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   passwordCommunityPreview: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     gap: 14,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
   },
   passwordCommunityIcon: {
     width: 50,
@@ -4445,14 +4448,14 @@ const cpStyles = StyleSheet.create({
   passwordCommunityName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 6,
   },
   passwordPrivateBadge: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 4,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 99,
@@ -4465,7 +4468,7 @@ const cpStyles = StyleSheet.create({
   },
   passwordInstructionText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 20,
     marginBottom: 16,
     fontWeight: "500" as const,
@@ -4474,7 +4477,7 @@ const cpStyles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 16,
@@ -4486,12 +4489,12 @@ const cpStyles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 2,
   },
   passwordErrorText: {
     fontSize: 12,
-    color: Colors.destructive,
+    color: colors.destructive,
     fontWeight: "600" as const,
     marginBottom: 12,
     marginLeft: 4,
@@ -4630,10 +4633,10 @@ const cpStyles = StyleSheet.create({
   },
 });
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row" as const,
@@ -4652,13 +4655,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 30,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.8,
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: "400" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 1,
     letterSpacing: 0,
     paddingRight: 8,
@@ -4672,7 +4675,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -4680,7 +4683,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     position: "relative" as const,
@@ -4692,9 +4695,9 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderWidth: 1.5,
-    borderColor: Colors.secondary,
+    borderColor: colors.secondary,
   },
   compactPillContainer: {
     paddingHorizontal: 20,
@@ -4706,12 +4709,12 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     gap: 7,
     alignSelf: "flex-start" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 99,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -4732,7 +4735,7 @@ const styles = StyleSheet.create({
   compactPillName: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
     maxWidth: 180,
   },
@@ -4754,7 +4757,7 @@ const styles = StyleSheet.create({
   },
   segmentContainer: {
     flexDirection: "row" as const,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     borderRadius: 999,
     padding: 4,
   },
@@ -4765,7 +4768,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentTabActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -4775,10 +4778,10 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   segmentTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   newUpdatesBanner: {
@@ -4789,11 +4792,11 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -4802,7 +4805,7 @@ const styles = StyleSheet.create({
   newUpdatesText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: -0.1,
   },
   scrollContent: {
@@ -4813,10 +4816,10 @@ const styles = StyleSheet.create({
   prayerPrompt: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
@@ -4834,12 +4837,12 @@ const styles = StyleSheet.create({
   promptDestination: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.3,
   },
   promptText: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
   },
   promptIcon: {
@@ -4847,7 +4850,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -4861,7 +4864,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 8,
@@ -4869,13 +4872,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
     letterSpacing: -0.2,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 21,
     fontWeight: "400" as const,
@@ -4886,7 +4889,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   switcherSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 6,
@@ -4896,7 +4899,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 4,
@@ -4910,18 +4913,18 @@ const styles = StyleSheet.create({
   switcherTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
   },
   switcherSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 3,
     fontWeight: "400" as const,
   },
   switcherDivider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     marginBottom: 10,
   },
   switcherItem: {
@@ -4933,7 +4936,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   switcherItemActive: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   switcherItemIcon: {
     width: 44,
@@ -4953,12 +4956,12 @@ const styles = StyleSheet.create({
   switcherItemName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
   },
   switcherItemMeta: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   activeCheck: {
@@ -4975,21 +4978,21 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   switcherFooterText: {
     flex: 1,
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     lineHeight: 17,
   },
   card: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
@@ -5016,7 +5019,7 @@ const styles = StyleSheet.create({
     position: "absolute" as const,
     bottom: -2,
     right: -4,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 10,
     width: 20,
     height: 20,
@@ -5045,21 +5048,21 @@ const styles = StyleSheet.create({
   cardAuthorName: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
   },
   timeSensitiveBadge: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: Colors.primary + "60",
+    borderColor: colors.primary + "60",
   },
   timeSensitiveText: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
   },
   eventDateBadge: {
@@ -5084,7 +5087,7 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     letterSpacing: 0,
   },
@@ -5094,7 +5097,7 @@ const styles = StyleSheet.create({
   },
   prayOnBadge: {
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -5103,13 +5106,13 @@ const styles = StyleSheet.create({
   prayOnLabel: {
     fontSize: 8,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.5,
   },
   prayOnDay: {
     fontSize: 12,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 0.3,
   },
   moreBtn: {
@@ -5119,12 +5122,12 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     justifyContent: "space-between" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   eventLeft: {
     flexDirection: "row" as const,
@@ -5135,20 +5138,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   eventLabel: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.6,
   },
   eventDate: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginTop: 1,
   },
   eventRight: {
@@ -5157,18 +5160,18 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 9,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.5,
   },
   statusValue: {
     fontSize: 13,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     marginTop: 1,
   },
   cardContent: {
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 22,
   },
   cardContentItalic: {
@@ -5180,7 +5183,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tagPill: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -5188,7 +5191,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
     letterSpacing: 0.1,
   },
   prayingRow: {
@@ -5204,19 +5207,19 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   prayingCount: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.4,
   },
   cardActions: {
     flexDirection: "row" as const,
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     paddingTop: 12,
   },
   prayBtn: {
@@ -5225,16 +5228,16 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 7,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
   },
   prayBtnActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -5243,10 +5246,10 @@ const styles = StyleSheet.create({
   prayBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   prayBtnTextActive: {
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   encourageBtn: {
     flex: 1,
@@ -5254,24 +5257,24 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 7,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     paddingVertical: 11,
     borderRadius: 999,
   },
   encourageBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   prayingCountBtn: {
     flex: 1,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 11,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -5280,7 +5283,7 @@ const styles = StyleSheet.create({
   prayingCountBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   groupActionsRow: {
     gap: 10,
@@ -5289,10 +5292,10 @@ const styles = StyleSheet.create({
   createGroupBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     borderStyle: "dashed" as const,
     paddingHorizontal: 18,
     paddingVertical: 16,
@@ -5307,22 +5310,22 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   createGroupText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   joinGroupBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.primary + "0A",
+    backgroundColor: colors.primary + "0A",
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
@@ -5330,28 +5333,28 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   joinGroupText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   joinModalOverlay: {
     flex: 1,
   },
   joinModalSheet: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 24,
   },
   joinModalHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 4,
@@ -5360,9 +5363,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -5379,13 +5382,13 @@ const styles = StyleSheet.create({
   joinModalTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
     textAlign: "center" as const,
   },
   joinModalSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
     fontWeight: "400" as const,
     textAlign: "center" as const,
@@ -5397,10 +5400,10 @@ const styles = StyleSheet.create({
   joinPasswordInputWrap: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
@@ -5409,7 +5412,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 1.5,
   },
   joinPasswordCheck: {
@@ -5417,19 +5420,19 @@ const styles = StyleSheet.create({
   },
   joinHintText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     paddingHorizontal: 4,
   },
   joinGroupPreview: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 20,
     padding: 16,
     gap: 14,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     marginBottom: 16,
   },
   joinPreviewAvatar: {
@@ -5437,7 +5440,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
   },
   joinPreviewInfo: {
     flex: 1,
@@ -5446,17 +5449,17 @@ const styles = StyleSheet.create({
   joinPreviewName: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   joinPreviewMeta: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   joinPreviewDesc: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 17,
     marginTop: 2,
   },
@@ -5465,10 +5468,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -5481,16 +5484,16 @@ const styles = StyleSheet.create({
   joinConfirmBtnText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
   groupCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 14,
@@ -5507,11 +5510,11 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   groupMeta: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   groupRight: {
@@ -5523,14 +5526,14 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   requestsBadgeText: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   modalOverlay: {
     flex: 1,
@@ -5543,7 +5546,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   modalSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     maxHeight: "82%",
@@ -5553,7 +5556,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center",
     marginTop: 4,
     marginBottom: 10,
@@ -5568,19 +5571,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   modalSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -5590,7 +5593,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginHorizontal: 20,
     marginBottom: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 16,
     padding: 12,
   },
@@ -5606,16 +5609,16 @@ const styles = StyleSheet.create({
   previewAuthor: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   previewContent: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 17,
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     marginHorizontal: 20,
     marginBottom: 8,
   },
@@ -5641,7 +5644,7 @@ const styles = StyleSheet.create({
   },
   commentBubble: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -5655,15 +5658,15 @@ const styles = StyleSheet.create({
   commentAuthor: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   commentTime: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   commentText: {
     fontSize: 13,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 19,
   },
   emptyComments: {
@@ -5672,7 +5675,7 @@ const styles = StyleSheet.create({
   },
   emptyCommentsText: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   inputRow: {
@@ -5683,7 +5686,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   inputAvatar: {
     width: 34,
@@ -5693,27 +5696,27 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     maxHeight: 90,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   sendBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
   },
   sendBtnActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   stopOverlay: {
     flex: 1,
@@ -5723,7 +5726,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   stopSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 28,
     paddingHorizontal: 28,
     paddingTop: 32,
@@ -5740,7 +5743,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
@@ -5748,14 +5751,14 @@ const styles = StyleSheet.create({
   stopTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     marginBottom: 10,
     textAlign: "center" as const,
   },
   stopBody: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     marginBottom: 28,
@@ -5763,7 +5766,7 @@ const styles = StyleSheet.create({
   },
   stopNameBold: {
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   keepBtn: {
     width: "100%",
@@ -5771,11 +5774,11 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 15,
     marginBottom: 10,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -5784,23 +5787,23 @@ const styles = StyleSheet.create({
   keepBtnText: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: -0.2,
   },
   stopBtn: {
     width: "100%",
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 999,
     paddingVertical: 15,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   stopBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: -0.2,
   },
   updateHeaderBanner: {
@@ -5812,7 +5815,7 @@ const styles = StyleSheet.create({
   updateHeaderText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: -0.1,
   },
   updateTagBadge: {
@@ -5831,12 +5834,12 @@ const styles = StyleSheet.create({
   quotedOriginal: {
     flexDirection: "row" as const,
     borderRadius: 14,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     overflow: "hidden" as const,
   },
   quotedBar: {
     width: 3,
-    backgroundColor: Colors.primary + "60",
+    backgroundColor: colors.primary + "60",
     borderRadius: 2,
   },
   quotedContent: {
@@ -5858,16 +5861,16 @@ const styles = StyleSheet.create({
   quotedAuthor: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   quotedTime: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   quotedText: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
     fontStyle: "italic" as const,
   },
@@ -5896,20 +5899,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
-    backgroundColor: Colors.accent,
+    borderColor: colors.primary + "30",
+    backgroundColor: colors.accent,
   },
   repostBtnText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   repostModalOverlay: {
     flex: 1,
     justifyContent: "flex-end" as const,
   },
   repostModalSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 6,
@@ -5920,7 +5923,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 4,
@@ -5934,25 +5937,25 @@ const styles = StyleSheet.create({
   repostModalTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
   },
   repostModalSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 3,
     fontWeight: "400" as const,
   },
   repostQuotedOriginal: {
     flexDirection: "row" as const,
     borderRadius: 18,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     overflow: "hidden" as const,
     marginBottom: 16,
   },
   repostQuotedBar: {
     width: 4,
-    backgroundColor: Colors.primary + "50",
+    backgroundColor: colors.primary + "50",
   },
   repostQuotedContent: {
     flex: 1,
@@ -5973,17 +5976,17 @@ const styles = StyleSheet.create({
   repostQuotedAuthor: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   repostQuotedTime: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 1,
   },
   repostQuotedText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 20,
     fontStyle: "italic" as const,
   },
@@ -5994,12 +5997,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   repostInputWrap: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 20,
     padding: 16,
     minHeight: 120,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 8,
     gap: 10,
   },
@@ -6016,12 +6019,12 @@ const styles = StyleSheet.create({
   },
   repostImagePickerHint: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   repostInput: {
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
     minHeight: 90,
   },
@@ -6032,7 +6035,7 @@ const styles = StyleSheet.create({
   repostTagLabel: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   repostTagRow: {
     flexDirection: "row" as const,
@@ -6043,16 +6046,16 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 6,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 999,
     paddingVertical: 9,
     paddingHorizontal: 14,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   repostTagChipSelected: {
-    borderColor: Colors.primary + "60",
-    backgroundColor: Colors.accent,
+    borderColor: colors.primary + "60",
+    backgroundColor: colors.accent,
   },
   repostTagEmoji: {
     fontSize: 14,
@@ -6060,27 +6063,27 @@ const styles = StyleSheet.create({
   repostTagText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   repostTagTextSelected: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   repostFooter: {
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   repostSubmitBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -6094,7 +6097,7 @@ const styles = StyleSheet.create({
   repostSubmitText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
   actionsSheet: {
@@ -6102,7 +6105,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 6,
@@ -6118,7 +6121,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -6136,7 +6139,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.green + "18",
+    backgroundColor: colors.green + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 4,
@@ -6144,12 +6147,12 @@ const styles = StyleSheet.create({
   reportSuccessTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   reportSuccessSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 20,
     fontWeight: "400" as const,
@@ -6159,7 +6162,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 16,
@@ -6167,7 +6170,7 @@ const styles = StyleSheet.create({
   actionsTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
     marginBottom: 16,
   },
@@ -6177,7 +6180,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   actionIconWrap: {
     width: 44,
@@ -6193,11 +6196,11 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   actionSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   actionCancelBtn: {
@@ -6205,13 +6208,13 @@ const styles = StyleSheet.create({
     justifyContent: "center" as const,
     paddingVertical: 16,
     marginTop: 8,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     borderRadius: 999,
   },
   actionCancelText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   noCommunityWrap: {
     alignItems: "center" as const,
@@ -6223,31 +6226,31 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 4,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   noCommunityIconInner: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   noCommunityTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
     textAlign: "center" as const,
   },
   noCommunitySubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     fontWeight: "400" as const,
@@ -6258,12 +6261,12 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 28,
     paddingVertical: 15,
     borderRadius: 999,
     marginTop: 8,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -6272,7 +6275,7 @@ const styles = StyleSheet.create({
   noCommunityBtnText: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.1,
   },
   inlineBrowseHeader: {
@@ -6285,23 +6288,23 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 4,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   inlineBrowseTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     textAlign: "center" as const,
   },
   inlineBrowseSub: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 21,
     fontWeight: "400" as const,
@@ -6325,17 +6328,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
-    backgroundColor: Colors.primary + "12",
+    borderColor: colors.primary + "40",
+    backgroundColor: colors.primary + "12",
     flexShrink: 0,
   },
   browseCommunityJoinText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   browseSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 6,
@@ -6344,7 +6347,7 @@ const styles = StyleSheet.create({
   },
   browseFullScreen: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   browseFullHeader: {
@@ -6360,7 +6363,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     marginTop: 4,
     marginBottom: 4,
   },
@@ -6368,7 +6371,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -6379,12 +6382,12 @@ const styles = StyleSheet.create({
   joinAnotherLabel: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: -0.2,
   },
   joinAnotherSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   browseSearchWrap: {
@@ -6393,7 +6396,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
@@ -6402,7 +6405,7 @@ const styles = StyleSheet.create({
   browseSearchInput: {
     flex: 1,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
   },
   browseScrollArea: {
@@ -6416,10 +6419,10 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -6429,7 +6432,7 @@ const styles = StyleSheet.create({
   },
   browseCommunityDesc: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     lineHeight: 15,
   },
@@ -6446,7 +6449,7 @@ const styles = StyleSheet.create({
   },
   browseNoResultsText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     textAlign: "center" as const,
   },
@@ -6463,22 +6466,22 @@ const styles = StyleSheet.create({
   browsePrivateLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
   },
   browsePrivateDividerText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.2,
   },
   browsePrivateToggle: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -6492,19 +6495,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   browsePrivateToggleTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.1,
   },
   browsePrivateToggleSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     marginTop: 1,
   },
@@ -6519,7 +6522,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 13,
     gap: 10,
@@ -6528,12 +6531,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 1.2,
   },
   browsePrivateHint: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     paddingHorizontal: 4,
   },
@@ -6541,11 +6544,11 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
     marginTop: 4,
     marginBottom: 10,
   },
@@ -6560,12 +6563,12 @@ const styles = StyleSheet.create({
   browsePrivatePreviewName: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
   },
   browsePrivatePreviewDesc: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 2,
   },
@@ -6587,10 +6590,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 14,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -6599,14 +6602,14 @@ const styles = StyleSheet.create({
   browsePrivateJoinText: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.1,
   },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -6616,7 +6619,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.45)",
   },
   puSheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     paddingTop: 8,
@@ -6631,7 +6634,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 8,
     marginBottom: 4,
@@ -6651,11 +6654,11 @@ const styles = StyleSheet.create({
   puTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   puCountBadge: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -6663,19 +6666,19 @@ const styles = StyleSheet.create({
   puCountBadgeText: {
     fontSize: 13,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   puCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   puSubtitle: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     paddingHorizontal: 22,
     marginBottom: 16,
@@ -6690,7 +6693,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "40",
+    borderBottomColor: colors.border + "40",
     gap: 14,
   },
   puAvatar: {
@@ -6698,26 +6701,26 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 23,
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   puName: {
     flex: 1,
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   puPrayingBadge: {
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   puPrayingBadgeText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   puExtraRow: {
     flexDirection: "row" as const,
@@ -6729,19 +6732,19 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   puExtraText: {
     fontSize: 13,
     fontWeight: "800" as const,
-    color: Colors.accentForeground,
+    color: colors.accentForeground,
   },
   puExtraLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   puEmpty: {
     alignItems: "center" as const,
@@ -6755,11 +6758,11 @@ const styles = StyleSheet.create({
   puEmptyText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   puEmptySubText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   shareOverlay: {
@@ -6768,7 +6771,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   shareSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingTop: 6,
@@ -6783,7 +6786,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 6,
@@ -6805,11 +6808,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     flexShrink: 0,
   },
   shareHandsEmoji: {
@@ -6823,21 +6826,21 @@ const styles = StyleSheet.create({
   shareTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   shareSubtitle: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     lineHeight: 17,
   },
   sharePreviewCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     gap: 10,
     marginBottom: 18,
   },
@@ -6851,7 +6854,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   sharePreviewAuthorBlock: {
     flex: 1,
@@ -6860,11 +6863,11 @@ const styles = StyleSheet.create({
   sharePreviewAuthorName: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   sharePreviewTime: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   sharePreviewTag: {
@@ -6879,7 +6882,7 @@ const styles = StyleSheet.create({
   },
   sharePreviewContent: {
     fontSize: 13,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 20,
     fontStyle: "italic" as const,
   },
@@ -6889,7 +6892,7 @@ const styles = StyleSheet.create({
   shareSectionText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.2,
   },
   shareOptionsRow: {
@@ -6921,14 +6924,14 @@ const styles = StyleSheet.create({
   shareOptionLabel: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
   },
   shareInternalOptions: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: "hidden" as const,
     marginBottom: 16,
   },
@@ -6939,7 +6942,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   shareInternalIcon: {
     width: 40,
@@ -6956,11 +6959,11 @@ const styles = StyleSheet.create({
   shareInternalLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   shareInternalSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     lineHeight: 16,
   },
@@ -6970,13 +6973,13 @@ const styles = StyleSheet.create({
   },
   sharePrivacyText: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     textAlign: "center" as const,
     lineHeight: 16,
   },
   createCommunityHeaderBtn: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   createCommunityRow: {
     flexDirection: "row" as const,
@@ -7035,7 +7038,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   paywallSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingTop: 6,
@@ -7050,7 +7053,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginTop: 10,
     marginBottom: 6,
@@ -7062,7 +7065,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     zIndex: 10,
@@ -7083,14 +7086,14 @@ const styles = StyleSheet.create({
   paywallTitle: {
     fontSize: 26,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.6,
     textAlign: "center" as const,
     marginBottom: 10,
   },
   paywallSubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     fontWeight: "400" as const,
@@ -7105,18 +7108,18 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   paywallFeatureIcon: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     flexShrink: 0,
@@ -7132,12 +7135,12 @@ const styles = StyleSheet.create({
   paywallFeatureTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.1,
   },
   paywallFeatureDesc: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
   },
   paywallUpgradeBtn: {
@@ -7145,11 +7148,11 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 17,
     marginBottom: 12,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 14,
@@ -7168,7 +7171,7 @@ const styles = StyleSheet.create({
   paywallMaybeLaterText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   officialBadge: {
     flexDirection: "row" as const,
@@ -7206,7 +7209,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 99,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -7222,10 +7225,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
   },
   createTypeCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 10,
@@ -7261,7 +7264,7 @@ const styles = StyleSheet.create({
   createTypeCardName: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
   },
   createTypeBadge: {
@@ -7276,7 +7279,7 @@ const styles = StyleSheet.create({
   },
   createTypeCardSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
   },
   createTypeFeatureList: {
@@ -7290,7 +7293,7 @@ const styles = StyleSheet.create({
   },
   createTypeFeatureText: {
     fontSize: 12,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontWeight: "500" as const,
   },
   createTypeFooter: {
@@ -7304,7 +7307,7 @@ const styles = StyleSheet.create({
   createTypeFooterText: {
     flex: 1,
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
     lineHeight: 16,
   },
@@ -7318,7 +7321,7 @@ const styles = StyleSheet.create({
   },
   createBackText: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
   },
   createInputSection: {
@@ -7328,19 +7331,19 @@ const styles = StyleSheet.create({
   createInputLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.2,
     marginLeft: 4,
   },
   createInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
   },
   createInputMulti: {
@@ -7356,20 +7359,20 @@ const styles = StyleSheet.create({
     pointerEvents: "box-none" as const,
   },
   prayingForPromptCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
     shadowRadius: 24,
     elevation: 10,
     borderWidth: 1,
-    borderColor: Colors.primary + "22",
+    borderColor: colors.primary + "22",
     gap: 12,
   },
   prayingForPromptLeft: {
@@ -7384,12 +7387,12 @@ const styles = StyleSheet.create({
   prayingForPromptTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 2,
   },
   prayingForPromptSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   prayingForPromptActions: {
@@ -7398,11 +7401,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   prayingForPromptAdd: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -7411,13 +7414,13 @@ const styles = StyleSheet.create({
   prayingForPromptAddText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   prayingForPromptDismiss: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -7445,20 +7448,20 @@ const styles = StyleSheet.create({
   myRequestsBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: Colors.primary + "0E",
+    backgroundColor: colors.primary + "0E",
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 13,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     gap: 12,
   },
   myRequestsBannerIcon: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     flexShrink: 0,
@@ -7470,11 +7473,11 @@ const styles = StyleSheet.create({
   myRequestsBannerTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   myRequestsBannerSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
 });

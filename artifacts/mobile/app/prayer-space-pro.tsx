@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo} from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, BookOpen, Users, Heart, Bell, Mic } from "lucide-react-native";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
@@ -52,6 +51,8 @@ const FEATURES = [
 ];
 
 export default function PrayerSpaceProScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const [plan, setPlan] = useState<"yearly" | "monthly">("yearly");
 
@@ -125,7 +126,7 @@ export default function PrayerSpaceProScreen() {
             onPress={() => router.back()}
             testID="pro-back-btn"
           >
-            <ArrowLeft size={20} color={Colors.foreground} />
+            <ArrowLeft size={20} color={colors.foreground} />
           </Pressable>
         </View>
 
@@ -153,7 +154,7 @@ export default function PrayerSpaceProScreen() {
               return (
                 <View key={f.id} style={styles.featureRow}>
                   <View style={styles.featureIcon}>
-                    <IconComp size={20} color={Colors.primary} />
+                    <IconComp size={20} color={colors.primary} />
                   </View>
                   <View style={styles.featureText}>
                     <Text style={styles.featureTitle}>{f.title}</Text>
@@ -177,7 +178,7 @@ export default function PrayerSpaceProScreen() {
               </View>
               <Text style={styles.planName}>Yearly</Text>
               {offeringsLoading ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <>
                   <Text style={styles.planPrice}>{annualPrice}</Text>
@@ -198,7 +199,7 @@ export default function PrayerSpaceProScreen() {
               </View>
               <Text style={styles.planName}>Monthly</Text>
               {offeringsLoading ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <>
                   <Text style={styles.planPrice}>{monthlyPrice}</Text>
@@ -219,7 +220,7 @@ export default function PrayerSpaceProScreen() {
             testID="pro-trial-btn"
           >
             {isPurchasing ? (
-              <ActivityIndicator color={Colors.primaryForeground} />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={styles.trialBtnText}>Start 7-Day Free Trial</Text>
             )}
@@ -232,7 +233,7 @@ export default function PrayerSpaceProScreen() {
             testID="pro-restore-btn"
           >
             {isRestoring ? (
-              <ActivityIndicator size="small" color={Colors.mutedForeground} />
+              <ActivityIndicator size="small" color={colors.mutedForeground} />
             ) : (
               <Text style={styles.restoreText}>Restore Purchases</Text>
             )}
@@ -247,10 +248,10 @@ export default function PrayerSpaceProScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   bgImage: {
     position: "absolute",
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     opacity: 0.55,
   },
   safeArea: {
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center",
     letterSpacing: -0.5,
     lineHeight: 38,
@@ -318,7 +319,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     lineHeight: 23,
     maxWidth: 300,
@@ -333,11 +334,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border + "80",
+    borderColor: colors.border + "80",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -360,11 +361,11 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   featureDesc: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
   },
   planRow: {
@@ -378,8 +379,8 @@ const styles = StyleSheet.create({
     padding: 18,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
     alignItems: "center",
     position: "relative",
     paddingTop: 24,
@@ -387,15 +388,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   planCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.accent + "40",
+    borderColor: colors.primary,
+    backgroundColor: colors.accent + "40",
   },
   bestValueBadge: {
     position: "absolute",
     top: -11,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -403,43 +404,43 @@ const styles = StyleSheet.create({
   bestValueText: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.8,
   },
   bestValueTextMuted: {
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   planName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 4,
     marginTop: 8,
   },
   planPrice: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   planPriceSub: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   planPerMonth: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 3,
     fontWeight: "500" as const,
   },
   trialBtn: {
     width: "100%",
     height: 60,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
     shadowRadius: 20,
@@ -456,7 +457,7 @@ const styles = StyleSheet.create({
   trialBtnText: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   restoreBtn: {
     paddingVertical: 10,
@@ -464,12 +465,12 @@ const styles = StyleSheet.create({
   },
   restoreText: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textDecorationLine: "underline",
   },
   disclaimer: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     fontStyle: "italic",
     lineHeight: 17,

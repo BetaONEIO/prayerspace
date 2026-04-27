@@ -29,7 +29,6 @@ import {
   CheckCircle,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 
@@ -70,7 +69,7 @@ const USER_GROUPS: MyGroup[] = [
 ];
 
 const UPDATE_TAG_LABELS: Record<string, { label: string; bg: string; color: string }> = {
-  still_need_prayer: { label: "Still need prayer", bg: Colors.accent, color: Colors.primary },
+  still_need_prayer: { label: "Still need prayer", bg: colors.accent, color: colors.primary },
   answered: { label: "Answered 🙌", bg: "#E8F8F0", color: "#1A7A52" },
   thank_you: { label: "Thank you", bg: "#EEF2FF", color: "#6366F1" },
 };
@@ -78,6 +77,8 @@ const UPDATE_TAG_LABELS: Record<string, { label: string; bg: string; color: stri
 type ViewState = "select" | "compose" | "sent";
 
 export default function SendToGroupScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const params = useLocalSearchParams<{
     postId: string;
@@ -192,7 +193,7 @@ export default function SendToGroupScreen() {
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
           <View style={styles.header}>
             <Pressable style={styles.backBtn} onPress={() => router.back()}>
-              <ChevronLeft size={18} color={Colors.foreground} />
+              <ChevronLeft size={18} color={colors.foreground} />
             </Pressable>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>Send to Group</Text>
@@ -202,11 +203,11 @@ export default function SendToGroupScreen() {
           </View>
 
           <View style={styles.searchRow}>
-            <Search size={15} color={Colors.mutedForeground} />
+            <Search size={15} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search groups"
-              placeholderTextColor={Colors.mutedForeground + "80"}
+              placeholderTextColor={colors.mutedForeground + "80"}
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoCorrect={false}
@@ -215,7 +216,7 @@ export default function SendToGroupScreen() {
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery("")} hitSlop={8}>
-                <X size={14} color={Colors.mutedForeground} />
+                <X size={14} color={colors.mutedForeground} />
               </Pressable>
             )}
           </View>
@@ -249,7 +250,7 @@ export default function SendToGroupScreen() {
                       </Text>
                     </View>
                     <View style={styles.groupChevron}>
-                      <Users size={16} color={Colors.primary + "70"} />
+                      <Users size={16} color={colors.primary + "70"} />
                     </View>
                   </Pressable>
                 ))}
@@ -289,7 +290,7 @@ export default function SendToGroupScreen() {
                   },
                 ]}
               >
-                <CheckCircle size={40} color={Colors.primaryForeground} />
+                <CheckCircle size={40} color={colors.primaryForeground} />
               </Animated.View>
               <Animated.Text style={[styles.sentTitle, { opacity: successOpacity }]}>
                 Shared to group
@@ -302,7 +303,7 @@ export default function SendToGroupScreen() {
             <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
               <View style={styles.composeHeader}>
                 <Pressable style={styles.backBtn} onPress={handleBackToSelect}>
-                  <ChevronLeft size={18} color={Colors.foreground} />
+                  <ChevronLeft size={18} color={colors.foreground} />
                 </Pressable>
                 <Text style={styles.headerTitle}>Send prayer update</Text>
                 <View style={styles.headerSpacer} />
@@ -344,7 +345,7 @@ export default function SendToGroupScreen() {
                       <TextInput
                         style={styles.messageInput}
                         placeholder="Say something to the group..."
-                        placeholderTextColor={Colors.mutedForeground + "70"}
+                        placeholderTextColor={colors.mutedForeground + "70"}
                         value={additionalMessage}
                         onChangeText={setAdditionalMessage}
                         multiline
@@ -407,10 +408,10 @@ export default function SendToGroupScreen() {
                     disabled={isSending}
                   >
                     {isSending ? (
-                      <ActivityIndicator color={Colors.primaryForeground} size="small" />
+                      <ActivityIndicator color={colors.primaryForeground} size="small" />
                     ) : (
                       <>
-                        <Send size={18} color={Colors.primaryForeground} />
+                        <Send size={18} color={colors.primaryForeground} />
                         <Text style={styles.sendBtnText}>
                           Send to {selectedGroup?.name.split(" ")[0]}
                         </Text>
@@ -428,14 +429,14 @@ export default function SendToGroupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   mainLayer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   safeArea: {
     flex: 1,
@@ -455,20 +456,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
     textAlign: "center",
   },
   headerSubtitle: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     marginTop: 2,
     fontWeight: "500" as const,
@@ -479,10 +480,10 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
@@ -492,7 +493,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
     padding: 0,
   },
@@ -507,7 +508,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.2,
     marginBottom: 10,
     marginTop: 4,
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "50",
+    borderBottomColor: colors.border + "50",
   },
   groupAvatarWrap: {
     width: 50,
@@ -527,7 +528,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   groupAvatar: {
     width: 50,
@@ -541,19 +542,19 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.1,
   },
   groupMeta: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "400" as const,
   },
   groupChevron: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -570,19 +571,19 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
     textAlign: "center",
   },
   emptySub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     lineHeight: 20,
   },
   composeLayer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   composeHeader: {
     flexDirection: "row",
@@ -591,7 +592,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "40",
+    borderBottomColor: colors.border + "40",
   },
   composeContent: {
     paddingHorizontal: 20,
@@ -603,10 +604,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
@@ -615,12 +616,12 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   destinationLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
     marginBottom: 2,
@@ -628,12 +629,12 @@ const styles = StyleSheet.create({
   destinationName: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.2,
   },
   destinationMeta: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 1,
   },
@@ -643,34 +644,34 @@ const styles = StyleSheet.create({
   messageInputLabel: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   messageInputOptional: {
     fontWeight: "400" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   messageInputWrap: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 14,
     minHeight: 90,
   },
   messageInput: {
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 22,
     padding: 0,
     minHeight: 62,
   },
   prayerPreviewCard: {
     flexDirection: "row",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
   },
   previewCardBar: {
     width: 4,
-    backgroundColor: Colors.primary + "50",
+    backgroundColor: colors.primary + "50",
   },
   previewCardBody: {
     flex: 1,
@@ -699,23 +700,23 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   previewAvatarFallback: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   previewAvatarInitial: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   previewAuthorName: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   previewAuthorSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   previewTag: {
@@ -730,20 +731,20 @@ const styles = StyleSheet.create({
   },
   previewContent: {
     fontSize: 13,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 20,
     fontStyle: "italic" as const,
   },
   previewReadOnly: {
     alignSelf: "flex-start",
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   previewReadOnlyText: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
     letterSpacing: 0.2,
   },
@@ -752,18 +753,18 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "50",
-    backgroundColor: Colors.background,
+    borderTopColor: colors.border + "50",
+    backgroundColor: colors.background,
   },
   sendBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 12,
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
   sendBtnText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.1,
   },
   sentWrap: {
@@ -791,10 +792,10 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -804,12 +805,12 @@ const styles = StyleSheet.create({
   sentTitle: {
     fontSize: 24,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
   },
   sentSub: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
     lineHeight: 22,
     fontWeight: "400" as const,

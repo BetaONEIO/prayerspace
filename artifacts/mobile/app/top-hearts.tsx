@@ -26,7 +26,6 @@ import {
   Check,
   Users,
 } from "lucide-react-native";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { type Contact } from "@/mocks/data";
@@ -36,12 +35,14 @@ import { ALL_RECIPIENTS, type Recipient } from "@/providers/SelectedRecipientsPr
 const SOURCE_COLORS: Record<string, string> = {
   whatsapp: "#25D366",
   sim: "#3B82F6",
-  app: Colors.primary,
+  app: colors.primary,
 };
 
 export default function TopHeartsScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
+  const colors = themeColors;
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const {
     favourites,
     frequentlyPrayedFor,
@@ -84,14 +85,14 @@ export default function TopHeartsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]} edges={["top"]}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={["top"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Favourites</Text>
         <Pressable style={styles.searchBtn} onPress={() => setShowAddModal(true)}>
-          <Search size={18} color={Colors.primary} />
+          <Search size={18} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -103,7 +104,7 @@ export default function TopHeartsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionLabelRow}>
-              <Star size={15} color={Colors.primary} fill={Colors.primary} />
+              <Star size={15} color={colors.primary} fill={colors.primary} />
               <Text style={styles.sectionLabel}>FAVOURITES</Text>
             </View>
             <View style={styles.countBadge}>
@@ -138,7 +139,7 @@ export default function TopHeartsScreen() {
               onPress={() => setShowAddModal(true)}
             >
               <View style={styles.addCircle}>
-                <Plus size={26} color={Colors.primary + "80"} />
+                <Plus size={26} color={colors.primary + "80"} />
               </View>
               <Text style={styles.addLabel}>Add</Text>
             </Pressable>
@@ -147,7 +148,7 @@ export default function TopHeartsScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionLabelRow}>
-            <History size={15} color={Colors.primary} />
+            <History size={15} color={colors.primary} />
             <Text style={styles.sectionLabel}>FREQUENTLY PRAYED FOR</Text>
           </View>
 
@@ -177,13 +178,13 @@ export default function TopHeartsScreen() {
                     style={styles.msgBtn}
                     onPress={() => router.push("/(tabs)/messages")}
                   >
-                    <MessageCircle size={17} color={Colors.primary} />
+                    <MessageCircle size={17} color={colors.primary} />
                   </Pressable>
                   <Pressable
                     style={styles.prayBtn}
                     onPress={() => router.push("/(tabs)/pray")}
                   >
-                    <HandHeart size={18} color={Colors.primary} />
+                    <HandHeart size={18} color={colors.primary} />
                   </Pressable>
                 </View>
               </Pressable>
@@ -211,16 +212,16 @@ export default function TopHeartsScreen() {
                 setSearch("");
               }}
             >
-              <X size={20} color={Colors.secondaryForeground} />
+              <X size={20} color={colors.secondaryForeground} />
             </Pressable>
           </View>
 
           <View style={styles.searchBar}>
-            <Search size={16} color={Colors.mutedForeground} />
+            <Search size={16} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search contacts..."
-              placeholderTextColor={Colors.mutedForeground}
+              placeholderTextColor={colors.mutedForeground}
               value={search}
               onChangeText={setSearch}
               autoFocus
@@ -229,7 +230,7 @@ export default function TopHeartsScreen() {
 
           {filteredContacts.length === 0 ? (
             <View style={styles.emptyState}>
-              <Users size={40} color={Colors.border} />
+              <Users size={40} color={colors.border} />
               <Text style={styles.emptyText}>
                 {search ? "No contacts found" : "All contacts added"}
               </Text>
@@ -343,10 +344,10 @@ export default function TopHeartsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -360,30 +361,30 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
   },
   searchBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   container: {
     flex: 1,
@@ -410,11 +411,11 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.8,
   },
   countBadge: {
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 22,
     borderWidth: 2.5,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
   },
   heartBadge: {
     position: "absolute",
@@ -454,25 +455,25 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: Colors.background,
+    borderColor: colors.background,
   },
   favouriteName: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center",
   },
   addCircle: {
     width: 64,
     height: 64,
     borderRadius: 22,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 2,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
@@ -480,22 +481,22 @@ const styles = StyleSheet.create({
   addLabel: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center",
   },
   listContainer: {
     gap: 10,
   },
   listCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: Colors.border + "60",
-    shadowColor: Colors.primary,
+    borderColor: colors.border + "60",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
     shadowRadius: 16,
@@ -512,7 +513,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   listInfo: {
     flex: 1,
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
   listName: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 4,
   },
   listMeta: {
@@ -531,7 +532,7 @@ const styles = StyleSheet.create({
   prayerCount: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -539,12 +540,12 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: Colors.mutedForeground + "60",
+    backgroundColor: colors.mutedForeground + "60",
   },
   frequency: {
     fontSize: 10,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -557,9 +558,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -567,13 +568,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
   modalSafe: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: "row",
@@ -582,19 +583,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   modalClose: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -602,18 +603,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
     margin: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
   },
   modalList: {
@@ -624,32 +625,32 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase" as const,
     marginBottom: 10,
     paddingHorizontal: 4,
   },
   groupCard: {
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "1A",
+    borderColor: colors.primary + "1A",
     overflow: "hidden",
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     marginHorizontal: 16,
   },
   otherList: {
     gap: 8,
   },
   otherCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "80",
+    borderColor: colors.border + "80",
   },
   contactRow: {
     flexDirection: "row",
@@ -662,7 +663,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   contactInfo: {
     flex: 1,
@@ -676,10 +677,10 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   onAppBadge: {
-    backgroundColor: Colors.primary + "1A",
+    backgroundColor: colors.primary + "1A",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -687,12 +688,12 @@ const styles = StyleSheet.create({
   onAppBadgeText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
   },
   offAppBadge: {
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -700,7 +701,7 @@ const styles = StyleSheet.create({
   offAppBadgeText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
   },
@@ -718,33 +719,33 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   initialsText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   contactSubtitle: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   checkCircle: {
     width: 26,
     height: 26,
     borderRadius: 13,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   checkCircleSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -759,7 +760,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
   },
   modalFooter: {
@@ -769,19 +770,19 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 20,
     paddingBottom: 36,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
   },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,

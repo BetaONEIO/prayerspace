@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo} from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { X, Settings, Music, SkipBack, SkipForward, Pause, Play, List, BookOpen, PenLine, VolumeX, Loader } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 
@@ -64,6 +63,8 @@ const TRACKS: Track[] = [
 ];
 
 export default function MeditativePrayerSessionScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const params = useLocalSearchParams<{ atmosphere?: string }>();
   const initialAtmosphere = parseInt(params.atmosphere ?? "0", 10);
@@ -331,14 +332,14 @@ export default function MeditativePrayerSessionScreen() {
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable style={styles.headerBtn} onPress={handleClose}>
-            <X size={20} color={Colors.foreground} />
+            <X size={20} color={colors.foreground} />
           </Pressable>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTag}>WITH GOD</Text>
             <Text style={styles.headerSub}>Quiet Session</Text>
           </View>
           <Pressable style={styles.headerBtn}>
-            <Settings size={18} color={Colors.primary} />
+            <Settings size={18} color={colors.primary} />
           </Pressable>
         </View>
 
@@ -370,10 +371,10 @@ export default function MeditativePrayerSessionScreen() {
                     opacity: anim,
                     backgroundColor:
                       i === 3
-                        ? Colors.primary
+                        ? colors.primary
                         : i === 2 || i === 5
-                        ? Colors.primary + "CC"
-                        : Colors.primary + "80",
+                        ? colors.primary + "CC"
+                        : colors.primary + "80",
                   },
                 ]}
               />
@@ -385,11 +386,11 @@ export default function MeditativePrayerSessionScreen() {
           <View style={styles.trackRow}>
             <View style={styles.trackIconWrap}>
               {isSilence ? (
-                <VolumeX size={18} color={Colors.primary} />
+                <VolumeX size={18} color={colors.primary} />
               ) : isLoadingAudio ? (
-                <Loader size={18} color={Colors.primary} />
+                <Loader size={18} color={colors.primary} />
               ) : (
-                <Music size={18} color={Colors.primary} />
+                <Music size={18} color={colors.primary} />
               )}
             </View>
             <View style={styles.trackInfo}>
@@ -413,7 +414,7 @@ export default function MeditativePrayerSessionScreen() {
 
           <View style={styles.controlsRow}>
             <Pressable style={styles.controlBtn} onPress={handleSkipPrev}>
-              <SkipBack size={24} color={Colors.mutedForeground} />
+              <SkipBack size={24} color={colors.mutedForeground} />
             </Pressable>
             <Pressable style={styles.playBtn} onPress={handlePlayPause}>
               {isPlaying ? (
@@ -423,7 +424,7 @@ export default function MeditativePrayerSessionScreen() {
               )}
             </Pressable>
             <Pressable style={styles.controlBtn} onPress={handleSkipNext}>
-              <SkipForward size={24} color={Colors.mutedForeground} />
+              <SkipForward size={24} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
@@ -469,7 +470,7 @@ export default function MeditativePrayerSessionScreen() {
         <Animated.View style={[styles.modalOverlay, { opacity: modalOverlay }]}>
           <Animated.View style={[styles.modalSheet, { transform: [{ translateY: modalSlide }] }]}>
             <View style={styles.modalIconWrap}>
-              <BookOpen size={36} color={Colors.primary} />
+              <BookOpen size={36} color={colors.primary} />
             </View>
             <Text style={styles.modalTitle}>Amen.</Text>
             <Text style={styles.modalDesc}>
@@ -489,10 +490,10 @@ export default function MeditativePrayerSessionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   gradientTop: {
     position: "absolute" as const,
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: Colors.primary + "08",
+    backgroundColor: colors.primary + "08",
   },
   safeArea: {
     flex: 1,
@@ -549,12 +550,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "800" as const,
     letterSpacing: 2,
-    color: Colors.primary,
+    color: colors.primary,
   },
   headerSub: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   mainContent: {
     flex: 1,
@@ -572,7 +573,7 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: 120,
     borderWidth: 2,
-    borderColor: Colors.primary + "18",
+    borderColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -582,7 +583,7 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 52,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -2,
     fontVariant: ["tabular-nums"] as const,
   },
@@ -590,7 +591,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800" as const,
     letterSpacing: 2,
-    color: Colors.mutedForeground + "80",
+    color: colors.mutedForeground + "80",
     marginTop: 4,
   },
   waveWrap: {
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.9)",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
     shadowRadius: 32,
@@ -627,7 +628,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -637,18 +638,18 @@ const styles = StyleSheet.create({
   trackName: {
     fontSize: 13,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
   },
   trackSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 2,
   },
   trackBadge: {
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
   trackBadgeText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   controlsRow: {
     flexDirection: "row" as const,
@@ -674,11 +675,11 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginHorizontal: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -689,13 +690,13 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     height: 4,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     borderRadius: 2,
     overflow: "hidden" as const,
   },
   progressFill: {
     height: "100%",
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 2,
   },
   progressTimes: {
@@ -704,13 +705,13 @@ const styles = StyleSheet.create({
   },
   progressTimeText: {
     fontSize: 10,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
     fontVariant: ["tabular-nums"] as const,
   },
   attributionText: {
     fontSize: 9,
-    color: Colors.mutedForeground + "60",
+    color: colors.mutedForeground + "60",
     textAlign: "center" as const,
     fontStyle: "italic" as const,
     fontWeight: "500" as const,
@@ -718,11 +719,11 @@ const styles = StyleSheet.create({
   finishBtn: {
     marginHorizontal: 20,
     marginBottom: 12,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 20,
     paddingVertical: 16,
     alignItems: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -757,7 +758,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 4,
@@ -765,11 +766,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   modalDesc: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     paddingHorizontal: 16,
@@ -780,11 +781,11 @@ const styles = StyleSheet.create({
     justifyContent: "center" as const,
     gap: 8,
     width: "100%",
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 20,
     paddingVertical: 18,
     marginTop: 8,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.28,
     shadowRadius: 16,
@@ -797,7 +798,7 @@ const styles = StyleSheet.create({
   },
   laterBtn: {
     width: "100%",
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 20,
     paddingVertical: 18,
     alignItems: "center" as const,
@@ -805,6 +806,6 @@ const styles = StyleSheet.create({
   laterBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
 });

@@ -22,7 +22,6 @@ import {
   Star,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import {
@@ -74,10 +73,12 @@ const FREQUENTLY_USED_IDS = ["r1", "r2", "r3"];
 const SOURCE_COLORS: Record<string, string> = {
   whatsapp: "#25D366",
   sim: "#3B82F6",
-  app: Colors.primary,
+  app: colors.primary,
 };
 
 export default function SelectRecipientsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { selectedIds, toggleRecipient, clearAll } = useSelectedRecipients();
   const [search, setSearch] = useState("");
@@ -177,7 +178,7 @@ export default function SelectRecipientsScreen() {
           </View>
         </View>
         <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
-          {isSelected && <Check size={12} color={Colors.primaryForeground} strokeWidth={3} />}
+          {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
         </View>
       </Pressable>
     );
@@ -188,7 +189,7 @@ export default function SelectRecipientsScreen() {
       {frequentlyUsed.length > 0 && (
         <>
           <View style={styles.sectionLabelRow}>
-            <Star size={12} color={Colors.primary} fill={Colors.primary} />
+            <Star size={12} color={colors.primary} fill={colors.primary} />
             <Text style={styles.sectionLabel}>Frequently Used</Text>
           </View>
           <View style={styles.groupCard}>
@@ -254,14 +255,14 @@ export default function SelectRecipientsScreen() {
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactName}>{community.name}</Text>
                   <View style={styles.subtitleRow}>
-                    <Users size={11} color={Colors.mutedForeground} />
+                    <Users size={11} color={colors.mutedForeground} />
                     <Text style={styles.contactSubtitle}>
                       {community.members} members
                     </Text>
                   </View>
                 </View>
                 <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
-                  {isSelected && <Check size={12} color={Colors.primaryForeground} strokeWidth={3} />}
+                  {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
                 </View>
               </Pressable>
             </View>
@@ -277,7 +278,7 @@ export default function SelectRecipientsScreen() {
       <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Send to</Text>
         <View style={{ width: 40 }} />
@@ -305,17 +306,17 @@ export default function SelectRecipientsScreen() {
       {mainTab === "contacts" && (
         <View style={styles.subheader}>
           <View style={styles.searchWrap}>
-            <Search size={18} color={Colors.mutedForeground} />
+            <Search size={18} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by name or number..."
-              placeholderTextColor={Colors.mutedForeground + "99"}
+              placeholderTextColor={colors.mutedForeground + "99"}
               value={search}
               onChangeText={setSearch}
             />
             {search.length > 0 && (
               <Pressable onPress={() => setSearch("")}>
-                <X size={16} color={Colors.mutedForeground} />
+                <X size={16} color={colors.mutedForeground} />
               </Pressable>
             )}
           </View>
@@ -375,7 +376,7 @@ export default function SelectRecipientsScreen() {
           disabled={totalSelected === 0}
         >
           <Text style={styles.continueBtnText}>Continue</Text>
-          <ArrowRight size={20} color={Colors.primaryForeground} />
+          <ArrowRight size={20} color={colors.primaryForeground} />
         </Pressable>
       </View>
     </SafeAreaView>
@@ -383,10 +384,10 @@ export default function SelectRecipientsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -399,20 +400,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   mainTabRow: {
     flexDirection: "row",
     marginHorizontal: 24,
     marginBottom: 4,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 16,
     padding: 4,
   },
@@ -424,7 +425,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   mainTabBtnActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -434,23 +435,23 @@ const styles = StyleSheet.create({
   mainTabLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   mainTabLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   subheader: {
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 12,
     gap: 12,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -458,7 +459,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     padding: 0,
   },
   filterRow: {
@@ -469,13 +470,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1,
     borderColor: "transparent",
   },
   filterChipActive: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -484,10 +485,10 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   filterChipTextActive: {
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   listContent: {
     paddingHorizontal: 24,
@@ -503,17 +504,17 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase" as const,
     marginBottom: 12,
     paddingHorizontal: 4,
   },
   groupCard: {
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: Colors.primary + "1A",
+    borderColor: colors.primary + "1A",
     overflow: "hidden",
   },
   contactRow: {
@@ -527,15 +528,15 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: Colors.primary + "0D",
+    backgroundColor: colors.primary + "0D",
     marginHorizontal: 16,
   },
   otherList: { gap: 8 },
   otherCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.border + "80",
+    borderColor: colors.border + "80",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -547,20 +548,20 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   initialsAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   initialsText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   contactInfo: { flex: 1, gap: 4 },
   nameRow: {
@@ -571,10 +572,10 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   onAppBadge: {
-    backgroundColor: Colors.primary + "1A",
+    backgroundColor: colors.primary + "1A",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -582,12 +583,12 @@ const styles = StyleSheet.create({
   onAppBadgeText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
   },
   offAppBadge: {
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -595,7 +596,7 @@ const styles = StyleSheet.create({
   offAppBadgeText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
   },
@@ -611,21 +612,21 @@ const styles = StyleSheet.create({
   },
   contactSubtitle: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   checkCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   checkCircleSelected: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   footer: {
     position: "absolute" as const,
@@ -647,9 +648,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 36,
     paddingTop: 16,
-    backgroundColor: Colors.background + "F5",
+    backgroundColor: colors.background + "F5",
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "80",
+    borderTopColor: colors.border + "80",
     gap: 12,
   },
   footerTop: {
@@ -660,22 +661,22 @@ const styles = StyleSheet.create({
   selectedCount: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   clearAll: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   continueBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 20,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -689,6 +690,6 @@ const styles = StyleSheet.create({
   continueBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo} from "react";
 import {
   View,
   Text,
@@ -46,7 +46,6 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useRouter, Stack, useLocalSearchParams } from "expo-router";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import ThemedSwitch from "@/components/ThemedSwitch";
@@ -72,6 +71,8 @@ const PRAYER_TAGS = [
 ];
 
 export default function PrayerModeScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const params = useLocalSearchParams<{ transcript?: string }>();
   const incomingTranscript = params.transcript ?? "";
@@ -284,7 +285,7 @@ export default function PrayerModeScreen() {
 
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ArrowLeft size={20} color={Colors.secondaryForeground} />
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Pray</Text>
         <View style={{ width: 40 }} />
@@ -296,14 +297,14 @@ export default function PrayerModeScreen() {
             style={[styles.tabButton, activeTab === "text" && styles.tabButtonActive]}
             onPress={() => toggleTab("text")}
           >
-            <PenLine size={18} color={activeTab === "text" ? Colors.primary : Colors.mutedForeground} />
+            <PenLine size={18} color={activeTab === "text" ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.tabLabel, activeTab === "text" && styles.tabLabelActive]}>Text</Text>
           </Pressable>
           <Pressable
             style={[styles.tabButton, activeTab === "voice" && styles.tabButtonActive]}
             onPress={() => toggleTab("voice")}
           >
-            <Mic size={18} color={activeTab === "voice" ? Colors.primary : Colors.mutedForeground} />
+            <Mic size={18} color={activeTab === "voice" ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.tabLabel, activeTab === "voice" && styles.tabLabelActive]}>Voice</Text>
           </Pressable>
         </View>
@@ -331,7 +332,7 @@ export default function PrayerModeScreen() {
                 >
                   <Text style={styles.selectedTagEmoji}>{tag.emoji}</Text>
                   <Text style={styles.selectedTagText}>{tag.label}</Text>
-                  <X size={10} color={Colors.primary} strokeWidth={3} />
+                  <X size={10} color={colors.primary} strokeWidth={3} />
                 </Pressable>
               );
             })}
@@ -350,7 +351,7 @@ export default function PrayerModeScreen() {
             ))}
             {attachedPhotos.length < 4 && (
               <Pressable style={styles.photoAddMore} onPress={handleAttachPhoto}>
-                <ImagePlus size={18} color={Colors.primary} />
+                <ImagePlus size={18} color={colors.primary} />
               </Pressable>
             )}
           </View>
@@ -362,7 +363,7 @@ export default function PrayerModeScreen() {
               <>
                 <View style={styles.transcriptCard}>
                   <View style={styles.transcriptMicCorner}>
-                    <Mic size={14} color={Colors.primary} />
+                    <Mic size={14} color={colors.primary} />
                   </View>
                   <Text style={styles.transcriptLabel}>TRANSCRIPTION</Text>
                   <Text style={styles.transcriptBody}>{voiceTranscript}</Text>
@@ -374,7 +375,7 @@ export default function PrayerModeScreen() {
                     style={styles.editBtn}
                     onPress={handleOpenEditModal}
                   >
-                    <Edit2 size={12} color={Colors.primary} />
+                    <Edit2 size={12} color={colors.primary} />
                     <Text style={styles.reRecordText}>Edit</Text>
                   </Pressable>
                   <Pressable onPress={handleStartRecording}>
@@ -411,15 +412,15 @@ export default function PrayerModeScreen() {
                   >
                     {!isRecording && !hasRecorded ? (
                       <Pressable style={styles.micBtnInner} onPress={handleStartRecording}>
-                        <Mic size={40} color={Colors.primaryForeground} />
+                        <Mic size={40} color={colors.primaryForeground} />
                       </Pressable>
                     ) : isRecording ? (
                       <View style={styles.micBtnInner}>
-                        <Mic size={40} color={Colors.primaryForeground} />
+                        <Mic size={40} color={colors.primaryForeground} />
                       </View>
                     ) : (
                       <Pressable style={[styles.micBtnInner, styles.micBtnDone]} onPress={handleStartRecording}>
-                        <Mic size={40} color={Colors.primary} />
+                        <Mic size={40} color={colors.primary} />
                       </Pressable>
                     )}
                   </Animated.View>
@@ -433,13 +434,13 @@ export default function PrayerModeScreen() {
                   <View style={styles.recordingControls}>
                     <Pressable style={styles.ctrlBtn} onPress={handlePauseRecording}>
                       {isPaused ? (
-                        <Play size={22} color={Colors.secondaryForeground} />
+                        <Play size={22} color={colors.secondaryForeground} />
                       ) : (
-                        <Pause size={22} color={Colors.secondaryForeground} />
+                        <Pause size={22} color={colors.secondaryForeground} />
                       )}
                     </Pressable>
                     <Pressable style={styles.stopBtn} onPress={handleStopRecording}>
-                      <Square size={22} color={Colors.primaryForeground} fill={Colors.primaryForeground} />
+                      <Square size={22} color={colors.primaryForeground} fill={colors.primaryForeground} />
                       <Text style={styles.stopBtnText}>Stop & Save</Text>
                     </Pressable>
                   </View>
@@ -464,7 +465,7 @@ export default function PrayerModeScreen() {
             <TextInput
               style={styles.textInput}
               placeholder="Pour your heart out here..."
-              placeholderTextColor={Colors.mutedForeground + "50"}
+              placeholderTextColor={colors.mutedForeground + "50"}
               value={textPrayer}
               onChangeText={setTextPrayer}
               multiline
@@ -473,7 +474,7 @@ export default function PrayerModeScreen() {
             />
             <View style={styles.textInputActions}>
               <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
-                <ImagePlus size={16} color={Colors.primary} />
+                <ImagePlus size={16} color={colors.primary} />
               </Pressable>
               {textPrayer.length > 0 && (
                 <View style={styles.aiParsingBadge}>
@@ -492,7 +493,7 @@ export default function PrayerModeScreen() {
               setIsTimeSensitive((v) => !v);
             }}
           >
-            <Zap size={14} color={isTimeSensitive ? "#B87A00" : Colors.mutedForeground} />
+            <Zap size={14} color={isTimeSensitive ? "#B87A00" : colors.mutedForeground} />
             <Text style={[styles.optionChipText, isTimeSensitive && styles.optionChipTextTimeSensitive]}>
               Time Sensitive
             </Text>
@@ -505,7 +506,7 @@ export default function PrayerModeScreen() {
               setIsAnonymous((v) => !v);
             }}
           >
-            <Ghost size={14} color={isAnonymous ? Colors.primary : Colors.mutedForeground} />
+            <Ghost size={14} color={isAnonymous ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.optionChipText, isAnonymous && styles.optionChipTextAnonymous]}>
               Anonymous
             </Text>
@@ -516,14 +517,14 @@ export default function PrayerModeScreen() {
           <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
             <View style={styles.tagsToggleLeft}>
               <View style={styles.tagsToggleIcon}>
-                <Tag size={14} color={Colors.primary} />
+                <Tag size={14} color={colors.primary} />
               </View>
               <Text style={styles.tagsToggleLabel}>
                 Add a tag{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : ""}
               </Text>
             </View>
             <Animated.View style={{ transform: [{ rotate: tagRotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] }) }] }}>
-              <ChevronDown size={16} color={Colors.mutedForeground} />
+              <ChevronDown size={16} color={colors.mutedForeground} />
             </Animated.View>
           </Pressable>
           {tagsExpanded && (
@@ -561,7 +562,7 @@ export default function PrayerModeScreen() {
                     )}
                     <Text style={styles.chipName} numberOfLines={1}>{r.name.split(" ")[0]}</Text>
                     <Pressable style={styles.chipRemove} onPress={() => handleRemoveRecipient(r.id)}>
-                      <X size={10} color={Colors.mutedForeground} strokeWidth={3} />
+                      <X size={10} color={colors.mutedForeground} strokeWidth={3} />
                     </Pressable>
                   </View>
                 ))}
@@ -573,17 +574,17 @@ export default function PrayerModeScreen() {
             style={styles.addPeopleBtn}
             onPress={() => router.push("/select-recipients" as never)}
           >
-            <Send size={18} color={Colors.primary} />
+            <Send size={18} color={colors.primary} />
             <Text style={styles.addPeopleBtnText}>
               {hasSelected ? "Add More" : "Send to"}
             </Text>
-            <ArrowRight size={16} color={Colors.primary} />
+            <ArrowRight size={16} color={colors.primary} />
           </Pressable>
 
           <View style={styles.feedToggleRow}>
             <View style={styles.feedToggleLeft}>
               <View style={styles.feedToggleIcon}>
-                <Rss size={16} color={Colors.primary} />
+                <Rss size={16} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.feedToggleLabel}>Send to feed</Text>
@@ -604,9 +605,9 @@ export default function PrayerModeScreen() {
               style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
               onPress={canConfirm ? handleConfirm : undefined}
             >
-              <Check size={18} color={Colors.primaryForeground} />
+              <Check size={18} color={colors.primaryForeground} />
               <Text style={styles.confirmBtnText}>Confirm</Text>
-              <ArrowRight size={14} color={Colors.primaryForeground} />
+              <ArrowRight size={14} color={colors.primaryForeground} />
             </Pressable>
           </View>
         </View>
@@ -621,7 +622,7 @@ export default function PrayerModeScreen() {
             >
               <View style={styles.modalFullHeader}>
                 <Pressable style={styles.modalCloseBtn} onPress={handleCancelEditModal}>
-                  <X size={18} color={Colors.mutedForeground} />
+                  <X size={18} color={colors.mutedForeground} />
                 </Pressable>
                 <Text style={styles.modalTitle}>Edit Transcription</Text>
                 <Pressable style={styles.modalSaveTopBtn} onPress={handleSaveEditModal}>
@@ -639,12 +640,12 @@ export default function PrayerModeScreen() {
                   autoFocus
                   textAlignVertical="top"
                   placeholder="Your transcription..."
-                  placeholderTextColor={Colors.mutedForeground + "60"}
+                  placeholderTextColor={colors.mutedForeground + "60"}
                   scrollEnabled
                 />
 
                 <Pressable style={styles.saveBtn} onPress={handleSaveEditModal}>
-                  <Check size={18} color={Colors.primaryForeground} />
+                  <Check size={18} color={colors.primaryForeground} />
                   <Text style={styles.saveBtnText}>Save Changes</Text>
                 </Pressable>
               </View>
@@ -656,10 +657,10 @@ export default function PrayerModeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -672,14 +673,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tabContainer: {
     paddingHorizontal: 24,
@@ -687,7 +688,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tabTrack: {
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 16,
     flexDirection: "row",
     padding: 4,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabButtonActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
@@ -712,14 +713,14 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   tabLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   tabSubtitle: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 19,
     textAlign: "center" as const,
   },
@@ -743,14 +744,14 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 48,
     fontWeight: "200" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -1,
     fontVariant: ["tabular-nums"] as const,
   },
   timerLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 3,
   },
   micOuter: {
@@ -764,13 +765,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   micBtn: {
     width: 110,
     height: 110,
     borderRadius: 55,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
@@ -780,21 +781,21 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   micBtnDone: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 2,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     shadowColor: "transparent",
     elevation: 0,
   },
   tapToRecord: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 0.2,
   },
   recordingControls: {
@@ -806,17 +807,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   stopBtn: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 8,
-    backgroundColor: Colors.foreground,
+    backgroundColor: colors.foreground,
     borderRadius: 999,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -824,7 +825,7 @@ const styles = StyleSheet.create({
   stopBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   recordedBanner: {
     flexDirection: "row" as const,
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
   reRecordText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   editBtn: {
     flexDirection: "row" as const,
@@ -865,12 +866,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     zIndex: 999,
   },
   modalSafeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   modalKeyboard: {
     flex: 1,
@@ -882,18 +883,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "30",
+    borderBottomColor: colors.border + "30",
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   modalCloseBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -901,12 +902,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
   },
   modalSaveTopText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   modalBody: {
     flex: 1,
@@ -917,15 +918,15 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     fontSize: 16,
     lineHeight: 26,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
     textAlignVertical: "top" as const,
   },
   saveBtn: {
@@ -933,10 +934,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -945,16 +946,16 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   transcriptCard: {
     width: "100%",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
-    shadowColor: Colors.primary,
+    borderColor: colors.primary + "30",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
@@ -968,14 +969,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   transcriptLabel: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.primary + "99",
+    color: colors.primary + "99",
     letterSpacing: 2.5,
     textTransform: "uppercase" as const,
     marginBottom: 10,
@@ -983,19 +984,19 @@ const styles = StyleSheet.create({
   transcriptBody: {
     fontSize: 16,
     lineHeight: 26,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     fontStyle: "italic" as const,
     fontWeight: "500" as const,
     paddingRight: 24,
   },
   textArea: {
     width: "100%",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     minHeight: 180,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -1006,7 +1007,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: 17,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 26,
     minHeight: 140,
   },
@@ -1021,17 +1022,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   aiParsingBadge: {},
   aiParsingText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.primary + "80",
+    color: colors.primary + "80",
     textTransform: "uppercase" as const,
     letterSpacing: 1,
   },
@@ -1068,9 +1069,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 14,
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: colors.primary + "10",
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     borderStyle: "dashed" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
@@ -1089,9 +1090,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     borderWidth: 1.5,
-    borderColor: Colors.primary + "50",
+    borderColor: colors.primary + "50",
   },
   selectedTagEmoji: {
     fontSize: 12,
@@ -1099,7 +1100,7 @@ const styles = StyleSheet.create({
   selectedTagText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   optionsRow: {
     width: "100%",
@@ -1114,39 +1115,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   optionChipTimeSensitive: {
     backgroundColor: "#FFF8E7",
     borderColor: "#F0C040",
   },
   optionChipAnonymous: {
-    backgroundColor: Colors.primary + "12",
-    borderColor: Colors.primary + "40",
+    backgroundColor: colors.primary + "12",
+    borderColor: colors.primary + "40",
   },
   optionChipText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   optionChipTextTimeSensitive: {
     color: "#B87A00",
     fontWeight: "700" as const,
   },
   optionChipTextAnonymous: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   tagsSection: {
     width: "100%",
     marginTop: 20,
     marginBottom: 4,
-    backgroundColor: Colors.secondary + "60",
+    backgroundColor: colors.secondary + "60",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
     overflow: "hidden" as const,
   },
   tagsToggleRow: {
@@ -1165,14 +1166,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   tagsToggleLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tagsWrap: {
     paddingHorizontal: 14,
@@ -1188,13 +1189,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   tagChipActive: {
-    backgroundColor: Colors.primary + "18",
-    borderColor: Colors.primary + "60",
+    backgroundColor: colors.primary + "18",
+    borderColor: colors.primary + "60",
   },
   tagEmoji: {
     fontSize: 13,
@@ -1202,26 +1203,26 @@ const styles = StyleSheet.create({
   tagLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   tagLabelActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   bottomSection: {
     width: "100%",
     marginTop: 20,
-    backgroundColor: Colors.secondary + "60",
+    backgroundColor: colors.secondary + "60",
     borderRadius: 28,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
   },
   selectedPeopleWrap: { marginBottom: 16 },
   selectedPeopleLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase" as const,
     marginBottom: 10,
@@ -1236,13 +1237,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     paddingVertical: 6,
     paddingLeft: 6,
     paddingRight: 10,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -1254,26 +1255,26 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   chipInitialsText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   chipName: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     maxWidth: 80,
   },
   chipRemove: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1289,18 +1290,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   feedToggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
+    borderColor: colors.border + "60",
   },
   feedToggleLeft: {
     flexDirection: "row",
@@ -1312,18 +1313,18 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     alignItems: "center",
     justifyContent: "center",
   },
   feedToggleLabel: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   feedToggleSub: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 1,
   },
   actionRow: {
@@ -1336,23 +1337,23 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 4,
   },
   confirmBtnDisabled: {
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
     shadowOpacity: 0,
     elevation: 0,
   },
   confirmBtnText: {
     fontSize: 12,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
 });

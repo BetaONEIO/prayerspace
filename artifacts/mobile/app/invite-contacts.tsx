@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo} from "react";
 import {
   View,
   Text,
@@ -13,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Gift, MessageCircle, MessageSquare, Phone } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 
@@ -55,6 +54,7 @@ const INVITE_MESSAGE = "Hey! I've been using Prayer Space to share prayer reques
 export default function InviteContactsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [messaged, setMessaged] = useState<string[]>([]);
 
   const handleOpenApp = (contact: AppContact) => {
@@ -120,12 +120,12 @@ export default function InviteContactsScreen() {
         <View style={styles.headerTop}>
           <Text style={styles.title}>Your Contacts</Text>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={Colors.secondaryForeground} />
+            <ArrowLeft size={20} color={colors.secondaryForeground} />
           </Pressable>
         </View>
         <View style={styles.bannerCard}>
           <View style={styles.giftCircle}>
-            <Gift size={26} color={Colors.primaryForeground} />
+            <Gift size={26} color={colors.primaryForeground} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.bannerTitle}>Share the Light</Text>
@@ -174,7 +174,7 @@ export default function InviteContactsScreen() {
                   onPress={() => handleOpenApp(c)}
                   testID={`message-${c.id}`}
                 >
-                  <MessageCircle size={14} color={Colors.primaryForeground} />
+                  <MessageCircle size={14} color={colors.primaryForeground} />
                   <Text style={styles.messageBtnText}>Message</Text>
                 </Pressable>
               </View>
@@ -212,7 +212,7 @@ export default function InviteContactsScreen() {
                     onPress={() => handleSMS(c)}
                     testID={`sms-${c.id}`}
                   >
-                    <MessageSquare size={14} color={Colors.secondaryForeground} />
+                    <MessageSquare size={14} color={colors.secondaryForeground} />
                   </Pressable>
                 </View>
               )}
@@ -225,10 +225,10 @@ export default function InviteContactsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: 24,
@@ -244,14 +244,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -259,20 +259,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   giftCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
@@ -281,12 +281,12 @@ const styles = StyleSheet.create({
   bannerTitle: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 4,
   },
   bannerSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 18,
   },
   list: {
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: Colors.green + "18",
+    backgroundColor: colors.green + "18",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
@@ -323,23 +323,23 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.green,
+    backgroundColor: colors.green,
   },
   onAppPillText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.green,
+    color: colors.green,
   },
   contactCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
   },
   contactLeft: {
     flexDirection: "row",
@@ -356,18 +356,18 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   initialsApp: {
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
   },
   initialsOff: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   initialsText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   initialsTextOff: {
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   nameRow: {
     flexDirection: "row",
@@ -377,22 +377,22 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   contactPhone: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   messageBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   messageBtnText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   offAppActions: {
     flexDirection: "row",
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -436,11 +436,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   sentPillText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });

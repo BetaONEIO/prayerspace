@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo} from "react";
 import {
   View,
   Text,
@@ -29,7 +29,6 @@ import {
   Users,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
@@ -52,6 +51,8 @@ const FOCUS_OPTIONS: FocusOption[] = [
 ];
 
 export default function CreateGroupScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState<Step>(1);
@@ -172,7 +173,7 @@ export default function CreateGroupScreen() {
       >
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={handleBack}>
-            <ChevronLeft size={20} color={Colors.secondaryForeground} />
+            <ChevronLeft size={20} color={colors.secondaryForeground} />
           </Pressable>
 
           <View style={styles.headerCenter}>
@@ -216,11 +217,11 @@ export default function CreateGroupScreen() {
                   <Image source={{ uri: groupPhotoUri }} style={styles.imagePickerPhoto} />
                 ) : (
                   <View style={styles.imagePicker}>
-                    <Camera size={44} color={Colors.mutedForeground} />
+                    <Camera size={44} color={colors.mutedForeground} />
                   </View>
                 )}
                 <View style={styles.imageEditBadge}>
-                  <Pen size={14} color={Colors.primaryForeground} />
+                  <Pen size={14} color={colors.primaryForeground} />
                 </View>
               </Pressable>
 
@@ -229,7 +230,7 @@ export default function CreateGroupScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Sunday Morning Grace Circle"
-                  placeholderTextColor={Colors.mutedForeground + "70"}
+                  placeholderTextColor={colors.mutedForeground + "70"}
                   value={groupName}
                   onChangeText={setGroupName}
                 />
@@ -258,7 +259,7 @@ export default function CreateGroupScreen() {
 
               <View style={styles.safeSpaceCard}>
                 <View style={styles.safeSpaceIconWrap}>
-                  <ShieldCheck size={20} color={Colors.primary} />
+                  <ShieldCheck size={20} color={colors.primary} />
                 </View>
                 <View style={styles.safeSpaceText}>
                   <Text style={styles.safeSpaceTitle}>Safe Space Policy</Text>
@@ -272,8 +273,8 @@ export default function CreateGroupScreen() {
                     if (Platform.OS !== "web") void Haptics.selectionAsync();
                     setSafeSpaceEnabled(val);
                   }}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.card}
+                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  thumbColor={colors.card}
                 />
               </View>
             </>
@@ -306,7 +307,7 @@ export default function CreateGroupScreen() {
                     >
                       <Lock
                         size={18}
-                        color={selectedPrivacy === "Private" ? Colors.primary : Colors.mutedForeground}
+                        color={selectedPrivacy === "Private" ? colors.primary : colors.mutedForeground}
                       />
                     </View>
                     <View style={styles.privacyCardBody}>
@@ -337,7 +338,7 @@ export default function CreateGroupScreen() {
                     >
                       <Globe
                         size={18}
-                        color={selectedPrivacy === "Public" ? Colors.primary : Colors.mutedForeground}
+                        color={selectedPrivacy === "Public" ? colors.primary : colors.mutedForeground}
                       />
                     </View>
                     <View
@@ -368,7 +369,7 @@ export default function CreateGroupScreen() {
             <Text style={styles.nextBtnText}>
               {step === 1 ? "Next: Privacy" : "Create Group"}
             </Text>
-            <ChevronRight size={20} color={Colors.primaryForeground} />
+            <ChevronRight size={20} color={colors.primaryForeground} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -410,7 +411,7 @@ export default function CreateGroupScreen() {
         <Animated.View style={[styles.createdOverlay, { opacity: createdModalFade }]}>
           <Animated.View style={[styles.createdCard, { transform: [{ scale: createdModalScale }] }]}>
             <View style={styles.createdCheckWrap}>
-              <CheckCircle size={48} color={Colors.primary} />
+              <CheckCircle size={48} color={colors.primary} />
             </View>
 
             <Text style={styles.createdTitle}>Group Created!</Text>
@@ -419,7 +420,7 @@ export default function CreateGroupScreen() {
               <Image source={{ uri: groupPhotoUri }} style={styles.createdGroupPhoto} />
             ) : (
               <View style={styles.createdGroupPhotoPlaceholder}>
-                <Users size={32} color={Colors.primary} />
+                <Users size={32} color={colors.primary} />
               </View>
             )}
 
@@ -437,10 +438,10 @@ export default function CreateGroupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row" as const,
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -464,7 +465,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   stepDots: {
@@ -476,21 +477,21 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.muted,
+    backgroundColor: colors.muted,
   },
   stepDotActive: {
     width: 20,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   stepDotDone: {
-    backgroundColor: Colors.primary + "60",
+    backgroundColor: colors.primary + "60",
   },
   skipText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -504,13 +505,13 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 26,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.6,
     textAlign: "center" as const,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 20,
   },
@@ -522,10 +523,10 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 32,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 2,
     borderStyle: "dashed" as const,
-    borderColor: Colors.primary + "50",
+    borderColor: colors.primary + "50",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -534,7 +535,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 32,
     borderWidth: 3,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   imageEditBadge: {
     position: "absolute" as const,
@@ -543,12 +544,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     borderWidth: 3,
-    borderColor: Colors.background,
-    shadowColor: Colors.primary,
+    borderColor: colors.background,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -560,19 +561,19 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1.5,
     paddingHorizontal: 2,
   },
   input: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 16,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
   },
   focusGrid: {
@@ -590,12 +591,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.card,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
   },
   focusOptionSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "08",
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + "08",
   },
   focusEmoji: {
     fontSize: 20,
@@ -603,26 +604,26 @@ const styles = StyleSheet.create({
   focusLabel: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   focusLabelSelected: {
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   safeSpaceCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 14,
-    backgroundColor: Colors.primary + "08",
+    backgroundColor: colors.primary + "08",
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.primary + "18",
+    borderColor: colors.primary + "18",
   },
   safeSpaceIconWrap: {
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     shadowColor: "#000",
@@ -638,11 +639,11 @@ const styles = StyleSheet.create({
   safeSpaceTitle: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   safeSpaceDesc: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 16,
   },
   privacyCards: {
@@ -652,15 +653,15 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
     gap: 14,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     borderWidth: 2,
     borderColor: "transparent",
   },
   privacyCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primary + "06",
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + "06",
   },
   privacyCardIcon: {
     width: 42,
@@ -671,7 +672,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   privacyCardIconSelected: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -679,7 +680,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   privacyCardIconDefault: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   privacyCardBody: {
     flex: 1,
@@ -691,11 +692,11 @@ const styles = StyleSheet.create({
   privacyCardTitle: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   privacyCardDesc: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 16,
   },
   radio: {
@@ -703,20 +704,20 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     flexShrink: 0,
     marginTop: 2,
   },
   radioActive: {
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   footer: {
     paddingHorizontal: 24,
@@ -728,10 +729,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 999,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -740,7 +741,7 @@ const styles = StyleSheet.create({
   nextBtnText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
   createdOverlay: {
@@ -751,7 +752,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   createdCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 32,
     paddingVertical: 36,
     paddingHorizontal: 28,
@@ -770,7 +771,7 @@ const styles = StyleSheet.create({
   createdTitle: {
     fontSize: 24,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.5,
     marginBottom: 20,
   },
@@ -779,42 +780,42 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 28,
     borderWidth: 3,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
     marginBottom: 14,
   },
   createdGroupPhotoPlaceholder: {
     width: 88,
     height: 88,
     borderRadius: 28,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 14,
     borderWidth: 2,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   createdGroupName: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
     marginBottom: 6,
   },
   createdSubtext: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 19,
     marginBottom: 28,
   },
   createdGoBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 16,
     paddingHorizontal: 40,
     borderRadius: 999,
     width: "100%",
     alignItems: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -823,7 +824,7 @@ const styles = StyleSheet.create({
   createdGoBtnText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
   alertOverlay: {
@@ -834,31 +835,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   alertCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 28,
     paddingVertical: 32,
     paddingHorizontal: 28,
     alignItems: "center" as const,
     width: "100%",
     maxWidth: 320,
-    shadowColor: Colors.foreground,
+    shadowColor: colors.foreground,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 20,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   alertIconWrap: {
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.primary + "20",
+    borderColor: colors.primary + "20",
   },
   alertIcon: {
     fontSize: 26,
@@ -866,26 +867,26 @@ const styles = StyleSheet.create({
   alertTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
     marginBottom: 8,
     textAlign: "center" as const,
   },
   alertMessage: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 19,
     marginBottom: 24,
   },
   alertBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 48,
     borderRadius: 999,
     width: "100%",
     alignItems: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -894,7 +895,7 @@ const styles = StyleSheet.create({
   alertBtnText: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
 });

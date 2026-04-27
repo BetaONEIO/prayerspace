@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -19,7 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Mail, Lock, Eye, EyeOff, AlertTriangle, ShieldAlert } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 import { Video, ResizeMode } from "expo-av";
@@ -41,6 +40,8 @@ interface ErrorModalState {
 export default function LoginScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
+  const colors = themeColors;
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -208,7 +209,7 @@ export default function LoginScreen() {
               testID="login-submit"
             >
               {isLoading ? (
-                <ActivityIndicator color={Colors.primaryForeground} />
+                <ActivityIndicator color={colors.primaryForeground} />
               ) : (
                 <Text style={styles.signInBtnText}>Sign In</Text>
               )}
@@ -261,7 +262,7 @@ export default function LoginScreen() {
                 errorModal.type === "warning" ? styles.modalIconWrapWarning : styles.modalIconWrapError,
               ]}>
                 {errorModal.type === "warning" ? (
-                  <AlertTriangle size={32} color={Colors.primary} />
+                  <AlertTriangle size={32} color={colors.primary} />
                 ) : (
                   <ShieldAlert size={32} color="#D9534F" />
                 )}
@@ -305,7 +306,7 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#000",
@@ -395,11 +396,11 @@ const styles = StyleSheet.create({
   },
   signInBtn: {
     height: 54,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 18,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 16,
@@ -411,7 +412,7 @@ const styles = StyleSheet.create({
   signInBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   dividerRow: {
     flexDirection: "row" as const,
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 28,
     overflow: "hidden" as const,
     shadowColor: "#3A2F29",
@@ -481,20 +482,20 @@ const styles = StyleSheet.create({
     borderColor: "#FBD5D3",
   },
   modalIconWrapWarning: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
     textAlign: "center" as const,
   },
   modalMessage: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 21,
     maxWidth: 260,
@@ -517,8 +518,8 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   modalBtnWarning: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -536,12 +537,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   modalBtnSecondaryText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   goBackLink: {
     paddingVertical: 8,
@@ -550,6 +551,6 @@ const styles = StyleSheet.create({
   goBackText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });

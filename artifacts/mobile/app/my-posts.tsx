@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -31,7 +31,6 @@ import {
   Archive,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
@@ -130,6 +129,8 @@ const UPDATE_TAG_CONFIG: Record<
 };
 
 export default function MyPostsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { archivedPosts } = usePrayer();
   const [posts, setPosts] = useState<MyPost[]>(INITIAL_MY_POSTS);
@@ -198,7 +199,7 @@ export default function MyPostsScreen() {
 
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ChevronLeft size={22} color={Colors.foreground} />
+          <ChevronLeft size={22} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>My Requests</Text>
@@ -334,7 +335,7 @@ function ArchivedPostCard({ post }: ArchivedPostCardProps) {
           <Text style={styles.categoryText}>{post.category}</Text>
         </View>
         <View style={styles.postMeta}>
-          <Clock size={11} color={Colors.mutedForeground} />
+          <Clock size={11} color={colors.mutedForeground} />
           <Text style={styles.postMetaText}>{post.postedAt}</Text>
         </View>
       </View>
@@ -356,12 +357,12 @@ function ArchivedPostCard({ post }: ArchivedPostCardProps) {
 
       <View style={[styles.postStats, { marginBottom: 0 }]}>
         <View style={styles.statItem}>
-          <Heart size={14} color={Colors.primary} />
+          <Heart size={14} color={colors.primary} />
           <Text style={styles.statItemText}>{post.prayerCount} praying</Text>
         </View>
         <View style={styles.statItem}>
-          <MessageCircle size={14} color={Colors.mutedForeground} />
-          <Text style={[styles.statItemText, { color: Colors.mutedForeground }]}>
+          <MessageCircle size={14} color={colors.mutedForeground} />
+          <Text style={[styles.statItemText, { color: colors.mutedForeground }]}>
             {post.commentCount} comments
           </Text>
         </View>
@@ -395,7 +396,7 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
           <Text style={styles.categoryText}>{post.category}</Text>
         </View>
         <View style={styles.postMeta}>
-          <Clock size={11} color={Colors.mutedForeground} />
+          <Clock size={11} color={colors.mutedForeground} />
           <Text style={styles.postMetaText}>{post.postedAt}</Text>
         </View>
       </View>
@@ -436,12 +437,12 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
 
       <View style={styles.postStats}>
         <View style={styles.statItem}>
-          <Heart size={14} color={Colors.primary} />
+          <Heart size={14} color={colors.primary} />
           <Text style={styles.statItemText}>{post.prayerCount} praying</Text>
         </View>
         <View style={styles.statItem}>
-          <MessageCircle size={14} color={Colors.mutedForeground} />
-          <Text style={[styles.statItemText, { color: Colors.mutedForeground }]}>
+          <MessageCircle size={14} color={colors.mutedForeground} />
+          <Text style={[styles.statItemText, { color: colors.mutedForeground }]}>
             {post.commentCount} comments
           </Text>
         </View>
@@ -461,7 +462,7 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
       {!post.isAnswered && !isOriginalUpdatePost && (
         <View style={styles.postActions}>
           <Pressable style={styles.updateBtn} onPress={onUpdate}>
-            <Repeat2 size={15} color={Colors.primary} />
+            <Repeat2 size={15} color={colors.primary} />
             <Text style={styles.updateBtnText}>Share Update</Text>
           </Pressable>
           <Pressable style={styles.answeredBtn} onPress={onMarkAnswered}>
@@ -474,7 +475,7 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
       {post.isAnswered && !isOriginalUpdatePost && (
         <View style={styles.postActions}>
           <Pressable style={styles.updateBtn} onPress={onUpdate}>
-            <Sparkles size={15} color={Colors.primary} />
+            <Sparkles size={15} color={colors.primary} />
             <Text style={styles.updateBtnText}>Share Testimony</Text>
           </Pressable>
         </View>
@@ -548,7 +549,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                 )}
               </View>
               <Pressable style={styles.composerClose} onPress={handleClose}>
-                <X size={16} color={Colors.mutedForeground} />
+                <X size={16} color={colors.mutedForeground} />
               </Pressable>
             </View>
 
@@ -583,7 +584,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                   inputFocused && styles.updateInputFocused,
                 ]}
                 placeholder="Share an update..."
-                placeholderTextColor={Colors.mutedForeground + "90"}
+                placeholderTextColor={colors.mutedForeground + "90"}
                 value={text}
                 onChangeText={setText}
                 multiline
@@ -633,7 +634,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                 onPress={handleSubmit}
                 disabled={!text.trim()}
               >
-                <Repeat2 size={18} color={Colors.primaryForeground} />
+                <Repeat2 size={18} color={colors.primaryForeground} />
                 <Text style={styles.submitBtnText}>{isAnswered ? "Share Testimony" : "Share Update"}</Text>
               </Pressable>
             </View>
@@ -700,12 +701,12 @@ function MarkAnsweredModal({ post, onClose, onConfirm, onUpdate }: MarkAnsweredM
           </View>
 
           <Pressable style={styles.shareTestimonyBtn} onPress={onUpdate}>
-            <Repeat2 size={18} color={Colors.primaryForeground} />
+            <Repeat2 size={18} color={colors.primaryForeground} />
             <Text style={styles.shareTestimonyText}>Share Testimony to Feed</Text>
           </Pressable>
 
           <Pressable style={styles.markQuietlyBtn} onPress={onConfirm}>
-            <CheckCircle2 size={18} color={Colors.primary} />
+            <CheckCircle2 size={18} color={colors.primary} />
             <Text style={styles.markQuietlyText}>Mark as Answered (quietly)</Text>
           </Pressable>
 
@@ -718,10 +719,10 @@ function MarkAnsweredModal({ post, onClose, onConfirm, onUpdate }: MarkAnsweredM
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -735,7 +736,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -745,12 +746,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.4,
   },
   headerSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginTop: 2,
   },
@@ -762,13 +763,13 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     paddingVertical: 14,
     alignItems: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.border + "60",
-    shadowColor: Colors.primary,
+    borderColor: colors.border + "60",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
   statNum: {
     fontSize: 24,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     marginBottom: 2,
   },
   statNumAnswered: {
@@ -790,7 +791,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
   },
   statLabelAnswered: {
@@ -800,7 +801,7 @@ const styles = StyleSheet.create({
     flexDirection: "row" as const,
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 14,
     padding: 4,
   },
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   filterTabActive: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
@@ -821,23 +822,23 @@ const styles = StyleSheet.create({
   filterTabText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   filterTabTextActive: {
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "700" as const,
   },
   scrollContent: {
     paddingHorizontal: 20,
   },
   postCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
-    shadowColor: Colors.primary,
+    borderColor: colors.border + "50",
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
@@ -873,7 +874,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoryBadge: {
-    backgroundColor: Colors.primary + "18",
+    backgroundColor: colors.primary + "18",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -881,7 +882,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.8,
   },
   postMeta: {
@@ -891,7 +892,7 @@ const styles = StyleSheet.create({
   },
   postMetaText: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   updateTagBadge: {
@@ -910,27 +911,27 @@ const styles = StyleSheet.create({
   },
   postContent: {
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 23,
     marginBottom: 14,
     fontWeight: "500" as const,
   },
   postContentItalic: {
     fontStyle: "italic" as const,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
   },
   quotedWrap: {
     flexDirection: "row" as const,
     gap: 10,
     marginBottom: 14,
-    backgroundColor: Colors.secondary + "70",
+    backgroundColor: colors.secondary + "70",
     borderRadius: 14,
     padding: 12,
   },
   quotedBar: {
     width: 3,
     borderRadius: 2,
-    backgroundColor: Colors.primary + "50",
+    backgroundColor: colors.primary + "50",
   },
   quotedInner: {
     flex: 1,
@@ -939,18 +940,18 @@ const styles = StyleSheet.create({
   quotedLabel: {
     fontSize: 9,
     fontWeight: "800" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     marginBottom: 2,
   },
   quotedText: {
     fontSize: 13,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     lineHeight: 20,
   },
   quotedTime: {
     fontSize: 10,
-    color: Colors.mutedForeground + "99",
+    color: colors.mutedForeground + "99",
     marginTop: 3,
   },
   postStats: {
@@ -959,7 +960,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "50",
+    borderTopColor: colors.border + "50",
     marginBottom: 14,
   },
   statItem: {
@@ -970,7 +971,7 @@ const styles = StyleSheet.create({
   statItemText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   avatarStack: {
     flexDirection: "row" as const,
@@ -982,7 +983,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: Colors.card,
+    borderColor: colors.card,
   },
   postActions: {
     flexDirection: "row" as const,
@@ -994,16 +995,16 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 7,
-    backgroundColor: Colors.primary + "14",
+    backgroundColor: colors.primary + "14",
     borderRadius: 14,
     paddingVertical: 11,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
   },
   updateBtnText: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   answeredBtn: {
     flex: 1,
@@ -1035,12 +1036,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     textAlign: "center" as const,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
   },
@@ -1056,7 +1057,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   composerSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 12,
@@ -1072,14 +1073,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "40",
-    backgroundColor: Colors.card,
+    borderTopColor: colors.border + "40",
+    backgroundColor: colors.card,
   },
   composerHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 16,
   },
@@ -1093,12 +1094,12 @@ const styles = StyleSheet.create({
   composerTitle: {
     fontSize: 19,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     letterSpacing: -0.3,
   },
   composerSub: {
     fontSize: 12,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     marginTop: 2,
   },
   answeredPill: {
@@ -1124,14 +1125,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   originalPreview: {
     flexDirection: "row" as const,
     gap: 12,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 16,
     padding: 14,
     marginBottom: 16,
@@ -1139,7 +1140,7 @@ const styles = StyleSheet.create({
   originalPreviewBar: {
     width: 3,
     borderRadius: 2,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     flexShrink: 0,
   },
   originalPreviewInner: {
@@ -1160,15 +1161,15 @@ const styles = StyleSheet.create({
   originalPreviewName: {
     fontSize: 13,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   originalPreviewTime: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   originalPreviewText: {
     fontSize: 13,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     lineHeight: 20,
     fontStyle: "italic" as const,
   },
@@ -1182,19 +1183,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   addPhotoText: {
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
   },
   tagSectionLabel: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 12,
   },
   tagOptionsRow: {
@@ -1211,8 +1212,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.background,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
   },
   tagOptionEmoji: {
     fontSize: 14,
@@ -1220,17 +1221,17 @@ const styles = StyleSheet.create({
   tagOptionText: {
     fontSize: 13,
     fontWeight: "500" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   updateInput: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 14,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     minHeight: 90,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 10,
   },
   updateInputFocused: {
@@ -1241,10 +1242,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 16,
@@ -1253,11 +1254,11 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     letterSpacing: 0.2,
   },
   answeredSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 12,
@@ -1280,13 +1281,13 @@ const styles = StyleSheet.create({
   answeredSheetTitle: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 8,
     letterSpacing: -0.4,
   },
   answeredSheetSubtitle: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 22,
     marginBottom: 20,
@@ -1294,16 +1295,16 @@ const styles = StyleSheet.create({
   },
   answeredPreview: {
     width: "100%",
-    backgroundColor: Colors.secondary + "70",
+    backgroundColor: colors.secondary + "70",
     borderRadius: 16,
     padding: 14,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
   },
   answeredPreviewText: {
     fontSize: 13,
-    color: Colors.secondaryForeground,
+    color: colors.secondaryForeground,
     lineHeight: 20,
     fontStyle: "italic" as const,
   },
@@ -1313,11 +1314,11 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 16,
     marginBottom: 10,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
@@ -1326,7 +1327,7 @@ const styles = StyleSheet.create({
   shareTestimonyText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
   markQuietlyBtn: {
     width: "100%",
@@ -1351,23 +1352,23 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     fontSize: 14,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "600" as const,
   },
   archivedCard: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 24,
     padding: 20,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
     opacity: 0.85,
   },
   archivedBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 5,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1377,7 +1378,7 @@ const styles = StyleSheet.create({
   archivedBannerText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   archivedAuthorRow: {
     flexDirection: "row" as const,
@@ -1391,18 +1392,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   archivedAvatarFallback: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   archivedAvatarInitial: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   archivedAuthorName: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });

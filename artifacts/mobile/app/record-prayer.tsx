@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
 import {
   View,
   Text,
@@ -29,7 +29,6 @@ import {
 import * as Haptics from "expo-haptics";
 import { useMutation } from "@tanstack/react-query";
 import { generateText } from "@rork-ai/toolkit-sdk";
-import { LightColors as Colors } from "@/constants/colors";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
@@ -52,6 +51,8 @@ function formatDuration(seconds: number): string {
 }
 
 export default function RecordPrayerScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { addJournalEntry } = usePrayer();
   const { isRecording, duration, startRecording, stopRecording, error: recordingError } = useAudioRecording();
@@ -224,8 +225,8 @@ export default function RecordPrayerScreen() {
       <Stack.Screen
         options={{
           title: "Record Prayer",
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: Colors.foreground,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.foreground,
           headerShadowVisible: false,
         }}
       />
@@ -260,7 +261,7 @@ export default function RecordPrayerScreen() {
                         styles.waveBar,
                         {
                           transform: [{ scaleY: anim }],
-                          backgroundColor: i === 2 ? Colors.primary : Colors.primary + "80",
+                          backgroundColor: i === 2 ? colors.primary : colors.primary + "80",
                         },
                       ]}
                     />
@@ -278,7 +279,7 @@ export default function RecordPrayerScreen() {
                   {isRecording ? (
                     <MicOff size={32} color="#FFFFFF" />
                   ) : (
-                    <Mic size={32} color={isProcessing ? Colors.mutedForeground : Colors.primaryForeground} />
+                    <Mic size={32} color={isProcessing ? colors.mutedForeground : colors.primaryForeground} />
                   )}
                 </Pressable>
               </Animated.View>
@@ -297,7 +298,7 @@ export default function RecordPrayerScreen() {
 
             {transcribeMutation.isPending && (
               <View style={styles.processingCard}>
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={styles.processingText}>Transcribing your prayer...</Text>
               </View>
             )}
@@ -317,7 +318,7 @@ export default function RecordPrayerScreen() {
                   <View style={styles.transcriptionActions}>
                     {rawTranscription !== editedText && (
                       <Pressable style={styles.actionChip} onPress={handleResetText}>
-                        <Eraser size={14} color={Colors.mutedForeground} />
+                        <Eraser size={14} color={colors.mutedForeground} />
                         <Text style={styles.actionChipText}>Reset</Text>
                       </Pressable>
                     )}
@@ -327,9 +328,9 @@ export default function RecordPrayerScreen() {
                       disabled={cleanupMutation.isPending}
                     >
                       {cleanupMutation.isPending ? (
-                        <ActivityIndicator size={14} color={Colors.primary} />
+                        <ActivityIndicator size={14} color={colors.primary} />
                       ) : (
-                        <Sparkles size={14} color={Colors.primary} />
+                        <Sparkles size={14} color={colors.primary} />
                       )}
                       <Text style={styles.aiChipText}>
                         {cleanupMutation.isPending ? "Cleaning..." : "AI Cleanup"}
@@ -345,7 +346,7 @@ export default function RecordPrayerScreen() {
                   multiline
                   textAlignVertical="top"
                   placeholder="Your transcribed prayer will appear here..."
-                  placeholderTextColor={Colors.mutedForeground + "88"}
+                  placeholderTextColor={colors.mutedForeground + "88"}
                   testID="transcription-input"
                 />
               </View>
@@ -358,7 +359,7 @@ export default function RecordPrayerScreen() {
                   value={title}
                   onChangeText={setTitle}
                   placeholder="Prayer title (optional)"
-                  placeholderTextColor={Colors.mutedForeground + "88"}
+                  placeholderTextColor={colors.mutedForeground + "88"}
                   testID="title-input"
                 />
 
@@ -367,14 +368,14 @@ export default function RecordPrayerScreen() {
                   onPress={() => setShowTagPicker(!showTagPicker)}
                 >
                   <View style={styles.tagSelectorLeft}>
-                    <BookOpen size={16} color={Colors.primary} />
+                    <BookOpen size={16} color={colors.primary} />
                     <Text style={styles.tagSelectorLabel}>Category</Text>
                   </View>
                   <View style={styles.tagSelectorRight}>
                     <Text style={styles.tagSelectorValue}>
                       {currentTag.emoji} {currentTag.label}
                     </Text>
-                    <ChevronDown size={16} color={Colors.mutedForeground} />
+                    <ChevronDown size={16} color={colors.mutedForeground} />
                   </View>
                 </Pressable>
 
@@ -411,7 +412,7 @@ export default function RecordPrayerScreen() {
                 disabled={!hasTranscription}
                 testID="save-button"
               >
-                <Save size={20} color={Colors.primaryForeground} />
+                <Save size={20} color={colors.primaryForeground} />
                 <Text style={styles.saveBtnText}>Save to Journal</Text>
               </Pressable>
             </>
@@ -424,10 +425,10 @@ export default function RecordPrayerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
@@ -443,14 +444,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 1.8,
     marginBottom: 6,
   },
   sectionHint: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 28,
   },
   recorderCenter: {
@@ -476,10 +477,10 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -503,42 +504,42 @@ const styles = StyleSheet.create({
   durationText: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontVariant: ["tabular-nums" as const],
   },
   tapHint: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   processingCard: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 12,
-    backgroundColor: Colors.primary + "12",
+    backgroundColor: colors.primary + "12",
     borderRadius: 16,
     padding: 16,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
   },
   processingText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   errorCard: {
-    backgroundColor: Colors.destructive + "12",
+    backgroundColor: colors.destructive + "12",
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: Colors.destructive + "25",
+    borderColor: colors.destructive + "25",
   },
   errorText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.destructive,
+    color: colors.destructive,
   },
   transcriptionSection: {
     marginBottom: 24,
@@ -561,14 +562,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   actionChipText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   aiChip: {
     flexDirection: "row" as const,
@@ -577,9 +578,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: Colors.primary + "15",
+    backgroundColor: colors.primary + "15",
     borderWidth: 1.5,
-    borderColor: Colors.primary + "40",
+    borderColor: colors.primary + "40",
   },
   aiChipDisabled: {
     opacity: 0.6,
@@ -587,19 +588,19 @@ const styles = StyleSheet.create({
   aiChipText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   transcriptionInput: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 20,
     padding: 18,
     fontSize: 15,
     lineHeight: 24,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "500" as const,
     minHeight: 160,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -610,25 +611,25 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   titleInput: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     fontSize: 15,
-    color: Colors.foreground,
+    color: colors.foreground,
     fontWeight: "600" as const,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
   },
   tagSelector: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
   },
   tagSelectorLeft: {
     flexDirection: "row" as const,
@@ -638,7 +639,7 @@ const styles = StyleSheet.create({
   tagSelectorLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tagSelectorRight: {
     flexDirection: "row" as const,
@@ -648,14 +649,14 @@ const styles = StyleSheet.create({
   tagSelectorValue: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   tagPickerWrap: {
     marginTop: 8,
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     overflow: "hidden" as const,
   },
   tagOption: {
@@ -665,10 +666,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "60",
+    borderBottomColor: colors.border + "60",
   },
   tagOptionSelected: {
-    backgroundColor: Colors.primary + "10",
+    backgroundColor: colors.primary + "10",
   },
   tagOptionEmoji: {
     fontSize: 16,
@@ -676,10 +677,10 @@ const styles = StyleSheet.create({
   tagOptionLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
   },
   tagOptionLabelSelected: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   saveBtn: {
@@ -687,10 +688,10 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 999,
     paddingVertical: 18,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 20,
@@ -703,6 +704,6 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
   },
 });

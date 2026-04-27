@@ -38,7 +38,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { LightColors as Colors } from "@/constants/colors";
+import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
@@ -63,12 +63,14 @@ const REACTION_COLORS: Record<ReactionType, string> = {
 };
 
 const REACTION_ACTIVE_COLORS: Record<ReactionType, string> = {
-  pray: Colors.primary,
+  pray: colors.primary,
   amen: "#6366F1",
   support: "#E55",
 };
 
 export default function ChatScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { id, autoMessage } = useLocalSearchParams<{
     id: string;
@@ -608,7 +610,7 @@ export default function ChatScreen() {
             </View>
             <View style={[styles.timeRow, isMine && styles.timeRowRight]}>
               <Text style={styles.msgTime}>{formatMessageTime(item.created_at)}</Text>
-              {isMine && <CheckCheck size={12} color={Colors.primary} />}
+              {isMine && <CheckCheck size={12} color={colors.primary} />}
             </View>
             {renderReactions(item)}
           </Pressable>
@@ -650,7 +652,7 @@ export default function ChatScreen() {
             <Text style={styles.msgTime}>
               {isRealUser ? formatMessageTime(item.created_at) : (item as { time?: string }).time ?? ""}
             </Text>
-            {isMine && <CheckCheck size={12} color={Colors.primary} />}
+            {isMine && <CheckCheck size={12} color={colors.primary} />}
           </View>
           {renderReactions(item)}
         </Pressable>
@@ -666,7 +668,7 @@ export default function ChatScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <ChevronLeft size={18} color={Colors.foreground} />
+          <ChevronLeft size={18} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerCenter}>
           <View style={styles.headerAvatarWrap}>
@@ -689,7 +691,7 @@ export default function ChatScreen() {
         </View>
         {isRealUser && (
           <Pressable style={styles.headerMenuBtn} onPress={openHeaderMenu}>
-            <MoreVertical size={20} color={Colors.foreground} />
+            <MoreVertical size={20} color={colors.foreground} />
           </Pressable>
         )}
       </View>
@@ -744,10 +746,10 @@ export default function ChatScreen() {
       {editingMessage ? (
         <SafeAreaView edges={["bottom"]} style={styles.editingBar}>
           <View style={styles.editingHeader}>
-            <Pencil size={14} color={Colors.primary} />
+            <Pencil size={14} color={colors.primary} />
             <Text style={styles.editingLabel}>Editing message</Text>
             <Pressable onPress={() => { setEditingMessage(null); setEditText(""); }}>
-              <X size={16} color={Colors.mutedForeground} />
+              <X size={16} color={colors.mutedForeground} />
             </Pressable>
           </View>
           <View style={styles.editInputRow}>
@@ -757,14 +759,14 @@ export default function ChatScreen() {
               onChangeText={setEditText}
               autoFocus
               multiline
-              placeholderTextColor={Colors.mutedForeground + "80"}
+              placeholderTextColor={colors.mutedForeground + "80"}
             />
             <Pressable
               style={[styles.editSaveBtn, !editText.trim() && styles.editSaveBtnDisabled]}
               onPress={handleEditSave}
               disabled={!editText.trim()}
             >
-              <Check size={18} color={Colors.primaryForeground} />
+              <Check size={18} color={colors.primaryForeground} />
             </Pressable>
           </View>
         </SafeAreaView>
@@ -788,7 +790,7 @@ export default function ChatScreen() {
                 style={styles.addBtn}
                 onPress={() => isRealUser && setPrayerShareVisible(true)}
               >
-                <HandHeart size={20} color={Colors.primary} />
+                <HandHeart size={20} color={colors.primary} />
               </Pressable>
               <ImageAttachment
                 imageUri={null}
@@ -800,7 +802,7 @@ export default function ChatScreen() {
                 <TextInput
                   style={styles.textInput}
                   placeholder="Type a message..."
-                  placeholderTextColor={Colors.mutedForeground + "80"}
+                  placeholderTextColor={colors.mutedForeground + "80"}
                   value={inputText}
                   onChangeText={setInputText}
                   onSubmitEditing={() => void handleSend()}
@@ -814,7 +816,7 @@ export default function ChatScreen() {
                 onPress={() => void handleSend()}
                 disabled={(!inputText.trim() && !imageUri) || isBlocked}
               >
-                <Send size={18} color={Colors.primaryForeground} />
+                <Send size={18} color={colors.primaryForeground} />
               </Pressable>
             </View>
           </SafeAreaView>
@@ -856,17 +858,17 @@ export default function ChatScreen() {
                     <Text style={styles.sheetOptionText}>Edit message</Text>
                   </Pressable>
                   <Pressable style={styles.sheetOption} onPress={handleDeleteForMe}>
-                    <View style={[styles.sheetOptionIcon, { backgroundColor: Colors.muted }]}>
-                      <Trash2 size={16} color={Colors.mutedForeground} />
+                    <View style={[styles.sheetOptionIcon, { backgroundColor: colors.muted }]}>
+                      <Trash2 size={16} color={colors.mutedForeground} />
                     </View>
                     <Text style={styles.sheetOptionText}>Delete for me</Text>
                   </Pressable>
                   {selectedMessage && canDeleteForEveryone(selectedMessage.created_at) && (
                     <Pressable style={styles.sheetOption} onPress={handleDeleteForEveryone}>
                       <View style={[styles.sheetOptionIcon, { backgroundColor: "#FFF0F0" }]}>
-                        <Trash2 size={16} color={Colors.destructive} />
+                        <Trash2 size={16} color={colors.destructive} />
                       </View>
-                      <Text style={[styles.sheetOptionText, { color: Colors.destructive }]}>
+                      <Text style={[styles.sheetOptionText, { color: colors.destructive }]}>
                         Delete for everyone
                       </Text>
                     </Pressable>
@@ -884,9 +886,9 @@ export default function ChatScreen() {
                   }}
                 >
                   <View style={[styles.sheetOptionIcon, { backgroundColor: "#FFF0F0" }]}>
-                    <ShieldAlert size={16} color={Colors.destructive} />
+                    <ShieldAlert size={16} color={colors.destructive} />
                   </View>
-                  <Text style={[styles.sheetOptionText, { color: Colors.destructive }]}>
+                  <Text style={[styles.sheetOptionText, { color: colors.destructive }]}>
                     Report message
                   </Text>
                 </Pressable>
@@ -910,8 +912,8 @@ export default function ChatScreen() {
             <Text style={styles.sheetTitle}>{otherName}</Text>
 
             <Pressable style={styles.sheetOption} onPress={handleMuteToggle}>
-              <View style={[styles.sheetOptionIcon, { backgroundColor: Colors.muted }]}>
-                {isMuted ? <Bell size={16} color={Colors.foreground} /> : <BellOff size={16} color={Colors.foreground} />}
+              <View style={[styles.sheetOptionIcon, { backgroundColor: colors.muted }]}>
+                {isMuted ? <Bell size={16} color={colors.foreground} /> : <BellOff size={16} color={colors.foreground} />}
               </View>
               <Text style={styles.sheetOptionText}>
                 {isMuted ? "Unmute conversation" : "Mute conversation"}
@@ -920,18 +922,18 @@ export default function ChatScreen() {
 
             <Pressable style={styles.sheetOption} onPress={handleBlock}>
               <View style={[styles.sheetOptionIcon, { backgroundColor: "#FFF0F0" }]}>
-                <UserX size={16} color={Colors.destructive} />
+                <UserX size={16} color={colors.destructive} />
               </View>
-              <Text style={[styles.sheetOptionText, { color: Colors.destructive }]}>
+              <Text style={[styles.sheetOptionText, { color: colors.destructive }]}>
                 {isBlocked ? "Unblock user" : "Block user"}
               </Text>
             </Pressable>
 
             <Pressable style={styles.sheetOption} onPress={handleReport}>
               <View style={[styles.sheetOptionIcon, { backgroundColor: "#FFF0F0" }]}>
-                <ShieldAlert size={16} color={Colors.destructive} />
+                <ShieldAlert size={16} color={colors.destructive} />
               </View>
-              <Text style={[styles.sheetOptionText, { color: Colors.destructive }]}>
+              <Text style={[styles.sheetOptionText, { color: colors.destructive }]}>
                 Report user
               </Text>
             </Pressable>
@@ -988,15 +990,15 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border + "50",
+    borderBottomColor: colors.border + "50",
     gap: 8,
   },
   backBtn: {
@@ -1005,23 +1007,23 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
   },
   headerCenter: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   headerAvatarWrap: { position: "relative" as const },
   headerAvatar: { width: 40, height: 40, borderRadius: 20 },
   headerAvatarFallback: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   headerAvatarInitial: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
-  headerName: { fontSize: 15, fontWeight: "700" as const, color: Colors.foreground },
-  mutedLabel: { fontSize: 11, color: Colors.mutedForeground, marginTop: 1 },
+  headerName: { fontSize: 15, fontWeight: "700" as const, color: colors.foreground },
+  mutedLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
   headerMenuBtn: {
     width: 36,
     height: 36,
@@ -1037,13 +1039,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: "#FFF0F0",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.destructive + "30",
+    borderBottomColor: colors.destructive + "30",
   },
-  blockedBannerText: { fontSize: 12, color: Colors.destructive, flex: 1 },
+  blockedBannerText: { fontSize: 12, color: colors.destructive, flex: 1 },
   blockedBannerAction: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.destructive,
+    color: colors.destructive,
     marginLeft: 12,
   },
   loadingState: {
@@ -1052,16 +1054,16 @@ const styles = StyleSheet.create({
     justifyContent: "center" as const,
     gap: 12,
   },
-  loadingText: { fontSize: 14, color: Colors.mutedForeground },
-  errorText: { fontSize: 14, color: Colors.destructive },
+  loadingText: { fontSize: 14, color: colors.mutedForeground },
+  errorText: { fontSize: 14, color: colors.destructive },
   retryBtn: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderRadius: 12,
   },
   retryBtnText: {
-    color: Colors.primaryForeground,
+    color: colors.primaryForeground,
     fontWeight: "600" as const,
     fontSize: 14,
   },
@@ -1076,15 +1078,15 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   emptyChatEmoji: { fontSize: 32 },
-  emptyChatTitle: { fontSize: 17, fontWeight: "700" as const, color: Colors.foreground },
+  emptyChatTitle: { fontSize: 17, fontWeight: "700" as const, color: colors.foreground },
   emptyChatSub: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     lineHeight: 20,
   },
@@ -1100,23 +1102,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   bubbleMine: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     borderTopRightRadius: 4,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 3,
   },
   bubbleTheirs: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderTopLeftRadius: 4,
     borderWidth: 1,
-    borderColor: Colors.border + "40",
+    borderColor: colors.border + "40",
   },
   bubbleText: { fontSize: 14, lineHeight: 22 },
-  bubbleTextMine: { color: Colors.primaryForeground },
-  bubbleTextTheirs: { color: Colors.foreground },
+  bubbleTextMine: { color: colors.primaryForeground },
+  bubbleTextTheirs: { color: colors.foreground },
   editedLabel: {
     fontSize: 10,
     color: "rgba(255,255,255,0.65)",
@@ -1126,7 +1128,7 @@ const styles = StyleSheet.create({
   editedLabelMine: { color: "rgba(255,255,255,0.65)" },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   timeRowRight: { justifyContent: "flex-end" as const },
-  msgTime: { fontSize: 10, color: Colors.mutedForeground },
+  msgTime: { fontSize: 10, color: colors.mutedForeground },
   reactionsRow: { flexDirection: "row", gap: 4, marginTop: 4, flexWrap: "wrap" as const },
   reactionPill: {
     flexDirection: "row",
@@ -1135,24 +1137,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
   },
   reactionEmoji: { fontSize: 13 },
   reactionCount: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
   prayerShareCard: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 16,
     borderTopRightRadius: 4,
     padding: 14,
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.primary + "30",
+    borderColor: colors.primary + "30",
     maxWidth: 260,
   },
   prayerShareHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -1160,30 +1162,30 @@ const styles = StyleSheet.create({
   prayerShareLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
   },
   prayerShareContent: {
     fontSize: 12,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 18,
     fontStyle: "italic" as const,
     backgroundColor: "rgba(217,110,39,0.08)",
     borderRadius: 8,
     padding: 8,
     borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
+    borderLeftColor: colors.primary,
   },
   prayerShareMessage: {
     fontSize: 13,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "600" as const,
   },
   inputAreaWrap: {
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "50",
-    backgroundColor: Colors.background,
+    borderTopColor: colors.border + "50",
+    backgroundColor: colors.background,
   },
   imagePreviewRow: {
     paddingHorizontal: 16,
@@ -1197,48 +1199,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 6,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   addBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   inputWrap: {
     flex: 1,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: Colors.border + "50",
+    borderColor: colors.border + "50",
     maxHeight: 120,
   },
-  textInput: { fontSize: 14, color: Colors.foreground, padding: 0 },
+  textInput: { fontSize: 14, color: colors.foreground, padding: 0 },
   sendBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 4,
   },
-  sendBtnDisabled: { backgroundColor: Colors.muted, shadowOpacity: 0 },
+  sendBtnDisabled: { backgroundColor: colors.muted, shadowOpacity: 0 },
   editingBar: {
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 6,
     borderTopWidth: 1,
-    borderTopColor: Colors.border + "50",
-    backgroundColor: Colors.background,
+    borderTopColor: colors.border + "50",
+    backgroundColor: colors.background,
     gap: 8,
   },
   editingHeader: {
@@ -1247,36 +1249,36 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 2,
   },
-  editingLabel: { flex: 1, fontSize: 12, color: Colors.primary, fontWeight: "600" as const },
+  editingLabel: { flex: 1, fontSize: 12, color: colors.primary, fontWeight: "600" as const },
   editInputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
   editInput: {
     flex: 1,
-    backgroundColor: Colors.secondary + "80",
+    backgroundColor: colors.secondary + "80",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     borderWidth: 1.5,
-    borderColor: Colors.primary + "60",
+    borderColor: colors.primary + "60",
     maxHeight: 100,
   },
   editSaveBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  editSaveBtnDisabled: { backgroundColor: Colors.muted },
+  editSaveBtnDisabled: { backgroundColor: colors.muted },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "flex-end" as const,
   },
   contextSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -1284,7 +1286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -1295,20 +1297,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.border,
+    backgroundColor: colors.border,
     alignSelf: "center" as const,
     marginBottom: 16,
   },
   sheetTitle: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.foreground,
+    color: colors.foreground,
     marginBottom: 16,
   },
   sheetSectionLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     letterSpacing: 1,
     textTransform: "uppercase" as const,
     marginBottom: 10,
@@ -1322,12 +1324,12 @@ const styles = StyleSheet.create({
   reactionPickerEmoji: { fontSize: 30 },
   reactionPickerLabel: {
     fontSize: 11,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
   sheetDivider: {
     height: 1,
-    backgroundColor: Colors.border + "60",
+    backgroundColor: colors.border + "60",
     marginBottom: 8,
   },
   sheetOption: {
@@ -1344,7 +1346,7 @@ const styles = StyleSheet.create({
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  sheetOptionText: { fontSize: 15, color: Colors.foreground, fontWeight: "500" as const },
+  sheetOptionText: { fontSize: 15, color: colors.foreground, fontWeight: "500" as const },
   sheetCancelBtn: {
     marginTop: 4,
     justifyContent: "center" as const,
@@ -1352,7 +1354,7 @@ const styles = StyleSheet.create({
   sheetCancelText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     textAlign: "center" as const,
     flex: 1,
   },
@@ -1362,7 +1364,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end" as const,
   },
   prayerShareSheet: {
-    backgroundColor: Colors.card,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -1372,7 +1374,7 @@ const styles = StyleSheet.create({
   },
   prayerShareDesc: {
     fontSize: 13,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
     lineHeight: 19,
     marginBottom: 8,
   },
@@ -1382,16 +1384,16 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.primary + "25",
+    borderColor: colors.primary + "25",
   },
   prayerOptionEmoji: { fontSize: 20 },
   prayerOptionText: {
     flex: 1,
     fontSize: 14,
-    color: Colors.foreground,
+    color: colors.foreground,
     lineHeight: 20,
   },
   prayerShareClose: {
@@ -1402,6 +1404,6 @@ const styles = StyleSheet.create({
   prayerShareCloseText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.mutedForeground,
+    color: colors.mutedForeground,
   },
 });
