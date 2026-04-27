@@ -1084,10 +1084,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: Platform.OS === "ios" ? 16 : 24,
     marginTop: 4,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.secondary,
     borderRadius: 999,
     paddingVertical: 18,
-    shadowColor: colors.primary,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -1097,7 +1097,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   journalBtnText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: colors.primaryForeground,
+    color: colors.foreground,
     letterSpacing: 0.2,
   },
 
