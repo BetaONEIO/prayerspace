@@ -57,7 +57,7 @@ export default function NewRequestScreen() {
   const dateHeightAnim = useRef(new Animated.Value(0)).current;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  useUnsavedChangesWarning(content.trim().length > 0);
+  const { DiscardModal } = useUnsavedChangesWarning(content.trim().length > 0);
 
   useEffect(() => {
     Animated.timing(tagsHeightAnim, {
@@ -387,6 +387,7 @@ export default function NewRequestScreen() {
         onClose={() => setViewingRequestImage(null)}
       />
     </SafeAreaView>
+    {DiscardModal}
     </>
   );
 }

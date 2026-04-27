@@ -88,7 +88,7 @@ export default function JournalEntryScreen() {
   const [pendingSeconds, setPendingSeconds] = useState(0);
 
   const hasUnsavedWork = title.trim().length > 0 || body.trim().length > 0 || hasRecorded || isRecording;
-  useUnsavedChangesWarning(hasUnsavedWork);
+  const { DiscardModal } = useUnsavedChangesWarning(hasUnsavedWork);
 
   const [showSavedToast, setShowSavedToast] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
@@ -675,6 +675,7 @@ export default function JournalEntryScreen() {
           </View>
         </Animated.View>
       )}
+      {DiscardModal}
     </SafeAreaView>
   );
 }

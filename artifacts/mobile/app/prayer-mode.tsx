@@ -101,7 +101,7 @@ export default function PrayerModeScreen() {
   const [hasRecorded, setHasRecorded] = useState(!!incomingTranscript);
 
   const hasUnsavedWork = textPrayer.trim().length > 0 || attachedPhotos.length > 0 || hasRecorded || isRecording || !!incomingTranscript;
-  useUnsavedChangesWarning(hasUnsavedWork);
+  const { DiscardModal } = useUnsavedChangesWarning(hasUnsavedWork);
   const [voiceTranscript, setVoiceTranscript] = useState<string>(incomingTranscript);
   const [isEditModalVisible, setIsEditModalVisible] = useState<boolean>(false);
   const [draftTranscript, setDraftTranscript] = useState<string>("");
@@ -699,6 +699,7 @@ export default function PrayerModeScreen() {
           </SafeAreaView>
         </View>
       )}
+      {DiscardModal}
     </SafeAreaView>
   );
 }

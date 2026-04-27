@@ -24,7 +24,7 @@ export default function VoiceTranscriptReviewScreen() {
   const [draftText, setDraftText] = useState("");
   const inputRef = useRef<TextInput>(null);
 
-  useUnsavedChangesWarning(editedText.trim().length > 0);
+  const { DiscardModal } = useUnsavedChangesWarning(editedText.trim().length > 0);
 
   const transcribeMutation = useMutation({
     mutationFn: async (uri: string) => transcribeAudio(uri),
@@ -109,6 +109,7 @@ export default function VoiceTranscriptReviewScreen() {
           </View>
         )}
       </SafeAreaView>
+      {DiscardModal}
     </>
   );
 }

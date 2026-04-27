@@ -15,7 +15,7 @@ export default function WritePrayerScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [prayerText, setPrayerText] = useState("");
 
-  useUnsavedChangesWarning(prayerText.trim().length > 0);
+  const { DiscardModal } = useUnsavedChangesWarning(prayerText.trim().length > 0);
 
   const handleContinue = useCallback(() => {
     if (!prayerText.trim()) return;
@@ -52,6 +52,7 @@ export default function WritePrayerScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      {DiscardModal}
     </>
   );
 }

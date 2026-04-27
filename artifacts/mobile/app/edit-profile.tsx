@@ -25,7 +25,7 @@ export default function EditProfileScreen() {
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
 
   const hasChanges = (profile ? name !== (profile.full_name ?? "") || bio !== (profile.bio ?? "") || verse !== (profile.favorite_verse ?? "") : false) || localAvatarUri !== null;
-  useUnsavedChangesWarning(hasChanges);
+  const { DiscardModal } = useUnsavedChangesWarning(hasChanges);
 
   useEffect(() => {
     if (profile) {
@@ -148,6 +148,7 @@ export default function EditProfileScreen() {
 
         <PhotoUploadModal visible={showPhotoModal} onClose={() => setShowPhotoModal(false)} onImageSelected={handleImageSelected} onRemovePhoto={handleRemovePhoto} hasExistingPhoto={hasExistingPhoto} isUploading={isUploadingPhoto} />
       </SafeAreaView>
+      {DiscardModal}
     </>
   );
 }
