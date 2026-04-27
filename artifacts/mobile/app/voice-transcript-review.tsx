@@ -25,6 +25,7 @@ export default function VoiceTranscriptReviewScreen() {
   const inputRef = useRef<TextInput>(null);
 
   const { DiscardModal } = useUnsavedChangesWarning(editedText.trim().length > 0);
+  const hasStartedRef = useRef(false);
 
   const transcribeMutation = useMutation({
     mutationFn: async (uri: string) => transcribeAudio(uri),
@@ -39,12 +40,15 @@ export default function VoiceTranscriptReviewScreen() {
   });
 
   useEffect(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
     if (!audioUri) {
       Alert.alert("Transcription Error", "No audio recording was found. Please record again.");
       return;
     }
     transcribeMutation.mutate(audioUri);
-  }, [audioUri, transcribeMutation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

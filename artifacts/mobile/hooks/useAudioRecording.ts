@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { Platform } from "react-native";
 import { Audio } from "expo-av";
+import * as FileSystem from "expo-file-system/legacy";
 
 interface UseAudioRecordingReturn {
   isRecording: boolean;
@@ -147,10 +148,19 @@ export function useAudioRecording(): UseAudioRecordingReturn {
       await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
 
-      const uri = recording.getURI();
+      const tempUri = recording.getURI();
       recordingRef.current = null;
-      console.log("[AudioRecording] Native recording stopped, URI:", uri);
-      return uri;
+      console.log("[AudioRecording] Native recording stopped, URI:", tempUri);
+
+      if (!tempUri) return null;
+
+      // Copy the recording to a stable location in document directory so it
+      // is guaranteed to exist when the review screen reads it.
+      const ext = tempUri.split(".").pop() ?? "m4a";
+      const destUri = `${FileSystem.documentDirectory}prayer_recording_${Date.now()}.${ext}`;
+      await FileSystem.copyAsync({ from: tempUri, to: destUri });
+      console.log("[AudioRecording] Copied recording to:", destUri);
+      return destUri;
     } catch (err) {
       console.error("[AudioRecording] Stop recording error:", err);
       setError("Failed to stop recording.");
