@@ -491,6 +491,12 @@ export default function PrayerModeScreen() {
         )}
 
         <View style={styles.optionsRow}>
+          {attachedPhotos.length < 4 && (
+            <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
+              <ImagePlus size={16} color={colors.primary} />
+            </Pressable>
+          )}
+
           <Pressable
             style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
             onPress={() => {
@@ -516,12 +522,6 @@ export default function PrayerModeScreen() {
               Anonymous
             </Text>
           </Pressable>
-
-          {attachedPhotos.length < 4 && (
-            <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
-              <ImagePlus size={16} color={colors.primary} />
-            </Pressable>
-          )}
         </View>
 
         <View style={styles.tagsSection}>
