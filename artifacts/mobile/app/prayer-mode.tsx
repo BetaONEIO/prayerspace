@@ -90,6 +90,7 @@ export default function PrayerModeScreen() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [eventDate, setEventDate] = useState<string | null>(null);
   const [dateExpanded, setDateExpanded] = useState(false);
+  const [isPhotoPickerVisible, setIsPhotoPickerVisible] = useState(false);
   const tagRotate = useRef(new Animated.Value(0)).current;
   const dateAnim = useRef(new Animated.Value(0)).current;
 
@@ -193,53 +194,45 @@ export default function PrayerModeScreen() {
     );
   }, []);
 
-  const handleAttachPhoto = useCallback(async () => {
+  const handleAttachPhoto = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
-    Alert.alert(
-      "Add Photo",
-      "Choose a source",
-      [
-        {
-          text: "Camera",
-          onPress: async () => {
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== "granted") {
-              Alert.alert("Permission needed", "Camera access is required to take photos.");
-              return;
-            }
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: "images",
-              quality: 0.8,
-              allowsEditing: true,
-            });
-            if (!result.canceled && result.assets[0]) {
-              setAttachedPhotos((prev) => [...prev, result.assets[0].uri]);
-            }
-          },
-        },
-        {
-          text: "Photo Library",
-          onPress: async () => {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== "granted") {
-              Alert.alert("Permission needed", "Photo library access is required.");
-              return;
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: "images",
-              quality: 0.8,
-              allowsMultipleSelection: true,
-              selectionLimit: 4,
-            });
-            if (!result.canceled) {
-              const uris = result.assets.map((a) => a.uri);
-              setAttachedPhotos((prev) => [...prev, ...uris].slice(0, 4));
-            }
-          },
-        },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
+    setIsPhotoPickerVisible(true);
+  }, []);
+
+  const handlePickFromCamera = useCallback(async () => {
+    setIsPhotoPickerVisible(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Camera access is required to take photos.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
+      quality: 0.8,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachedPhotos((prev) => [...prev, result.assets[0].uri]);
+    }
+  }, []);
+
+  const handlePickFromLibrary = useCallback(async () => {
+    setIsPhotoPickerVisible(false);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Photo library access is required.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      quality: 0.8,
+      allowsMultipleSelection: true,
+      selectionLimit: 4,
+    });
+    if (!result.canceled) {
+      const uris = result.assets.map((a) => a.uri);
+      setAttachedPhotos((prev) => [...prev, ...uris].slice(0, 4));
+    }
   }, []);
 
   const handleRemovePhoto = useCallback((uri: string) => {
@@ -667,6 +660,28 @@ export default function PrayerModeScreen() {
           </View>
         </View>
       </AutoScrollView>
+      {isPhotoPickerVisible && (
+        <Pressable style={styles.photoPickerOverlay} onPress={() => setIsPhotoPickerVisible(false)}>
+          <Pressable style={styles.photoPickerSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.photoPickerHandle} />
+            <Text style={styles.photoPickerTitle}>Add Photo</Text>
+            <Pressable style={styles.photoPickerOption} onPress={handlePickFromCamera}>
+              <Text style={styles.photoPickerOptionText}>Camera</Text>
+            </Pressable>
+            <View style={styles.photoPickerDivider} />
+            <Pressable style={styles.photoPickerOption} onPress={handlePickFromLibrary}>
+              <Text style={styles.photoPickerOptionText}>Photo Library</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.photoPickerOption, styles.photoPickerCancel]}
+              onPress={() => setIsPhotoPickerVisible(false)}
+            >
+              <Text style={styles.photoPickerCancelText}>Cancel</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      )}
+
       {isEditModalVisible && (
         <View style={styles.fullScreenOverlay}>
           <StatusBar barStyle="dark-content" />
@@ -1131,6 +1146,63 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderStyle: "dashed" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
+  },
+  photoPickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end" as const,
+    zIndex: 100,
+  },
+  photoPickerSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 36,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  photoPickerHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.mutedForeground + "50",
+    alignSelf: "center" as const,
+    marginBottom: 20,
+  },
+  photoPickerTitle: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: colors.mutedForeground,
+    letterSpacing: 1.2,
+    textAlign: "center" as const,
+    marginBottom: 16,
+  },
+  photoPickerOption: {
+    paddingVertical: 16,
+    alignItems: "center" as const,
+    borderRadius: 16,
+    backgroundColor: colors.secondary,
+    marginBottom: 10,
+  },
+  photoPickerOptionText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: colors.foreground,
+  },
+  photoPickerDivider: {
+    height: 0,
+    marginBottom: 0,
+  },
+  photoPickerCancel: {
+    backgroundColor: "transparent",
+    marginTop: 4,
+  },
+  photoPickerCancelText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: colors.mutedForeground,
   },
   selectedTagsRow: {
     width: "100%",
