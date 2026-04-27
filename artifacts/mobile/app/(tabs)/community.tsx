@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { feedStore } from "@/lib/feedStore";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   View,
   Text,
@@ -1233,13 +1234,17 @@ interface ComposerPromptProps {
 function ComposerPrompt({ communityName, accentColor, isCommunityTab, onPress }: ComposerPromptProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { profile } = useAuth();
+  const avatarSource = profile?.avatar_url
+    ? { uri: profile.avatar_url }
+    : ANON_AVATAR;
   return (
     <Pressable
       style={[styles.prayerPrompt, { borderColor: accentColor + "40" }]}
       onPress={onPress}
     >
       <Image
-        source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }}
+        source={avatarSource}
         style={[styles.promptAvatar, { borderWidth: 2, borderColor: accentColor + "60" }]}
       />
       <View style={styles.promptTextWrap}>
