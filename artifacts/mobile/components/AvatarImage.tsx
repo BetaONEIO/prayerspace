@@ -10,7 +10,7 @@ interface AvatarImageProps {
 }
 
 export default function AvatarImage({ avatarPath, fallbackSeed, style }: AvatarImageProps) {
-  const fallback = `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(fallbackSeed)}`;
+  const fallback = `https://api.dicebear.com/7.x/lorelei/png?seed=${encodeURIComponent(fallbackSeed)}`;
   const url = useSignedUrl(avatarPath, fallback);
   return <Image source={{ uri: url }} style={style} />;
 }
