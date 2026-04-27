@@ -20,7 +20,6 @@ import {
   Repeat2,
   CheckCircle,
   HeartHandshake,
-  ThumbsUp,
   Clock,
   Heart,
   MessageCircle,
@@ -36,7 +35,7 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { ArchivedPost } from "@/providers/PrayerProvider";
 
-type UpdateTag = "still_need_prayer" | "answered" | "thank_you";
+type UpdateTag = "still_need_prayer" | "answered";
 type FilterTab = "All" | "Ongoing" | "Answered" | "Archived";
 
 interface MyPost {
@@ -103,7 +102,7 @@ const INITIAL_MY_POSTS: MyPost[] = [
       "https://randomuser.me/api/portraits/women/33.jpg",
       "https://randomuser.me/api/portraits/men/75.jpg",
     ],
-    updateTag: "thank_you",
+    updateTag: "answered",
     isAnswered: true,
     originalPostId: "old_f5",
     originalContent: "Please pray for my sister who is sitting her final exams this week. She's been really anxious.",
@@ -124,8 +123,7 @@ const UPDATE_TAG_CONFIG: Record<
     color: "#D96E27",
     bg: "#FFF0E5",
   },
-  answered: { label: "Answered 🙌", color: ANSWERED_GREEN, bg: ANSWERED_GREEN_BG },
-  thank_you: { label: "Thank you", color: "#2E6DB5", bg: "#E5F0FA" },
+  answered: { label: "Answered 🙌", color: "#ffffff", bg: ANSWERED_GREEN },
 };
 
 export default function MyPostsScreen() {
@@ -413,9 +411,6 @@ function MyPostCard({ post, onUpdate, onMarkAnswered }: MyPostCardProps) {
           {post.updateTag === "answered" && (
             <CheckCircle size={12} color={UPDATE_TAG_CONFIG[post.updateTag].color} />
           )}
-          {post.updateTag === "thank_you" && (
-            <ThumbsUp size={12} color={UPDATE_TAG_CONFIG[post.updateTag].color} />
-          )}
           <Text style={[styles.updateTagText, { color: UPDATE_TAG_CONFIG[post.updateTag].color }]}>
             {UPDATE_TAG_CONFIG[post.updateTag].label}
           </Text>
@@ -526,8 +521,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
 
   const tagOptions: { tag: UpdateTag; label: string; emoji: string; color: string; bg: string }[] = [
     { tag: "still_need_prayer", label: "Still need prayer", emoji: "🙏", color: "#D96E27", bg: "#FFF0E5" },
-    { tag: "answered", label: "Answered", emoji: "✅", color: "#34C759", bg: "#E8F8ED" },
-    { tag: "thank_you", label: "Thank you", emoji: "💛", color: "#C49A00", bg: "#FFFBE6" },
+    { tag: "answered", label: "Answered", emoji: "✅", color: "#ffffff", bg: ANSWERED_GREEN },
   ];
 
   return (
@@ -852,27 +846,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowRadius: 16,
     elevation: 2,
   },
-  postCardAnswered: {
-    borderLeftWidth: 3,
-    borderLeftColor: ANSWERED_GREEN + "80",
-  },
+  postCardAnswered: {},
   answeredBanner: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 5,
-    backgroundColor: ANSWERED_GREEN_BG,
+    backgroundColor: ANSWERED_GREEN,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
     marginBottom: 12,
     alignSelf: "flex-start" as const,
-    borderWidth: 1,
-    borderColor: ANSWERED_GREEN + "30",
   },
   answeredBannerText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: ANSWERED_GREEN,
+    color: "#ffffff",
     letterSpacing: 0.3,
   },
   postTop: {

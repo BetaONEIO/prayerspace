@@ -48,7 +48,6 @@ import {
   Globe,
   CheckCircle,
   HeartHandshake,
-  ThumbsUp,
   EyeOff,
   Trash2,
   Share2,
@@ -99,7 +98,7 @@ interface Comment {
   time: string;
 }
 
-type UpdateTag = 'still_need_prayer' | 'answered' | 'thank_you';
+type UpdateTag = 'still_need_prayer' | 'answered';
 
 interface FeedPost {
   id: string;
@@ -2406,8 +2405,7 @@ function MyRequestsBanner({ onPress }: { onPress: () => void }) {
 
 const UPDATE_TAG_CONFIG: Record<UpdateTag, { label: string; icon: 'prayer' | 'answered' | 'thanks'; color: string; bg: string }> = {
   still_need_prayer: { label: 'Still need prayer', icon: 'prayer', color: '#D96E27', bg: '#FFF0E5' },
-  answered: { label: 'Answered', icon: 'answered', color: '#34C759', bg: '#E8F8ED' },
-  thank_you: { label: 'Thank you', icon: 'thanks', color: '#2E6DB5', bg: '#E5F0FA' },
+  answered: { label: 'Answered', icon: 'answered', color: '#ffffff', bg: '#4A8C6A' },
 };
 
 function PostImage({ uri }: { uri: string }) {
@@ -2509,8 +2507,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
           ]}
         >
           {post.updateTag === 'still_need_prayer' && <HeartHandshake size={13} color={UPDATE_TAG_CONFIG[post.updateTag].color} />}
-          {post.updateTag === 'answered' && <CheckCircle size={post.updateTag === 'answered' ? 15 : 13} color={UPDATE_TAG_CONFIG[post.updateTag].color} />}
-          {post.updateTag === 'thank_you' && <ThumbsUp size={13} color={UPDATE_TAG_CONFIG[post.updateTag].color} />}
+          {post.updateTag === 'answered' && <CheckCircle size={15} color={UPDATE_TAG_CONFIG[post.updateTag].color} />}
           <Text
             style={[
               styles.updateTagText,
@@ -2735,7 +2732,7 @@ interface PrayerShareSheetProps {
 
 function getShareMessage(post: FeedPost): string {
   const link = `https://prayerspace.app/prayer/${post.id}`;
-  if (post.updateTag === "answered" || post.updateTag === "thank_you") {
+  if (post.updateTag === "answered") {
     return `An encouraging prayer update 🙏 ${link}`;
   }
   if (post.updateTag === "still_need_prayer") {
@@ -3024,7 +3021,6 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
   const UPDATE_TAGS: { key: UpdateTag; label: string; emoji: string }[] = [
     { key: 'still_need_prayer', label: 'Still need prayer', emoji: '🙏' },
     { key: 'answered', label: 'Answered', emoji: '✅' },
-    { key: 'thank_you', label: 'Thank you', emoji: '💛' },
   ];
 
   return (
@@ -7480,13 +7476,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#34C759" + "40",
-    shadowColor: "#34C759",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 2,
   },
   updateTagTextAnswered: {
     fontSize: 13,
