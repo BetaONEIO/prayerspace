@@ -70,15 +70,16 @@ const COMMUNITIES = [
 
 const FREQUENTLY_USED_IDS = ["r1", "r2", "r3"];
 
-const SOURCE_COLORS: Record<string, string> = {
+const getSourceColors = (colors: ThemeColors): Record<string, string> => ({
   whatsapp: "#25D366",
   sim: "#3B82F6",
   app: colors.primary,
-};
+});
 
 export default function SelectRecipientsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const SOURCE_COLORS = getSourceColors(colors);
   const router = useRouter();
   const { selectedIds, toggleRecipient, clearAll } = useSelectedRecipients();
   const [search, setSearch] = useState("");

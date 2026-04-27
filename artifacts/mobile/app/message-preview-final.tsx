@@ -41,7 +41,7 @@ function mapSourceToChannel(source: string, onApp: boolean): DeliveryChannel {
   return "sms";
 }
 
-const CHANNEL_META: Record<DeliveryChannel, { label: string; tint: string; softTint: string; bubbleColor: string; bubbleTextColor: string; bubbleAlign: "flex-start" | "flex-end"; timestamp: string; }> = {
+const getChannelMeta = (colors: ThemeColors) => ({
   app: {
     label: "In-app delivery",
     tint: colors.primary,
@@ -69,7 +69,7 @@ const CHANNEL_META: Record<DeliveryChannel, { label: string; tint: string; softT
     bubbleAlign: "flex-end",
     timestamp: "Delivered as a text message",
   },
-};
+});
 
 function WhatsAppMark({ small = false }: { small?: boolean }) {
   const colors = useThemeColors();
@@ -106,6 +106,7 @@ function RecipientChannelIcon({ channel, small = false }: { channel: DeliveryCha
 function ChannelBadge({ channel }: { channel: DeliveryChannel }) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const CHANNEL_META = getChannelMeta(colors);
   const meta = CHANNEL_META[channel];
 
   return (
@@ -119,6 +120,7 @@ function ChannelBadge({ channel }: { channel: DeliveryChannel }) {
 function MessageBubble({ channel, message }: { channel: DeliveryChannel; message: string }) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const CHANNEL_META = getChannelMeta(colors);
   const meta = CHANNEL_META[channel];
   const bubbleSide = meta.bubbleAlign === "flex-end" ? styles.messageRowEnd : styles.messageRowStart;
 
@@ -223,6 +225,7 @@ function formatDisplayName(name: string): string {
 export default function MessagePreviewFinalScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const CHANNEL_META = useMemo(() => getChannelMeta(colors), [colors]);
   const router = useRouter();
   const { sendToFeed: sendToFeedParam } = useLocalSearchParams<{ sendToFeed?: string }>();
   const isSendToFeed = sendToFeedParam === "true";

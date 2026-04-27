@@ -68,17 +68,18 @@ const USER_GROUPS: MyGroup[] = [
   },
 ];
 
-const UPDATE_TAG_LABELS: Record<string, { label: string; bg: string; color: string }> = {
+const getUpdateTagLabels = (colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> => ({
   still_need_prayer: { label: "Still need prayer", bg: colors.accent, color: colors.primary },
   answered: { label: "Answered 🙌", bg: "#E8F8F0", color: "#1A7A52" },
   thank_you: { label: "Thank you", bg: "#EEF2FF", color: "#6366F1" },
-};
+});
 
 type ViewState = "select" | "compose" | "sent";
 
 export default function SendToGroupScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const UPDATE_TAG_LABELS = useMemo(() => getUpdateTagLabels(colors), [colors]);
   const router = useRouter();
   const params = useLocalSearchParams<{
     postId: string;

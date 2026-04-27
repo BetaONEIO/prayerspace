@@ -62,15 +62,16 @@ const REACTION_COLORS: Record<ReactionType, string> = {
   support: "#FFF0F0",
 };
 
-const REACTION_ACTIVE_COLORS: Record<ReactionType, string> = {
+const getReactionActiveColors = (colors: ThemeColors): Record<ReactionType, string> => ({
   pray: colors.primary,
   amen: "#6366F1",
   support: "#E55",
-};
+});
 
 export default function ChatScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const REACTION_ACTIVE_COLORS = useMemo(() => getReactionActiveColors(colors), [colors]);
   const router = useRouter();
   const { id, autoMessage } = useLocalSearchParams<{
     id: string;

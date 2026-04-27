@@ -79,12 +79,12 @@ const MOCK_ENTRIES: JournalEntry[] = [
   },
 ];
 
-const TAG_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+const getTagConfig = (colors: ThemeColors): Record<string, { label: string; color: string; bg: string }> => ({
   gratitude: { label: "Gratitude", color: colors.primary, bg: colors.primary + "18" },
   petition: { label: "Petition", color: colors.accentForeground, bg: colors.accent },
   reflection: { label: "Reflection", color: colors.primary, bg: colors.primary + "18" },
   praying_for: { label: "Praying For", color: "#D4782F", bg: "#D4782F18" },
-};
+});
 
 const MOOD_MAP: Record<string, string> = {
   gratitude: "Grateful",
@@ -141,6 +141,7 @@ function frequencyLabel(freq: Frequency): string {
 export default function JournalDetailScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const TAG_CONFIG = useMemo(() => getTagConfig(colors), [colors]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { journal, toggleJournalFavorite, markJournalAnswered, setReminder, removeReminder, getReminderForEntry } = usePrayer();

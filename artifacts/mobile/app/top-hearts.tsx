@@ -32,17 +32,18 @@ import { type Contact } from "@/mocks/data";
 import { useFavourites } from "@/providers/FavouritesProvider";
 import { ALL_RECIPIENTS, type Recipient } from "@/providers/SelectedRecipientsProvider";
 
-const SOURCE_COLORS: Record<string, string> = {
+const getSourceColors = (colors: ThemeColors): Record<string, string> => ({
   whatsapp: "#25D366",
   sim: "#3B82F6",
   app: colors.primary,
-};
+});
 
 export default function TopHeartsScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
   const colors = themeColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const SOURCE_COLORS = getSourceColors(colors);
   const {
     favourites,
     frequentlyPrayedFor,
