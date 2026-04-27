@@ -126,7 +126,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   }, [onClose, tagRotate]);
 
   const handleSubmit = useCallback(() => {
-    if (!text.trim() && selectedTags.length === 0 && !statusImageUri) return;
+    if (!text.trim() || selectedTags.length === 0) return;
     console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate });
     onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate);
     handleClose();
@@ -155,9 +155,19 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
     setAudienceOpen(false);
   }, []);
 
+  useEffect(() => {
+    if (text.trim().length > 0 && !tagsExpanded && selectedTags.length === 0) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setTagsExpanded(true);
+      Animated.timing(tagRotate, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [text, tagsExpanded, selectedTags.length, tagRotate]);
+
   const remaining = MAX_CHARS - text.length;
   const isOverLimit = remaining < 0;
-  const canSubmit = (text.trim().length > 0 || selectedTags.length > 0 || !!statusImageUri) && !isOverLimit;
+  const hasText = text.trim().length > 0;
+  const canSubmit = hasText && selectedTags.length > 0 && !isOverLimit;
+  const needsFocus = hasText && selectedTags.length === 0;
 
   const chevronRotation = tagRotate.interpolate({
     inputRange: [0, 1],
@@ -353,8 +363,8 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                     <View style={styles.tagsToggleIcon}>
                       <Tag size={14} color={colors.primary} />
                     </View>
-                    <Text style={styles.tagsToggleLabel}>
-                      Add a tag{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : ""}
+                    <Text style={[styles.tagsToggleLabel, needsFocus && styles.tagsToggleLabelRequired]}>
+                      Prayer focus{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : needsFocus ? " · required" : ""}
                     </Text>
                   </View>
                   <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
@@ -416,6 +426,12 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   </View>
                 </Animated.View>
               </View>
+              {needsFocus && (
+                <View style={styles.focusHintRow}>
+                  <Text style={styles.focusHintText}>Choose a prayer focus above to post</Text>
+                </View>
+              )}
+
               <View style={styles.footer}>
                 <Pressable
                   style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
@@ -730,6 +746,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "600" as const,
     color: colors.foreground,
   },
+  tagsToggleLabelRequired: {
+    color: colors.primary,
+  },
   tagsWrap: {
     paddingHorizontal: 14,
     paddingBottom: 14,
@@ -794,6 +813,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   dateSectionLabelActive: {
     color: colors.primary,
+  },
+  focusHintRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    alignItems: "center" as const,
+  },
+  focusHintText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: "500" as const,
+    opacity: 0.8,
   },
   footer: {
     paddingHorizontal: 20,
