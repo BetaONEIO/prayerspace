@@ -3,6 +3,8 @@ import { Image } from 'expo-image';
 import { StyleProp, ImageStyle } from 'react-native';
 import { useSignedUrl } from '@/hooks/useSignedUrl';
 
+const ANON_AVATAR = require('../assets/images/anon_user.png');
+
 interface AvatarImageProps {
   avatarPath: string | null | undefined;
   fallbackSeed: string;
@@ -10,7 +12,11 @@ interface AvatarImageProps {
 }
 
 export default function AvatarImage({ avatarPath, fallbackSeed, style }: AvatarImageProps) {
-  const fallback = `https://api.dicebear.com/7.x/lorelei/png?seed=${encodeURIComponent(fallbackSeed)}`;
-  const url = useSignedUrl(avatarPath, fallback);
-  return <Image source={{ uri: url }} style={style} />;
+  const url = useSignedUrl(avatarPath, '');
+
+  if (url) {
+    return <Image source={{ uri: url }} style={style} />;
+  }
+
+  return <Image source={ANON_AVATAR} style={style} />;
 }
