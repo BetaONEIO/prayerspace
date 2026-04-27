@@ -28,11 +28,23 @@ export default function VoiceTranscriptReviewScreen() {
 
   const transcribeMutation = useMutation({
     mutationFn: async (uri: string) => transcribeAudio(uri),
-    onSuccess: (text) => { setEditedText(text); setDraftText(text); },
-    onError: (err) => { Alert.alert("Transcription Error", (err as Error).message || "Could not transcribe audio."); },
+    onSuccess: (text) => {
+      setEditedText(text);
+      setDraftText(text);
+    },
+    onError: (err) => {
+      const message = err instanceof Error ? err.message : "Could not transcribe audio.";
+      Alert.alert("Transcription Error", message);
+    },
   });
 
-  useEffect(() => { if (audioUri) transcribeMutation.mutate(audioUri); }, []);
+  useEffect(() => {
+    if (!audioUri) {
+      Alert.alert("Transcription Error", "No audio recording was found. Please record again.");
+      return;
+    }
+    transcribeMutation.mutate(audioUri);
+  }, [audioUri, transcribeMutation]);
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
