@@ -662,7 +662,10 @@ export default function PrayerModeScreen() {
       </AutoScrollView>
       {isPhotoPickerVisible && (
         <Pressable style={styles.photoPickerOverlay} onPress={() => setIsPhotoPickerVisible(false)}>
-          <Pressable style={styles.photoPickerSheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[styles.photoPickerSheet, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <View style={styles.photoPickerHandle} />
             <Text style={styles.photoPickerTitle}>Add Photo</Text>
             <Pressable style={styles.photoPickerOption} onPress={handlePickFromCamera}>
@@ -1158,7 +1161,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
-    paddingBottom: 36,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderColor: colors.border,
