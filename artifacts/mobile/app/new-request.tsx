@@ -28,6 +28,7 @@ import {
   CalendarDays,
 } from "lucide-react-native";
 import { Image } from "expo-image";
+const ANON_AVATAR = require("../assets/images/anon_user.png");
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { currentUser } from "@/mocks/data";
@@ -154,7 +155,7 @@ export default function NewRequestScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.userRow}>
-            <Image source={{ uri: currentUser.avatar }} style={styles.userAvatar} />
+            <Image source={isAnonymous ? ANON_AVATAR : { uri: currentUser.avatar }} style={styles.userAvatar} />
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{isAnonymous ? "Anonymous" : currentUser.name}</Text>
               <Pressable

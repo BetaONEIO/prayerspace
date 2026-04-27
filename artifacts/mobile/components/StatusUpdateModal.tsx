@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+const ANON_AVATAR = require("../assets/images/anon_user.png");
 import {
   X,
   Globe,
@@ -197,7 +198,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               contentContainerStyle={styles.scrollContent}
             >
               <View style={styles.userRow}>
-                <Image source={{ uri: currentUser.avatar }} style={styles.avatar} />
+                <Image source={isAnonymous ? ANON_AVATAR : { uri: currentUser.avatar }} style={styles.avatar} />
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>
                     {isAnonymous ? "Anonymous" : currentUser.name}
