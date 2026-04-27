@@ -49,6 +49,7 @@ import { useRouter, Stack, useLocalSearchParams } from "expo-router";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import ThemedSwitch from "@/components/ThemedSwitch";
+import PrayerDatePicker from "@/components/PrayerDatePicker";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
@@ -85,7 +86,10 @@ export default function PrayerModeScreen() {
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [isTimeSensitive, setIsTimeSensitive] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [eventDate, setEventDate] = useState<string | null>(null);
+  const [dateExpanded, setDateExpanded] = useState(false);
   const tagRotate = useRef(new Animated.Value(0)).current;
+  const dateAnim = useRef(new Animated.Value(0)).current;
 
   const { selectedRecipients, selectedIds, toggleRecipient, setDraftPrayerText } = useSelectedRecipients();
   const { isRecording, duration, startRecording: startAudioRecording, stopRecording: stopAudioRecording } = useAudioRecording();
@@ -126,6 +130,14 @@ export default function PrayerModeScreen() {
       Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     }
   }, [isRecording, isPaused, pulseAnim, rippleAnim]);
+
+  useEffect(() => {
+    Animated.timing(dateAnim, {
+      toValue: dateExpanded ? 1 : 0,
+      duration: 220,
+      useNativeDriver: false,
+    }).start();
+  }, [dateExpanded, dateAnim]);
 
   const handleStartRecording = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -247,9 +259,10 @@ export default function PrayerModeScreen() {
         sendToFeed: String(sendToFeed),
         isTimeSensitive: String(isTimeSensitive),
         isAnonymous: String(isAnonymous),
+        eventDate: String(eventDate ?? ""),
       },
     });
-  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, router, setDraftPrayerText]);
+  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, router, setDraftPrayerText]);
 
   const handleRemoveRecipient = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -511,6 +524,32 @@ export default function PrayerModeScreen() {
               Anonymous
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.dateSection}>
+          <Pressable style={styles.dateSectionToggle} onPress={() => setDateExpanded((v) => !v)}>
+            <View style={styles.dateSectionIcon}>
+              <Text style={{ color: colors.primary, fontSize: 14 }}>📅</Text>
+            </View>
+            <Text style={[styles.dateSectionLabel, eventDate ? styles.dateSectionLabelActive : null]}>
+              {eventDate ? "Prayer date selected" : "Add prayer date"}
+            </Text>
+            <ChevronDown size={16} color={colors.mutedForeground} style={{ marginLeft: "auto" }} />
+          </Pressable>
+          <Animated.View
+            style={{
+              maxHeight: dateAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 380],
+              }),
+              opacity: dateAnim,
+              overflow: "hidden",
+            }}
+          >
+            <View style={{ paddingTop: 12 }}>
+              <PrayerDatePicker value={eventDate} onChange={setEventDate} />
+            </View>
+          </Animated.View>
         </View>
 
         <View style={styles.tagsSection}>
