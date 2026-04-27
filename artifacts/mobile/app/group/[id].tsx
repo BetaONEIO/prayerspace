@@ -2156,12 +2156,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: "center" as const,
     gap: 6,
     marginTop: 4,
-    backgroundColor: "#FFF6F0",
+    backgroundColor: colors.card,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: "#F5D9C8",
+    borderColor: colors.border,
   },
   prayAvatarStack: {
     flexDirection: "row" as const,
@@ -2175,7 +2175,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderColor: "#fff",
   },
   prayAvatarFallback: {
-    backgroundColor: colors.primary + "30",
+    backgroundColor: colors.primary + "20",
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
