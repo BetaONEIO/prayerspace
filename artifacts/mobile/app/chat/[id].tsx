@@ -17,6 +17,7 @@ import {
   Modal,
   Animated,
   Alert,
+  Clipboard,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,6 +36,9 @@ import {
   Check,
   CheckCheck,
   X,
+  Reply,
+  Forward,
+  Copy,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -96,6 +100,7 @@ export default function ChatScreen() {
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; content: string } | null>(null);
   const contextSlide = useRef(new Animated.Value(400)).current;
   const headerMenuSlide = useRef(new Animated.Value(300)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -508,6 +513,32 @@ export default function ChatScreen() {
     closeHeaderMenu();
   }, [closeHeaderMenu]);
 
+  const handleReply = useCallback((msg: Message) => {
+    closeContextMenu();
+    setTimeout(() => {
+      const isMine = msg.sender_id === currentUserId || (!isRealUser && msg.sender_id === "user-1");
+      setReplyingTo({
+        id: msg.id,
+        senderName: isMine ? "You" : (convQuery.data?.otherName ?? "them"),
+        content: msg.content,
+      });
+    }, 300);
+  }, [closeContextMenu, currentUserId, isRealUser, convQuery.data?.otherName]);
+
+  const handleCopy = useCallback(() => {
+    if (!selectedMessage) return;
+    closeContextMenu();
+    try { Clipboard.setString(selectedMessage.content); } catch {}
+  }, [selectedMessage, closeContextMenu]);
+
+  const handleForward = useCallback(() => {
+    if (!selectedMessage) return;
+    closeContextMenu();
+    setTimeout(() => {
+      Alert.alert("Forward message", "Forwarding is coming soon.", [{ text: "OK" }]);
+    }, 300);
+  }, [selectedMessage, closeContextMenu]);
+
   const mockContact = useMemo(
     () => (!isRealUser ? allContacts.find((c) => c.id === id) : null),
     [isRealUser, id]
@@ -523,19 +554,25 @@ export default function ChatScreen() {
 
   const messages: Message[] = useMemo(() => {
     if (!isRealUser) {
-      return chatMessages.map((m) => ({
-        ...m,
-        conversation_id: "mock",
-        type: "text" as const,
-        prayer_request_content: null,
-        image_url: null,
-        image_path: null,
-        is_edited: false,
-        edited_at: null,
-        deleted_for_everyone: false,
-        deleted_for_sender: false,
-        message_reactions: [],
-      }));
+      return chatMessages.map((m) => {
+        const raw = m as Record<string, unknown>;
+        return {
+          id: raw.id as string,
+          conversation_id: "mock",
+          sender_id: (raw.senderId ?? raw.sender_id ?? "") as string,
+          content: (raw.text ?? raw.content ?? "") as string,
+          type: "text" as const,
+          prayer_request_content: null,
+          image_url: null,
+          image_path: null,
+          is_edited: false,
+          edited_at: null,
+          deleted_for_everyone: false,
+          deleted_for_sender: false,
+          created_at: (raw.time ?? "") as string,
+          message_reactions: [],
+        };
+      });
     }
     return (
       messagesQuery.data?.filter(
@@ -594,7 +631,7 @@ export default function ChatScreen() {
       if (item.type === "prayer_share") {
         return (
           <Pressable
-            onLongPress={() => isRealUser && openContextMenu(item)}
+            onLongPress={() => openContextMenu(item)}
             style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}
           >
             <View style={styles.prayerShareCard}>
@@ -620,12 +657,26 @@ export default function ChatScreen() {
 
       const hasImage = !!item.image_url;
       const hasText = (item.content ?? "").trim().length > 0;
+      const msgReplyTo = (item as Message & { reply_to?: { senderName: string; content: string } }).reply_to;
 
       return (
         <Pressable
-          onLongPress={() => isRealUser && openContextMenu(item)}
+          onLongPress={() => openContextMenu(item)}
           style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}
         >
+          {msgReplyTo && (
+            <View style={[styles.quoteWrap, isMine && styles.quoteWrapOwn]}>
+              <View style={[styles.quoteBar, isMine && styles.quoteBarOwn]} />
+              <View style={styles.quoteBody}>
+                <Text style={[styles.quoteSenderName, isMine && styles.quoteSenderNameOwn]}>
+                  {msgReplyTo.senderName}
+                </Text>
+                <Text style={[styles.quoteText, isMine && styles.quoteTextOwn]} numberOfLines={2}>
+                  {msgReplyTo.content}
+                </Text>
+              </View>
+            </View>
+          )}
           <View style={[
             styles.bubble,
             isMine ? styles.bubbleMine : styles.bubbleTheirs,
@@ -646,12 +697,12 @@ export default function ChatScreen() {
               </Text>
             )}
             {item.is_edited && (
-              <Text style={[styles.editedLabel, isMine && styles.editedLabelMine]}>edited</Text>
+              <Text style={[styles.editedLabel, isMine ? styles.editedLabelMine : styles.editedLabelTheirs]}>edited</Text>
             )}
           </View>
           <View style={[styles.timeRow, isMine && styles.timeRowRight]}>
             <Text style={styles.msgTime}>
-              {isRealUser ? formatMessageTime(item.created_at) : (item as { time?: string }).time ?? ""}
+              {isRealUser ? formatMessageTime(item.created_at) : item.created_at}
             </Text>
             {isMine && <CheckCheck size={12} color={colors.primary} />}
           </View>
@@ -774,6 +825,18 @@ export default function ChatScreen() {
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <SafeAreaView edges={["bottom"]} style={styles.inputAreaWrap}>
+            {replyingTo && (
+              <View style={styles.replyBanner}>
+                <View style={styles.replyBannerBar} />
+                <View style={styles.replyBannerBody}>
+                  <Text style={styles.replyBannerName}>{replyingTo.senderName}</Text>
+                  <Text style={styles.replyBannerText} numberOfLines={1}>{replyingTo.content}</Text>
+                </View>
+                <Pressable onPress={() => setReplyingTo(null)} style={styles.replyBannerClose} hitSlop={12}>
+                  <X size={14} color={colors.mutedForeground} />
+                </Pressable>
+              </View>
+            )}
             {imageUri && (
               <View style={styles.imagePreviewRow}>
                 <ImageAttachment
@@ -846,6 +909,31 @@ export default function ChatScreen() {
                 </Pressable>
               ))}
             </View>
+
+            <View style={styles.sheetDivider} />
+
+            <Pressable style={styles.sheetOption} onPress={() => selectedMessage && handleReply(selectedMessage)}>
+              <View style={[styles.sheetOptionIcon, { backgroundColor: colors.accent }]}>
+                <Reply size={16} color={colors.primary} />
+              </View>
+              <Text style={styles.sheetOptionText}>Reply</Text>
+            </Pressable>
+
+            {selectedMessage?.content ? (
+              <Pressable style={styles.sheetOption} onPress={handleCopy}>
+                <View style={[styles.sheetOptionIcon, { backgroundColor: colors.secondary }]}>
+                  <Copy size={16} color={colors.foreground} />
+                </View>
+                <Text style={styles.sheetOptionText}>Copy text</Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable style={styles.sheetOption} onPress={handleForward}>
+              <View style={[styles.sheetOptionIcon, { backgroundColor: colors.secondary }]}>
+                <Forward size={16} color={colors.foreground} />
+              </View>
+              <Text style={styles.sheetOptionText}>Forward</Text>
+            </Pressable>
 
             <View style={styles.sheetDivider} />
 
@@ -1122,11 +1210,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   bubbleTextTheirs: { color: colors.foreground },
   editedLabel: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.65)",
+    color: colors.mutedForeground,
     marginTop: 2,
     fontStyle: "italic" as const,
   },
   editedLabelMine: { color: "rgba(255,255,255,0.65)" },
+  editedLabelTheirs: { color: colors.mutedForeground },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   timeRowRight: { justifyContent: "flex-end" as const },
   msgTime: { fontSize: 10, color: colors.mutedForeground },
@@ -1406,5 +1495,75 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: colors.mutedForeground,
+  },
+  replyBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: colors.secondary + "80",
+    borderTopWidth: 1,
+    borderTopColor: colors.border + "40",
+    gap: 8,
+  },
+  replyBannerBar: {
+    width: 3,
+    alignSelf: "stretch" as const,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
+  },
+  replyBannerBody: { flex: 1 },
+  replyBannerName: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: colors.primary,
+    marginBottom: 1,
+  },
+  replyBannerText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+  },
+  replyBannerClose: {
+    padding: 4,
+  },
+  quoteWrap: {
+    flexDirection: "row" as const,
+    backgroundColor: colors.secondary + "80",
+    borderRadius: 10,
+    overflow: "hidden" as const,
+    marginBottom: 4,
+    maxWidth: "100%",
+  },
+  quoteWrapOwn: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  quoteBar: {
+    width: 3,
+    backgroundColor: colors.mutedForeground,
+  },
+  quoteBarOwn: {
+    backgroundColor: "rgba(255,255,255,0.7)",
+  },
+  quoteBody: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  quoteSenderName: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: colors.primary,
+    marginBottom: 1,
+  },
+  quoteSenderNameOwn: {
+    color: "rgba(255,255,255,0.9)",
+  },
+  quoteText: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    lineHeight: 16,
+  },
+  quoteTextOwn: {
+    color: "rgba(255,255,255,0.7)",
   },
 });
