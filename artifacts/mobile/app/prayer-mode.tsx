@@ -36,6 +36,7 @@ import {
   Rss,
   Tag,
   ChevronDown,
+  CalendarDays,
   Square,
   Pause,
   Play,
@@ -50,6 +51,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import ThemedSwitch from "@/components/ThemedSwitch";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
+import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
@@ -529,10 +531,10 @@ export default function PrayerModeScreen() {
         <View style={styles.dateSection}>
           <Pressable style={styles.dateSectionToggle} onPress={() => setDateExpanded((v) => !v)}>
             <View style={styles.dateSectionIcon}>
-              <Text style={{ color: colors.primary, fontSize: 14 }}>📅</Text>
+              <CalendarDays size={14} color={eventDate ? colors.primary : colors.mutedForeground} />
             </View>
             <Text style={[styles.dateSectionLabel, eventDate ? styles.dateSectionLabelActive : null]}>
-              {eventDate ? "Prayer date selected" : "Add prayer date"}
+              {eventDate ? `Prayer date · ${formatPrayerDate(eventDate)}` : "Add prayer date"}
             </Text>
             <ChevronDown size={16} color={colors.mutedForeground} style={{ marginLeft: "auto" }} />
           </Pressable>
@@ -1178,6 +1180,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   optionChipTextAnonymous: {
     color: colors.primary,
     fontWeight: "700" as const,
+  },
+  dateSection: {
+    width: "100%",
+    marginTop: 20,
+    backgroundColor: colors.secondary + "60",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border + "60",
+    overflow: "hidden" as const,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  dateSectionToggle: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+  },
+  dateSectionIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: colors.primary + "18",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  dateSectionLabel: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: colors.foreground,
+    flex: 1,
+  },
+  dateSectionLabelActive: {
+    color: colors.primary,
   },
   tagsSection: {
     width: "100%",
