@@ -528,6 +528,39 @@ export default function PrayerModeScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.tagsSection}>
+          <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
+            <View style={styles.tagsToggleLeft}>
+              <View style={styles.tagsToggleIcon}>
+                <Tag size={14} color={colors.primary} />
+              </View>
+              <Text style={styles.tagsToggleLabel}>
+                Prayer focus{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : ""}
+              </Text>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: tagRotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] }) }] }}>
+              <ChevronDown size={16} color={colors.mutedForeground} />
+            </Animated.View>
+          </Pressable>
+          {tagsExpanded && (
+            <View style={styles.tagsWrap}>
+              {PRAYER_TAGS.map((tag) => {
+                const isActive = selectedTags.includes(tag.id);
+                return (
+                  <Pressable
+                    key={tag.id}
+                    style={[styles.tagChip, isActive && styles.tagChipActive]}
+                    onPress={() => handleTagToggle(tag.id)}
+                  >
+                    <Text style={styles.tagEmoji}>{tag.emoji}</Text>
+                    <Text style={[styles.tagLabel, isActive && styles.tagLabelActive]}>{tag.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
         <View style={styles.dateSection}>
           <Pressable style={styles.dateSectionToggle} onPress={() => setDateExpanded((v) => !v)}>
             <View style={styles.dateSectionIcon}>
@@ -552,39 +585,6 @@ export default function PrayerModeScreen() {
               <PrayerDatePicker value={eventDate} onChange={setEventDate} />
             </View>
           </Animated.View>
-        </View>
-
-        <View style={styles.tagsSection}>
-          <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
-            <View style={styles.tagsToggleLeft}>
-              <View style={styles.tagsToggleIcon}>
-                <Tag size={14} color={colors.primary} />
-              </View>
-              <Text style={styles.tagsToggleLabel}>
-                Add a tag{selectedTags.length > 0 ? ` · ${selectedTags.length} selected` : ""}
-              </Text>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: tagRotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "180deg"] }) }] }}>
-              <ChevronDown size={16} color={colors.mutedForeground} />
-            </Animated.View>
-          </Pressable>
-          {tagsExpanded && (
-            <View style={styles.tagsWrap}>
-              {PRAYER_TAGS.map((tag) => {
-                const isActive = selectedTags.includes(tag.id);
-                return (
-                  <Pressable
-                    key={tag.id}
-                    style={[styles.tagChip, isActive && styles.tagChipActive]}
-                    onPress={() => handleTagToggle(tag.id)}
-                  >
-                    <Text style={styles.tagEmoji}>{tag.emoji}</Text>
-                    <Text style={[styles.tagLabel, isActive && styles.tagLabelActive]}>{tag.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
         </View>
 
         <View style={styles.bottomSection}>
