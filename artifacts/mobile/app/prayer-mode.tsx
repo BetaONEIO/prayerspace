@@ -474,13 +474,6 @@ export default function PrayerModeScreen() {
               </>
             )}
           </View>
-          {attachedPhotos.length < 4 && (
-            <View style={styles.textInputActions}>
-              <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
-                <ImagePlus size={16} color={colors.primary} />
-              </Pressable>
-            </View>
-          )}
           </View>
         ) : (
           <View style={styles.textArea}>
@@ -494,16 +487,6 @@ export default function PrayerModeScreen() {
               textAlignVertical="top"
               autoFocus={false}
             />
-            <View style={styles.textInputActions}>
-              <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
-                <ImagePlus size={16} color={colors.primary} />
-              </Pressable>
-              {textPrayer.length > 0 && (
-                <View style={styles.aiParsingBadge}>
-                  <Text style={styles.aiParsingText}>AI Parsing...</Text>
-                </View>
-              )}
-            </View>
           </View>
         )}
 
@@ -533,6 +516,12 @@ export default function PrayerModeScreen() {
               Anonymous
             </Text>
           </Pressable>
+
+          {attachedPhotos.length < 4 && (
+            <Pressable style={styles.attachPhotoBtn} onPress={handleAttachPhoto}>
+              <ImagePlus size={16} color={colors.primary} />
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.tagsSection}>
@@ -1235,6 +1224,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   optionsRow: {
     width: "100%",
     flexDirection: "row" as const,
+    alignItems: "center" as const,
     gap: 10,
     marginTop: 16,
   },
