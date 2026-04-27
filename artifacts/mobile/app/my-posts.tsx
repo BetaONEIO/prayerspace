@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { feedStore, FEED_COMMUNITIES, type FeedCommunityId } from "@/lib/feedStore";
 import {
   View,
   Text,
@@ -158,7 +159,7 @@ export default function MyPostsScreen() {
   }, []);
 
   const handleSubmitRepost = useCallback(
-    (originalPost: MyPost, text: string, tag?: UpdateTag) => {
+    (originalPost: MyPost, text: string, tag?: UpdateTag, communityId?: string) => {
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const isAnsweredUpdate = tag === "answered";
       const newPost: MyPost = {
@@ -185,6 +186,43 @@ export default function MyPostsScreen() {
         }
         return updated;
       });
+      if (isAnsweredUpdate && communityId) {
+        feedStore.addPost({
+          id: newPost.id,
+          communityId,
+          authorId: "sarah_current",
+          authorName: "Sarah",
+          authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
+          category: "UPDATE",
+          tags: ["answered"],
+          timeLabel: "JUST NOW",
+          postedAt: "Just now",
+          isTimeSensitive: false,
+          content: text,
+          prayerCount: 0,
+          commentCount: 0,
+          prayedByAvatars: [],
+          comments: [],
+          updateTag: "answered",
+          originalPost: {
+            id: originalPost.originalPostId ?? originalPost.id,
+            communityId,
+            authorId: "sarah_current",
+            authorName: "Sarah",
+            authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
+            category: originalPost.category,
+            tags: [],
+            timeLabel: "AGO",
+            postedAt: originalPost.originalPostedAt ?? originalPost.postedAt,
+            content: originalPost.originalContent ?? originalPost.content.replace(/^"|"$/g, ""),
+            prayerCount: originalPost.prayerCount,
+            commentCount: originalPost.commentCount,
+            prayedByAvatars: originalPost.prayedByAvatars,
+            comments: [],
+          },
+        });
+        console.log("[MyPosts] Testimony dispatched to community feed:", newPost.id, "community:", communityId);
+      }
       setRepostTarget(null);
       console.log("[MyPosts] Repost submitted:", newPost.id, "tag:", tag);
     },
@@ -487,7 +525,7 @@ interface RepostComposerModalProps {
   originalPost: MyPost;
   isAnswered: boolean;
   onClose: () => void;
-  onSubmit: (post: MyPost, text: string, tag?: UpdateTag) => void;
+  onSubmit: (post: MyPost, text: string, tag?: UpdateTag, communityId?: string) => void;
 }
 
 function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: RepostComposerModalProps) {
@@ -497,6 +535,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
   const [text, setText] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<UpdateTag | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const [selectedCommunityId, setSelectedCommunityId] = useState<FeedCommunityId>(FEED_COMMUNITIES[0].id);
   const slideAnim = useRef(new Animated.Value(700)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -516,8 +555,8 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
 
   const handleSubmit = useCallback(() => {
     if (!text.trim()) return;
-    onSubmit(originalPost, text.trim(), selectedTag ?? undefined);
-  }, [text, selectedTag, originalPost, onSubmit]);
+    onSubmit(originalPost, text.trim(), selectedTag ?? undefined, isAnswered ? selectedCommunityId : undefined);
+  }, [text, selectedTag, selectedCommunityId, isAnswered, originalPost, onSubmit]);
 
   const tagOptions: { tag: UpdateTag; label: string; emoji: string; color: string; bg: string }[] = [
     { tag: "still_need_prayer", label: "Still need prayer", emoji: "🙏", color: "#D96E27", bg: "#FFF0E5" },
@@ -552,6 +591,29 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                 <X size={16} color={colors.mutedForeground} />
               </Pressable>
             </View>
+
+            {isAnswered && (
+              <View style={styles.communityPickerSection}>
+                <Text style={styles.communityPickerLabel}>Share to community</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.communityPickerRow}>
+                  {FEED_COMMUNITIES.map((c) => {
+                    const isSelected = selectedCommunityId === c.id;
+                    return (
+                      <Pressable
+                        key={c.id}
+                        style={[styles.communityChip, isSelected && { backgroundColor: c.color, borderColor: c.color }]}
+                        onPress={() => setSelectedCommunityId(c.id)}
+                      >
+                        <View style={[styles.communityChipLetter, { backgroundColor: isSelected ? "rgba(255,255,255,0.25)" : c.color + "22" }]}>
+                          <Text style={[styles.communityChipLetterText, { color: isSelected ? "#fff" : c.color }]}>{c.letter}</Text>
+                        </View>
+                        <Text style={[styles.communityChipName, isSelected && { color: "#fff" }]}>{c.name}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             <ScrollView
               style={styles.composerScroll}
@@ -1115,6 +1177,50 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "700" as const,
     color: ANSWERED_GREEN,
     letterSpacing: 0.2,
+  },
+  communityPickerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  communityPickerLabel: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: colors.mutedForeground,
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
+    marginBottom: 10,
+  },
+  communityPickerRow: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  communityChip: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  communityChipLetter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  communityChipLetterText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+  },
+  communityChipName: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: colors.foreground,
   },
   composerClose: {
     width: 32,

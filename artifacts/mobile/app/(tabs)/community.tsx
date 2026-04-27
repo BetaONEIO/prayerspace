@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo} from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { feedStore } from "@/lib/feedStore";
 import {
   View,
   Text,
@@ -572,6 +573,14 @@ export default function CommunityScreen() {
   const { addJournalEntry, addArchivedPost } = usePrayer();
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    feedStore.register((post) => {
+      setAllFeedPosts((prev) => [post as FeedPost, ...prev]);
+      setAllCommunityPosts((prev) => [post as FeedPost, ...prev]);
+    });
+    return () => feedStore.unregister();
+  }, []);
   const router = useRouter();
 
   useEffect(() => {
