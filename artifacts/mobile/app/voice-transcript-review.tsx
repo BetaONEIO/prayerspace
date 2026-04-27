@@ -22,9 +22,10 @@ export default function VoiceTranscriptReviewScreen() {
   const [editedText, setEditedText] = useState("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [draftText, setDraftText] = useState("");
+  const [hasManuallyEdited, setHasManuallyEdited] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const { DiscardModal } = useUnsavedChangesWarning(editedText.trim().length > 0);
+  const { DiscardModal } = useUnsavedChangesWarning(hasManuallyEdited);
   const hasStartedRef = useRef(false);
 
   const transcribeMutation = useMutation({
@@ -111,11 +112,11 @@ export default function VoiceTranscriptReviewScreen() {
                 <View style={styles.modalFullHeader}>
                   <Pressable style={styles.modalCloseBtn} onPress={() => setIsEditModalVisible(false)}><X size={18} color={colors.mutedForeground} /></Pressable>
                   <Text style={styles.modalTitle}>Edit Transcription</Text>
-                  <Pressable style={styles.modalSaveTopBtn} onPress={() => { setEditedText(draftText); setIsEditModalVisible(false); }}><Text style={styles.modalSaveTopText}>Save</Text></Pressable>
+                  <Pressable style={styles.modalSaveTopBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}><Text style={styles.modalSaveTopText}>Save</Text></Pressable>
                 </View>
                 <View style={styles.modalBody}>
                   <TextInput ref={inputRef} style={styles.modalInput} value={draftText} onChangeText={setDraftText} multiline autoFocus textAlignVertical="top" placeholder="Your transcription..." placeholderTextColor={colors.mutedForeground + "60"} scrollEnabled />
-                  <Pressable style={styles.saveBtn} onPress={() => { setEditedText(draftText); setIsEditModalVisible(false); }}>
+                  <Pressable style={styles.saveBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}>
                     <Check size={18} color={colors.primaryForeground} />
                     <Text style={styles.saveBtnText}>Save Changes</Text>
                   </Pressable>
