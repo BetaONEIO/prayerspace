@@ -4,9 +4,11 @@ import { Platform } from "react-native";
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 
 function getMimeType(uri: string): string {
-  if (uri.includes(".m4a")) return "audio/m4a";
-  if (uri.includes(".mp4")) return "audio/mp4";
-  if (uri.includes(".webm")) return "audio/webm";
+  const lower = uri.toLowerCase();
+  if (lower.includes(".m4a")) return "audio/mp4";
+  if (lower.includes(".mp4")) return "audio/mp4";
+  if (lower.includes(".webm")) return "audio/webm";
+  if (lower.includes(".ogg")) return "audio/ogg";
   return "audio/wav";
 }
 
@@ -39,14 +41,19 @@ export async function transcribeAudio(audioUri: string): Promise<string> {
     audioBase64 = btoa(binary);
     console.log("[transcribeAudio] Web base64 length:", audioBase64.length);
   } else {
-    const info = await FileSystem.getInfoAsync(audioUri);
-    if (!info.exists) {
-      throw new Error("Recorded audio was not available. Please record again.");
-    }
     mimeType = getMimeType(audioUri);
-    audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    console.log("[transcribeAudio] Reading file, mimeType:", mimeType);
+    try {
+      audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    } catch (readErr) {
+      console.error("[transcribeAudio] File read error:", readErr);
+      throw new Error("Could not read the recorded audio. Please record again.");
+    }
+    if (!audioBase64) {
+      throw new Error("Recorded audio file was empty. Please record again.");
+    }
     console.log("[transcribeAudio] Native base64 length:", audioBase64.length);
   }
 
