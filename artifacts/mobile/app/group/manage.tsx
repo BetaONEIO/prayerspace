@@ -368,13 +368,21 @@ export default function ManageGroupScreen() {
                 <View style={[styles.card, { backgroundColor: colors.card, borderColor: isPremiumCommunity ? colors.primary + "40" : colors.border }]}>
                   {isPremiumCommunity ? (
                     <>
+                      {/* Badge row — badge left, active indicator right */}
                       <View style={styles.subscriptionTopRow}>
                         <View style={[styles.premiumBadge, { backgroundColor: colors.primary }]}>
-                          <Crown size={12} color={colors.primaryForeground} />
+                          <Crown size={13} color={colors.primaryForeground} />
                           <Text style={[styles.premiumBadgeText, { color: colors.primaryForeground }]}>Premium Community</Text>
                         </View>
-                        <Text style={[styles.tierLabel, { color: colors.mutedForeground }]}>{tierLabel}</Text>
+                        <View style={styles.activeIndicatorWrap}>
+                          <View style={styles.activeDot} />
+                          <Text style={[styles.activeLabel, { color: colors.mutedForeground }]}>Active</Text>
+                        </View>
                       </View>
+
+                      {/* Plan name on its own full-width line */}
+                      <Text style={[styles.tierLabel, { color: colors.foreground }]}>{tierLabel}</Text>
+
                       {isOwner && (
                         <View style={[styles.ownerRow, { borderTopColor: colors.border }]}>
                           <ShieldCheck size={15} color={colors.primary} />
@@ -389,7 +397,13 @@ export default function ManageGroupScreen() {
                     </>
                   ) : (
                     <>
-                      <Text style={[styles.inactiveLabel, { color: colors.foreground }]}>Subscription inactive</Text>
+                      <View style={styles.subscriptionTopRow}>
+                        <Text style={[styles.inactiveLabel, { color: colors.foreground }]}>Subscription inactive</Text>
+                        <View style={styles.activeIndicatorWrap}>
+                          <View style={[styles.activeDot, { backgroundColor: colors.mutedForeground }]} />
+                          <Text style={[styles.activeLabel, { color: colors.mutedForeground }]}>Inactive</Text>
+                        </View>
+                      </View>
                       <Text style={[styles.subscriptionNote, { color: colors.mutedForeground }]}>
                         Renew your plan to restore premium features for all members.
                       </Text>
@@ -914,14 +928,17 @@ function createStyles(colors: ThemeColors) {
       fontSize: 12,
       fontWeight: "700" as const,
     },
-    subscriptionTopRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, marginBottom: 12 },
-    premiumBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-    premiumBadgeText: { fontSize: 12, fontWeight: "700" as const },
-    tierLabel: { fontSize: 12 },
-    ownerRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 4 },
+    subscriptionTopRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, marginBottom: 10 },
+    premiumBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+    premiumBadgeText: { fontSize: 13, fontWeight: "700" as const },
+    activeIndicatorWrap: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5 },
+    activeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#22C55E" },
+    activeLabel: { fontSize: 12, fontWeight: "600" as const },
+    tierLabel: { fontSize: 16, fontWeight: "700" as const, marginBottom: 2 },
+    ownerRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, paddingVertical: 12, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12 },
     ownerText: { fontSize: 14, fontWeight: "600" as const },
-    subscriptionNote: { fontSize: 12, lineHeight: 18, marginTop: 6 },
-    inactiveLabel: { fontSize: 15, fontWeight: "700" as const, marginBottom: 6 },
+    subscriptionNote: { fontSize: 12, lineHeight: 18, marginTop: 4 },
+    inactiveLabel: { fontSize: 15, fontWeight: "700" as const },
     deleteBtn: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
