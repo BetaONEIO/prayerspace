@@ -32,7 +32,7 @@ import {
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import { currentUser } from "@/mocks/data";
+import { useAuth } from "@/providers/AuthProvider";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 
@@ -52,6 +52,7 @@ interface Props {
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { profile } = useAuth();
   const [text, setText] = useState<string>("");
   const [statusImageUri, setStatusImageUri] = useState<string | null>(null);
   const [viewingStatusImage, setViewingStatusImage] = useState<string | null>(null);
@@ -208,10 +209,10 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               contentContainerStyle={styles.scrollContent}
             >
               <View style={styles.userRow}>
-                <Image source={isAnonymous ? ANON_AVATAR : { uri: currentUser.avatar }} style={styles.avatar} />
+                <Image source={isAnonymous ? ANON_AVATAR : (profile?.avatar_url ? { uri: profile.avatar_url } : ANON_AVATAR)} style={styles.avatar} />
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>
-                    {isAnonymous ? "Anonymous" : currentUser.name}
+                    {isAnonymous ? "Anonymous" : (profile?.full_name ?? "You")}
                   </Text>
                   <Pressable
                     style={styles.audienceBtn}
