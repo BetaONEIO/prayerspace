@@ -555,7 +555,7 @@ export default function GroupDetailScreen() {
         <View style={[styles.banner, { paddingTop: insets.top + 12 }]}>
           <Image
             source={{
-              uri: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80",
+              uri: groupState.photoUri ?? "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80",
             }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
