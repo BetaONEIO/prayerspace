@@ -9,6 +9,7 @@ import {
   Modal,
   Animated,
   Alert,
+  Share,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
@@ -368,7 +369,9 @@ export default function ManageGroupScreen() {
                   style={[styles.inviteBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
                   onPress={() => {
                     if (Platform.OS !== "web") void Haptics.selectionAsync();
-                    router.push("/find-friend" as never);
+                    void Share.share({
+                      message: `Join ${groupName} on Prayer Space — a private space to pray and stay connected.\n\nhttps://prayerspace.app/join`,
+                    });
                   }}
                 >
                   <UserPlus size={13} color={colors.primary} />

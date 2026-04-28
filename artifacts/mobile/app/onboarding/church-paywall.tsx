@@ -76,12 +76,12 @@ export default function ChurchPaywall() {
   const handleGetStarted = async () => {
     if (!selectedPackage) {
       console.log("[ChurchPaywall] No package loaded — proceeding without purchase.");
-      router.push("/onboarding/contact-permissions" as never);
+      router.push("/onboarding/church-complete" as never);
       return;
     }
     try {
       await purchaseMutation.mutateAsync(selectedPackage);
-      router.push("/onboarding/contact-permissions" as never);
+      router.push("/onboarding/church-complete" as never);
     } catch (err: unknown) {
       const error = err as { userCancelled?: boolean; message?: string };
       if (!error?.userCancelled) {

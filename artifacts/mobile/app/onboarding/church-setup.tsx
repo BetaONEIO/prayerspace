@@ -40,9 +40,9 @@ export default function ChurchSetup() {
         <View style={styles.inner}>
           <View style={styles.progressRow}>
             <View style={styles.progressBg}>
-              <View style={[styles.progressFill, { width: "57.1%" }]} />
+              <View style={[styles.progressFill, { width: "66.7%" }]} />
             </View>
-            <Text style={styles.stepText}>Step 4 of 7</Text>
+            <Text style={styles.stepText}>Step 4 of 6</Text>
           </View>
 
           <View style={styles.headingArea}>

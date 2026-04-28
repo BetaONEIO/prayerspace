@@ -17,9 +17,9 @@ export default function OnboardingLayout() {
       <Stack.Screen name="church-size" />
       <Stack.Screen name="church-setup" />
       <Stack.Screen name="church-details" />
-      <Stack.Screen name="church-invite" />
       <Stack.Screen name="church-value" />
       <Stack.Screen name="church-paywall" />
+      <Stack.Screen name="church-complete" />
       {/* Shared closing steps */}
       <Stack.Screen name="contact-permissions" />
       <Stack.Screen name="import-loading" />

@@ -42,16 +42,16 @@ export default function ChurchDetails() {
   const [audience, setAudience] = useState<string | null>(null);
   const [showDenomModal, setShowDenomModal] = useState(false);
 
-  const proceed = () => router.push("/onboarding/church-invite" as never);
+  const proceed = () => router.push("/onboarding/church-value" as never);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.inner}>
         <View style={styles.progressRow}>
           <View style={styles.progressBg}>
-            <View style={[styles.progressFill, { width: "71.4%" }]} />
+            <View style={[styles.progressFill, { width: "83.3%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 5 of 7</Text>
+          <Text style={styles.stepText}>Step 5 of 6</Text>
         </View>
 
         <View style={styles.headingArea}>

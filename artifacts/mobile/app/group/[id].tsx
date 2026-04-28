@@ -12,6 +12,7 @@ import {
   Platform,
   Animated,
   Alert,
+  Share,
   Dimensions,
   FlatList,
   Modal,
@@ -869,7 +870,9 @@ export default function GroupDetailScreen() {
                 style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
                 onPress={() => {
                   closeGroupMenu();
-                  setTimeout(() => router.push("/find-friend" as never), 250);
+                  void Share.share({
+                    message: `Join ${groupState.name} on Prayer Space — a private space to pray and stay connected.\n\nhttps://prayerspace.app/join`,
+                  });
                 }}
               >
                 <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.accent }]}>
@@ -877,7 +880,7 @@ export default function GroupDetailScreen() {
                 </View>
                 <View style={styles.groupMenuItemBody}>
                   <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Invite Members</Text>
-                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Add friends to the group</Text>
+                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Share a link to join this group</Text>
                 </View>
               </Pressable>
 
