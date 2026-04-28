@@ -50,6 +50,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { useGroupState, GroupMember as StoreGroupMember } from "@/lib/groupStore";
 
 type GroupTab = "Chat" | "Members" | "Media";
 
@@ -369,6 +370,8 @@ export default function GroupDetailScreen() {
     sharedUpdateTag?: string;
   }>();
   const { id } = params;
+  const groupId = id || "group-1";
+  const groupState = useGroupState(groupId);
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<GroupTab>("Chat");
 
@@ -525,7 +528,7 @@ export default function GroupDetailScreen() {
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [chatInput, groupImageUri, replyingTo]);
 
-  const filteredMembers = MEMBERS.filter((m) =>
+  const filteredMembers = groupState.members.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
@@ -570,7 +573,7 @@ export default function GroupDetailScreen() {
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.groupName}>Grace Community</Text>
+              <Text style={styles.groupName}>{groupState.name}</Text>
               <Text style={styles.groupStats}>128 Members · Active Now</Text>
             </View>
             <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
@@ -586,7 +589,7 @@ export default function GroupDetailScreen() {
             <ChevronLeft size={20} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.chatHeaderName}>Grace Community</Text>
+            <Text style={styles.chatHeaderName}>{groupState.name}</Text>
             <Text style={styles.chatHeaderSub}>128 Members · 12 Active</Text>
           </View>
           <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
@@ -740,7 +743,8 @@ export default function GroupDetailScreen() {
       <MessageInfoSheet
         message={infoMsg}
         visible={!!infoMsg}
-        totalMembers={TOTAL_GROUP_MEMBERS}
+        totalMembers={groupState.members.length}
+        members={groupState.members}
         onClose={() => setInfoMsg(null)}
       />
 
@@ -769,20 +773,20 @@ export default function GroupDetailScreen() {
 
           <View style={styles.memberStats}>
             <View style={styles.memberStatItem}>
-              <Text style={styles.memberStatNum}>128</Text>
+              <Text style={styles.memberStatNum}>{groupState.members.length}</Text>
               <Text style={styles.memberStatLabel}>Total</Text>
             </View>
             <View style={styles.memberStatDivider} />
             <View style={styles.memberStatItem}>
               <Text style={styles.memberStatNum}>
-                {MEMBERS.filter((m) => m.isOnline).length}
+                {groupState.members.filter((m) => m.isOnline).length}
               </Text>
               <Text style={styles.memberStatLabel}>Online</Text>
             </View>
             <View style={styles.memberStatDivider} />
             <View style={styles.memberStatItem}>
               <Text style={styles.memberStatNum}>
-                {MEMBERS.filter((m) => m.role === "Admin" || m.role === "Leader").length}
+                {groupState.members.filter((m) => m.role === "Admin" || m.role === "Leader").length}
               </Text>
               <Text style={styles.memberStatLabel}>Leaders</Text>
             </View>
@@ -841,7 +845,7 @@ export default function GroupDetailScreen() {
             <Animated.View style={[styles.groupMenuSheet, { backgroundColor: colors.card, transform: [{ translateY: groupMenuAnim }] }]}>
               <View style={styles.groupMenuHandle} />
 
-              <Text style={[styles.groupMenuGroupName, { color: colors.foreground }]}>Grace Community</Text>
+              <Text style={[styles.groupMenuGroupName, { color: colors.foreground }]}>{groupState.name}</Text>
 
               {IS_CURRENT_USER_ADMIN && (
                 <Pressable
@@ -884,7 +888,7 @@ export default function GroupDetailScreen() {
                   setTimeout(() => {
                     Alert.alert(
                       "Leave Group",
-                      "Are you sure you want to leave Grace Community?",
+                      `Are you sure you want to leave ${groupState.name}?`,
                       [
                         { text: "Cancel", style: "cancel" },
                         {
@@ -1378,11 +1382,13 @@ function MessageInfoSheet({
   message,
   visible,
   totalMembers,
+  members,
   onClose,
 }: {
   message: ChatMessage | null;
   visible: boolean;
   totalMembers: number;
+  members: StoreGroupMember[];
   onClose: () => void;
 }) {
   const colors = useThemeColors();
@@ -1390,7 +1396,7 @@ function MessageInfoSheet({
   if (!message) return null;
   const readBy = message.readBy ?? [];
   const readIds = new Set(readBy.map((r) => r.userId));
-  const notSeen = MEMBERS.filter((m) => !readIds.has(m.id));
+  const notSeen = members.filter((m) => !readIds.has(m.id));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>

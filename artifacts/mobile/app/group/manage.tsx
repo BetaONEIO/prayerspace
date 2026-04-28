@@ -38,34 +38,13 @@ import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
-
-type FocusCategory = "Prayer" | "Bible Study" | "Support" | "Testimony";
-type PrivacyType = "Private" | "Public";
-type MemberRole = "Admin" | "Leader" | "Member";
-
-interface GroupMember {
-  id: string;
-  name: string;
-  avatar: string;
-  role: MemberRole;
-  isOnline: boolean;
-  joinedDate?: string;
-}
+import { groupStore, GroupMember, FocusCategory, PrivacyType } from "@/lib/groupStore";
 
 const FOCUS_OPTIONS: { id: FocusCategory; emoji: string; label: string }[] = [
   { id: "Prayer", emoji: "🙏", label: "Prayer" },
   { id: "Bible Study", emoji: "📖", label: "Bible Study" },
   { id: "Support", emoji: "🤝", label: "Support" },
   { id: "Testimony", emoji: "✨", label: "Testimony" },
-];
-
-const INITIAL_MEMBERS: GroupMember[] = [
-  { id: "m1", name: "Pastor Michael", avatar: "https://randomuser.me/api/portraits/men/32.jpg", role: "Admin", isOnline: true, joinedDate: "Founder" },
-  { id: "m2", name: "Alice Thompson", avatar: "https://randomuser.me/api/portraits/women/62.jpg", role: "Admin", isOnline: true, joinedDate: "Since Jan 2023" },
-  { id: "m3", name: "David Chen", avatar: "https://randomuser.me/api/portraits/men/85.jpg", role: "Leader", isOnline: false, joinedDate: "Since Mar 2023" },
-  { id: "m4", name: "Emma Watson", avatar: "https://randomuser.me/api/portraits/women/44.jpg", role: "Member", isOnline: true, joinedDate: "Since Jun 2023" },
-  { id: "m5", name: "Chloe Martin", avatar: "https://randomuser.me/api/portraits/women/24.jpg", role: "Member", isOnline: true, joinedDate: "Since Aug 2023" },
-  { id: "m6", name: "Bob Jenkins", avatar: "https://randomuser.me/api/portraits/men/42.jpg", role: "Member", isOnline: false, joinedDate: "Since Sep 2023" },
 ];
 
 const CURRENT_USER_ID = "me";
@@ -76,16 +55,17 @@ export default function ManageGroupScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{ id?: string }>();
+  const groupId = params.id || "group-1";
+  const initialState = groupStore.get(groupId);
 
-  const [groupName, setGroupName] = useState("Grace Community");
-  const [description, setDescription] = useState("A welcoming space for prayer, encouragement, and growing together in faith.");
-  const [selectedFocus, setSelectedFocus] = useState<FocusCategory>("Prayer");
-  const [selectedPrivacy, setSelectedPrivacy] = useState<PrivacyType>("Private");
-  const [inviteOnly, setInviteOnly] = useState(true);
-  const [safeSpace, setSafeSpace] = useState(true);
-  const [groupPhotoUri, setGroupPhotoUri] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState(initialState.name);
+  const [description, setDescription] = useState(initialState.description);
+  const [selectedFocus, setSelectedFocus] = useState<FocusCategory>(initialState.focus);
+  const [selectedPrivacy, setSelectedPrivacy] = useState<PrivacyType>(initialState.privacy);
+  const [safeSpace, setSafeSpace] = useState(initialState.safeSpace);
+  const [groupPhotoUri, setGroupPhotoUri] = useState<string | null>(initialState.photoUri);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [members, setMembers] = useState<GroupMember[]>(INITIAL_MEMBERS);
+  const [members, setMembers] = useState<GroupMember[]>(() => initialState.members.map((m) => ({ ...m })));
   const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
   const [showMemberSheet, setShowMemberSheet] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
@@ -182,7 +162,15 @@ export default function ManageGroupScreen() {
       return;
     }
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    console.log("[ManageGroup] Saving:", { groupName, description, selectedFocus, selectedPrivacy, inviteOnly, safeSpace });
+    groupStore.update(groupId, {
+      name: groupName.trim(),
+      description: description.trim(),
+      photoUri: groupPhotoUri,
+      privacy: selectedPrivacy,
+      safeSpace,
+      focus: selectedFocus,
+      members,
+    });
     setHasChanges(false);
     Animated.parallel([
       Animated.timing(savedModalFade, { toValue: 1, duration: 220, useNativeDriver: true }),
@@ -195,12 +183,12 @@ export default function ManageGroupScreen() {
         Animated.timing(savedModalScale, { toValue: 0.85, duration: 180, useNativeDriver: true }),
       ]).start(() => setShowSavedModal(false));
     }, 1800);
-  }, [groupName, description, selectedFocus, selectedPrivacy, inviteOnly, safeSpace, savedModalFade, savedModalScale]);
+  }, [groupId, groupName, description, selectedFocus, selectedPrivacy, safeSpace, groupPhotoUri, members, savedModalFade, savedModalScale]);
 
   const handleDeleteGroup = useCallback(() => {
     Alert.alert(
       "Delete Group",
-      "This will permanently delete \"Grace Community\" and all its messages. This cannot be undone.",
+      `This will permanently delete "${groupName}" and all its messages. This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -213,7 +201,7 @@ export default function ManageGroupScreen() {
         },
       ]
     );
-  }, [router]);
+  }, [router, groupName]);
 
   const admins = members.filter((m) => m.role === "Admin");
   const leaders = members.filter((m) => m.role === "Leader");
