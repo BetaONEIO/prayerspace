@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import onboardingImage from "@assets/ONBOARD_3_1777391826961.png";
+import onboardingImage from "@assets/Screenshot_2026-04-28_at_17.28.30_1777393711974.png";
 
 const { width } = Dimensions.get("window");
 
