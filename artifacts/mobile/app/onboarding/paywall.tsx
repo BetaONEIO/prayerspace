@@ -62,8 +62,8 @@ export default function OnboardingPaywall() {
 
   const handleTrial = async () => {
     if (!selectedPackage) {
-      console.log("[Paywall] No package available, plan:", plan);
-      Alert.alert("Not available", "Please try again in a moment.");
+      console.log("[Paywall] No package loaded yet — skipping purchase, proceeding to next step.");
+      router.push("/onboarding/contact-permissions" as never);
       return;
     }
     try {
