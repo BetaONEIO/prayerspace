@@ -59,6 +59,7 @@ import { allContacts, chatMessages } from "@/mocks/data";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import { uploadPostImage } from "@/lib/storage";
+import PrayerRequestCard, { type PrayerCardMeta } from "@/components/PrayerRequestCard";
 
 const REACTION_COLORS: Record<ReactionType, string> = {
   pray: "#FFF0E6",
@@ -682,23 +683,25 @@ export default function ChatScreen() {
       const isMine = item.sender_id === currentUserId || (!isRealUser && item.sender_id === "user-1");
 
       if (item.type === "prayer_share") {
+        let cardMeta: PrayerCardMeta = {};
+        if (item.prayer_request_content) {
+          try {
+            cardMeta = JSON.parse(item.prayer_request_content) as PrayerCardMeta;
+          } catch {
+            cardMeta = { preview_text: item.prayer_request_content };
+          }
+        }
         return (
           <Pressable
             onLongPress={() => openContextMenu(item)}
             style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}
           >
-            <View style={styles.prayerShareCard}>
-              <View style={styles.prayerShareHeader}>
-                <Text style={styles.prayerShareIcon}>🙏</Text>
-                <Text style={styles.prayerShareLabel}>Prayer Shared</Text>
-              </View>
-              {item.prayer_request_content && (
-                <Text style={styles.prayerShareContent} numberOfLines={3}>
-                  {item.prayer_request_content}
-                </Text>
-              )}
-              <Text style={styles.prayerShareMessage}>{item.content}</Text>
-            </View>
+            <PrayerRequestCard
+              meta={cardMeta}
+              rawContent={item.content}
+              isMine={isMine}
+              onReply={() => handleReply(item)}
+            />
             <View style={[styles.timeRow, isMine && styles.timeRowRight]}>
               <Text style={styles.msgTime}>{formatMessageTime(item.created_at)}</Text>
               {isMine && <CheckCheck size={12} color={colors.primary} />}
@@ -763,7 +766,7 @@ export default function ChatScreen() {
         </Pressable>
       );
     },
-    [currentUserId, isRealUser, openContextMenu, renderReactions]
+    [currentUserId, isRealUser, openContextMenu, renderReactions, handleReply, colors]
   );
 
   const isLoading = isRealUser && (convQuery.isLoading || messagesQuery.isLoading);

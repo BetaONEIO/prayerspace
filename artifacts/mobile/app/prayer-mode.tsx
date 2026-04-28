@@ -15,13 +15,12 @@ import {
   Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { Image as ExpoImage } from "expo-image";
+import { Image } from "expo-image";
 import { AutoScrollView } from '@/components/AutoScrollView';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { Image } from "expo-image";
 
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -358,7 +357,7 @@ export default function PrayerModeScreen() {
           <View style={styles.photosRow}>
             {attachedPhotos.map((uri) => (
               <View key={uri} style={styles.photoThumb}>
-                <ExpoImage source={{ uri }} style={styles.photoThumbImg} contentFit="cover" />
+                <Image source={{ uri }} style={styles.photoThumbImg} contentFit="cover" />
                 <Pressable style={styles.photoRemoveBtn} onPress={() => handleRemovePhoto(uri)}>
                   <XIcon size={10} color="#fff" strokeWidth={3} />
                 </Pressable>

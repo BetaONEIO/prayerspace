@@ -17,8 +17,10 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAuth } from "@/providers/AuthProvider";
+import { Image } from "expo-image";
 import { feedStore, FEED_COMMUNITIES } from "@/lib/feedStore";
 import { supabase } from "@/lib/supabase";
+import { getOrCreateDMConversation, isUUID } from "@/lib/chat";
 
 type DeliveryChannel = "app" | "whatsapp" | "sms";
 
@@ -302,8 +304,9 @@ export default function MessagePreviewFinalScreen() {
     const eventDate = (eventDateParam && eventDateParam !== "null" && eventDateParam !== "") ? eventDateParam : (feedPostMeta?.eventDate ?? null);
     const isTimeSensitive = isTimeSensitiveParam === "true";
 
+    let prayerRequestId: string | null = null;
     if (user?.id) {
-      const { error } = await supabase.from("prayer_requests").insert({
+      const { data: prData, error } = await supabase.from("prayer_requests").insert({
         author_id: user.id,
         content: prayerMessage,
         is_anonymous: isAnon,
@@ -312,11 +315,47 @@ export default function MessagePreviewFinalScreen() {
         tags,
         image_url: photoUrls[0] ?? null,
         event_date: eventDate ?? null,
-      });
+      }).select("id").single();
       if (error) {
         console.error("[MessagePreviewFinal] Supabase insert error:", error.message);
       } else {
-        console.log("[MessagePreviewFinal] Prayer saved to Supabase, audience:", isSendToFeed ? "everyone" : "private");
+        prayerRequestId = prData?.id ?? null;
+        console.log("[MessagePreviewFinal] Prayer saved to Supabase id:", prayerRequestId, "audience:", isSendToFeed ? "everyone" : "private");
+      }
+
+      const onAppRecipients = recipients.filter((r) => r.channel === "app" && isUUID(r.id));
+      if (onAppRecipients.length > 0 && prayerRequestId) {
+        const cardMeta = JSON.stringify({
+          prayer_request_id: prayerRequestId,
+          preview_text: prayerMessage,
+          event_date: eventDate ?? null,
+          is_time_sensitive: isTimeSensitive,
+          is_anonymous: isAnon,
+          tags,
+        });
+        for (const recipient of onAppRecipients) {
+          try {
+            const conversationId = await getOrCreateDMConversation(user.id, recipient.id);
+            const { error: msgErr } = await supabase.from("messages").insert({
+              conversation_id: conversationId,
+              sender_id: user.id,
+              content: "Sent you a prayer request 🙏",
+              type: "prayer_share",
+              prayer_request_content: cardMeta,
+              is_edited: false,
+              deleted_for_everyone: false,
+              deleted_for_sender: false,
+            });
+            if (msgErr) {
+              console.error("[MessagePreviewFinal] DM insert error:", msgErr.message);
+            } else {
+              await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
+              console.log("[MessagePreviewFinal] Prayer request card sent to DM:", conversationId.slice(0, 8));
+            }
+          } catch (e) {
+            console.error("[MessagePreviewFinal] Failed to send DM for recipient:", recipient.id, e);
+          }
+        }
       }
     }
 
@@ -350,7 +389,7 @@ export default function MessagePreviewFinalScreen() {
       console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags);
     }
     router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
-  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients.length, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);
+  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);
 
   return (
     <>
