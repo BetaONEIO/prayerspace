@@ -30,6 +30,8 @@ import {
   Users,
   Search,
   Edit3,
+  Settings,
+  UserPlus,
   MoreHorizontal,
   Heart,
   MessageCircle,
@@ -881,7 +883,11 @@ export default function CommunityScreen() {
   const posts = activeTab === "Feed" ? filteredFeedPosts : filteredCommunityPosts;
   const currentUserId = "user-1";
   const [createCommunityPaywallVisible, setCreateCommunityPaywallVisible] = useState<boolean>(false);
+  const [communityAdminMenuVisible, setCommunityAdminMenuVisible] = useState<boolean>(false);
   const [communityProfileTarget, setCommunityProfileTarget] = useState<Community | null>(null);
+
+  // True when the active community was created by this user during onboarding
+  const isActiveCommunityAdmin = !!(activeCommunity as StoredCommunity).isOwned;
 
   const handleViewCommunityProfile = useCallback((community: Community) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -906,13 +912,15 @@ export default function CommunityScreen() {
             <Menu size={20} color={colors.foreground} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Feed</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {activeTab === "Community" && joinedCommunities.length > 0 ? activeCommunity.name : "Feed"}
+            </Text>
             <Text style={styles.headerSubtitle} numberOfLines={1}>
               {activeTab === "Feed"
-                ? "Updates from friends"
+                ? "Prayer requests & updates"
                 : activeTab === "Community"
-                ? "Your Community"
-                : "Your Groups"}
+                ? "Community Feed"
+                : "Prayer Groups"}
             </Text>
           </View>
         </View>
@@ -920,12 +928,24 @@ export default function CommunityScreen() {
           <Pressable style={styles.iconBtn} onPress={() => setBrowseCommunitiesVisible(true)}>
             <Search size={20} color={colors.foreground} />
           </Pressable>
+          {activeTab === "Community" && isActiveCommunityAdmin && joinedCommunities.length > 0 && (
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => {
+                if (Platform.OS !== "web") void Haptics.selectionAsync();
+                setCommunityAdminMenuVisible(true);
+              }}
+            >
+              <MoreHorizontal size={20} color={colors.foreground} />
+            </Pressable>
+          )}
           {activeTab === "Community" && (
             <Pressable
               style={styles.iconBtn}
               onPress={() => {
                 if (Platform.OS !== "web") void Haptics.selectionAsync();
-                setBrowseCommunitiesVisible(true);
+                if (joinedCommunities.length > 0) setSwitcherVisible(true);
+                else setBrowseCommunitiesVisible(true);
               }}
             >
               <Users size={20} color={colors.foreground} />
@@ -1134,6 +1154,36 @@ export default function CommunityScreen() {
         />
       )}
 
+      <Modal
+        visible={communityAdminMenuVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCommunityAdminMenuVisible(false)}
+      >
+        <Pressable style={styles.adminMenuOverlay} onPress={() => setCommunityAdminMenuVisible(false)}>
+          <View style={[styles.adminMenuSheet, { backgroundColor: colors.card }]}>
+            <View style={[styles.adminMenuHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.adminMenuTitle, { color: colors.foreground }]}>{activeCommunity.name}</Text>
+            {([
+              { label: "Manage Community", icon: Settings, handler: () => { setCommunityAdminMenuVisible(false); router.push("/group/manage" as never); } },
+              { label: "Invite Members", icon: UserPlus, handler: () => { setCommunityAdminMenuVisible(false); void Share.share({ message: `Join ${activeCommunity.name} on Prayer Space — a community for prayer and faith. 🙏` }); } },
+              { label: "Edit Details", icon: Edit3, handler: () => { setCommunityAdminMenuVisible(false); router.push("/group/manage" as never); } },
+            ] as const).map((item) => {
+              const Icon = item.icon;
+              return (
+                <Pressable key={item.label} style={[styles.adminMenuItem, { borderBottomColor: colors.border }]} onPress={item.handler}>
+                  <View style={[styles.adminMenuIconWrap, { backgroundColor: colors.primary + "15" }]}>
+                    <Icon size={17} color={colors.primary} />
+                  </View>
+                  <Text style={[styles.adminMenuItemText, { color: colors.foreground }]}>{item.label}</Text>
+                  <ChevronRight size={16} color={colors.mutedForeground} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
       {shareTarget && (
         <PrayerShareSheet
           post={shareTarget}
@@ -1222,7 +1272,7 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
         >
           <View style={styles.selectorHeaderRow}>
             <View style={styles.selectorBadge}>
-              <Text style={styles.selectorLabel}>ACTIVE COMMUNITY</Text>
+              <Text style={styles.selectorLabel}>YOUR COMMUNITY</Text>
             </View>
             <ChevronDown size={15} color="#fff" />
           </View>
@@ -2211,6 +2261,12 @@ function MyGroupsContent() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View style={[styles.groupsContextCard, { backgroundColor: colors.primary + "0C", borderColor: colors.primary + "22" }]}>
+          <Text style={[styles.groupsContextText, { color: colors.mutedForeground }]}>
+            Prayer groups are focused spaces within your community — for deeper, more personal prayer with a trusted circle.
+          </Text>
+        </View>
+
         <View style={styles.groupActionsRow}>
           <Pressable style={styles.createGroupBtn} onPress={() => router.push("/create-group")}>
             <View style={styles.createGroupInner}>
@@ -7783,4 +7839,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     fontWeight: "500" as const,
   },
+  adminMenuOverlay: { flex: 1, justifyContent: "flex-end" as const, backgroundColor: "rgba(0,0,0,0.45)" },
+  adminMenuSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 20, paddingBottom: 40 },
+  adminMenuHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center" as const, marginBottom: 18 },
+  adminMenuTitle: { fontSize: 15, fontWeight: "700" as const, textAlign: "center" as const, marginBottom: 18, opacity: 0.7 },
+  adminMenuItem: { flexDirection: "row" as const, alignItems: "center" as const, paddingVertical: 14, gap: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  adminMenuIconWrap: { width: 38, height: 38, borderRadius: 19, alignItems: "center" as const, justifyContent: "center" as const },
+  adminMenuItemText: { flex: 1, fontSize: 15, fontWeight: "600" as const },
+  groupsContextCard: { borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
+  groupsContextText: { fontSize: 13, lineHeight: 19 },
 });
