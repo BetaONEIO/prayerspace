@@ -5,9 +5,7 @@ import { useRouter } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
-const onboardingImage = {
-  uri: "https://ggrhecslgdflloszjkwl.supabase.co/storage/v1/object/public/user-assets/Dsd9kebVr6M/components/0GnuCY4Uy2B.png",
-};
+const onboardingImage = require("../../assets/images/onboard_connect.png");
 
 const { width } = Dimensions.get("window");
 
