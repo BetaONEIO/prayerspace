@@ -24,9 +24,9 @@ export default function ChurchSize() {
       <View style={styles.inner}>
         <View style={styles.progressRow}>
           <View style={styles.progressBg}>
-            <View style={[styles.progressFill, { width: "50%" }]} />
+            <View style={[styles.progressFill, { width: "42.9%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 3 of 6</Text>
+          <Text style={styles.stepText}>Step 3 of 7</Text>
         </View>
 
         <View style={styles.headingArea}>

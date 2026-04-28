@@ -40,7 +40,7 @@ export default function ChurchValue() {
           <View style={styles.progressBg}>
             <View style={[styles.progressFill, { width: "100%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 6 of 6</Text>
+          <Text style={styles.stepText}>Step 7 of 7</Text>
         </View>
 
         <AutoScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>

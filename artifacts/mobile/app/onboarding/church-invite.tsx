@@ -36,9 +36,9 @@ export default function ChurchInvite() {
       <View style={styles.inner}>
         <View style={styles.progressRow}>
           <View style={styles.progressBg}>
-            <View style={[styles.progressFill, { width: "83.3%" }]} />
+            <View style={[styles.progressFill, { width: "85.7%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 5 of 6</Text>
+          <Text style={styles.stepText}>Step 6 of 7</Text>
         </View>
 
         <View style={styles.headingArea}>
