@@ -36,8 +36,8 @@ export default function OnboardingGoals() {
           <Text style={styles.stepText}>Step 1 of 5</Text>
         </View>
         <View style={styles.headingArea}>
-          <Text style={styles.title}>Why are you using PrayerPal?</Text>
-          <Text style={styles.subtitle}>Select all that apply to help us personalize your experience.</Text>
+          <Text style={styles.title}>What brings you here?</Text>
+          <Text style={styles.subtitle}>Choose everything that feels right. You can always change this later.</Text>
         </View>
         <AutoScrollView style={styles.list} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
           {GOALS.map((goal) => {

@@ -1,24 +1,24 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Sun, Stars, Moon, Calendar, Check } from "lucide-react-native";
+import { Sun, Calendar, Heart, Compass, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
-const HABITS = [
-  { id: "morning", label: "Every morning", sublabel: "Start the day with peace", icon: Sun },
-  { id: "multiple", label: "Multiple times daily", sublabel: "Throughout the day", icon: Stars },
-  { id: "bedtime", label: "Before bed", sublabel: "Reflect and rest", icon: Moon },
-  { id: "occasional", label: "Occasionally", sublabel: "When I feel the need", icon: Calendar },
+const FREQUENCY_OPTIONS = [
+  { id: "daily", label: "Daily", sublabel: "Build a steady habit", icon: Sun },
+  { id: "few_times", label: "A few times a week", sublabel: "Keep it sustainable", icon: Calendar },
+  { id: "when_needed", label: "When I need it", sublabel: "Whenever feels right", icon: Heart },
+  { id: "exploring", label: "Just exploring", sublabel: "No pressure at all", icon: Compass },
 ];
 
 export default function OnboardingHabits() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [selected, setSelected] = useState<string>("morning");
+  const [selected, setSelected] = useState<string>("daily");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,23 +28,27 @@ export default function OnboardingHabits() {
           <Text style={styles.stepText}>Step 2 of 5</Text>
         </View>
         <View style={styles.headingArea}>
-          <Text style={styles.title}>How often do you pray?</Text>
-          <Text style={styles.subtitle}>This helps us set gentle reminders that fit your lifestyle.</Text>
+          <Text style={styles.title}>How often do you want to spend time in prayer?</Text>
+          <Text style={styles.subtitle}>We'll gently remind you — never more than you want.</Text>
         </View>
         <AutoScrollView style={styles.list} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
-          {HABITS.map((habit) => {
-            const isSelected = selected === habit.id;
-            const IconComp = habit.icon;
+          {FREQUENCY_OPTIONS.map((opt) => {
+            const isSelected = selected === opt.id;
+            const IconComp = opt.icon;
             return (
-              <Pressable key={habit.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => setSelected(habit.id)} testID={`habit-${habit.id}`}>
+              <Pressable key={opt.id} style={[styles.card, isSelected && styles.cardSelected]} onPress={() => setSelected(opt.id)} testID={`habit-${opt.id}`}>
                 <View style={[styles.iconWrap, isSelected && styles.iconWrapSelected]}>
                   <IconComp size={28} color={isSelected ? colors.primaryForeground : colors.primary} />
                 </View>
                 <View style={styles.textWrap}>
-                  <Text style={styles.cardLabel}>{habit.label}</Text>
-                  <Text style={styles.cardSublabel}>{habit.sublabel}</Text>
+                  <Text style={styles.cardLabel}>{opt.label}</Text>
+                  <Text style={styles.cardSublabel}>{opt.sublabel}</Text>
                 </View>
-                {isSelected && <View style={styles.checkBadge}><Check size={16} color={colors.primary} strokeWidth={3} /></View>}
+                {isSelected && (
+                  <View style={styles.checkBadge}>
+                    <Check size={16} color={colors.primary} strokeWidth={3} />
+                  </View>
+                )}
               </Pressable>
             );
           })}
