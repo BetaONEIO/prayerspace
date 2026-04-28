@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { Building2 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { churchMembershipStore } from "@/lib/churchMembershipStore";
 
 export default function OnboardingChurchCommunity() {
   const router = useRouter();
@@ -22,6 +23,11 @@ export default function OnboardingChurchCommunity() {
   const [description, setDescription] = useState("");
 
   const canContinue = name.trim().length > 0;
+
+  const handleContinue = () => {
+    churchMembershipStore.setMember(name.trim() || null);
+    router.push("/onboarding/church-paywall" as never);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -80,7 +86,7 @@ export default function OnboardingChurchCommunity() {
                 !canContinue && styles.continueBtnDisabled,
                 pressed && canContinue && styles.btnPressed,
               ]}
-              onPress={() => router.push("/onboarding/church-paywall" as never)}
+              onPress={handleContinue}
               disabled={!canContinue}
               testID="church-community-continue"
             >
@@ -88,7 +94,7 @@ export default function OnboardingChurchCommunity() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.6 }]}
-              onPress={() => router.push("/onboarding/church-paywall" as never)}
+              onPress={() => { churchMembershipStore.setMember(null); router.push("/onboarding/church-paywall" as never); }}
             >
               <Text style={styles.skipBtnText}>Skip for now</Text>
             </Pressable>

@@ -16,6 +16,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
 import { PurchasesPackage } from "react-native-purchases";
+import { useChurchMembership } from "@/lib/churchMembershipStore";
 
 const FEATURES = [
   {
@@ -60,13 +61,25 @@ export default function PrayerSpaceProScreen() {
   const purchaseMutation = usePurchasePackage();
   const restoreMutation = useRestorePurchases();
 
+  const { isChurchMember, churchName } = useChurchMembership();
+
   const monthlyPackage: PurchasesPackage | undefined = offerings?.current?.monthly ?? undefined;
   const annualPackage: PurchasesPackage | undefined = offerings?.current?.annual ?? undefined;
 
-  const selectedPackage = plan === "yearly" ? annualPackage : monthlyPackage;
+  const discountOffering = offerings?.all?.["church_members"] ?? null;
+  const monthlyDiscountPackage: PurchasesPackage | undefined =
+    discountOffering?.availablePackages?.find((p) => p.identifier === "pro_monthly_discount") ?? undefined;
+  const annualDiscountPackage: PurchasesPackage | undefined =
+    discountOffering?.availablePackages?.find((p) => p.identifier === "pro_yearly_discount") ?? undefined;
 
-  const monthlyPrice = monthlyPackage?.product?.priceString ?? "$5.99/mo";
-  const annualPrice = annualPackage?.product?.priceString ?? "$49.99/yr";
+  const activeMonthlyPackage = isChurchMember ? (monthlyDiscountPackage ?? monthlyPackage) : monthlyPackage;
+  const activeAnnualPackage = isChurchMember ? (annualDiscountPackage ?? annualPackage) : annualPackage;
+  const selectedPackage = plan === "yearly" ? activeAnnualPackage : activeMonthlyPackage;
+
+  const monthlyPrice = activeMonthlyPackage?.product?.priceString ?? (isChurchMember ? "£4.49/mo" : "$5.99/mo");
+  const annualPrice = activeAnnualPackage?.product?.priceString ?? (isChurchMember ? "£34.99/yr" : "$49.99/yr");
+  const monthlyOriginalPrice = isChurchMember ? (monthlyPackage?.product?.priceString ?? "$5.99/mo") : null;
+  const annualOriginalPrice = isChurchMember ? (annualPackage?.product?.priceString ?? "$49.99/yr") : null;
 
   const handleTrial = async () => {
     if (!selectedPackage) {
@@ -165,6 +178,16 @@ export default function PrayerSpaceProScreen() {
             })}
           </View>
 
+          {isChurchMember && (
+            <View style={styles.discountBanner}>
+              <Text style={styles.discountBannerText}>
+                {churchName
+                  ? `Special pricing for ${churchName} members`
+                  : "Special pricing for church members"}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.planRow}>
             <Pressable
               style={[styles.planCard, plan === "yearly" && styles.planCardSelected]}
@@ -181,6 +204,7 @@ export default function PrayerSpaceProScreen() {
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <>
+                  {annualOriginalPrice && <Text style={styles.originalPrice}>{annualOriginalPrice}</Text>}
                   <Text style={styles.planPrice}>{annualPrice}</Text>
                   <Text style={styles.planPerMonth}>$4.17 / month</Text>
                 </>
@@ -202,6 +226,7 @@ export default function PrayerSpaceProScreen() {
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <>
+                  {monthlyOriginalPrice && <Text style={styles.originalPrice}>{monthlyOriginalPrice}</Text>}
                   <Text style={styles.planPrice}>{monthlyPrice}</Text>
                   <Text style={styles.planPerMonth}>Billed monthly</Text>
                 </>
@@ -432,6 +457,29 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     marginTop: 3,
     fontWeight: "500" as const,
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textDecorationLine: "line-through" as const,
+    marginBottom: 2,
+  },
+  discountBanner: {
+    width: "100%",
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    alignItems: "center" as const,
+    borderWidth: 1,
+    borderColor: colors.primary + "33",
+  },
+  discountBannerText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: colors.primary,
+    textAlign: "center" as const,
   },
   trialBtn: {
     width: "100%",

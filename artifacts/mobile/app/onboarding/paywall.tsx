@@ -16,6 +16,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
 import { PurchasesPackage } from "react-native-purchases";
+import { useChurchMembership } from "@/lib/churchMembershipStore";
 
 const FEATURES = [
   {
@@ -48,13 +49,25 @@ export default function OnboardingPaywall() {
   const purchaseMutation = usePurchasePackage();
   const restoreMutation = useRestorePurchases();
 
+  const { isChurchMember, churchName } = useChurchMembership();
+
   const monthlyPackage: PurchasesPackage | undefined = offerings?.current?.monthly ?? undefined;
   const annualPackage: PurchasesPackage | undefined = offerings?.current?.annual ?? undefined;
 
-  const selectedPackage = plan === "yearly" ? annualPackage : monthlyPackage;
+  const discountOffering = offerings?.all?.["church_members"] ?? null;
+  const monthlyDiscountPackage: PurchasesPackage | undefined =
+    discountOffering?.availablePackages?.find((p) => p.identifier === "pro_monthly_discount") ?? undefined;
+  const annualDiscountPackage: PurchasesPackage | undefined =
+    discountOffering?.availablePackages?.find((p) => p.identifier === "pro_yearly_discount") ?? undefined;
 
-  const monthlyPrice = monthlyPackage?.product?.priceString ?? "$5.99/mo";
-  const annualPrice = annualPackage?.product?.priceString ?? "$49.99/yr";
+  const activeMonthlyPackage = isChurchMember ? (monthlyDiscountPackage ?? monthlyPackage) : monthlyPackage;
+  const activeAnnualPackage = isChurchMember ? (annualDiscountPackage ?? annualPackage) : annualPackage;
+  const selectedPackage = plan === "yearly" ? activeAnnualPackage : activeMonthlyPackage;
+
+  const monthlyPrice = activeMonthlyPackage?.product?.priceString ?? (isChurchMember ? "£4.49/mo" : "$5.99/mo");
+  const annualPrice = activeAnnualPackage?.product?.priceString ?? (isChurchMember ? "£34.99/yr" : "$49.99/yr");
+  const monthlyOriginalPrice = isChurchMember ? (monthlyPackage?.product?.priceString ?? "$5.99/mo") : null;
+  const annualOriginalPrice = isChurchMember ? (annualPackage?.product?.priceString ?? "$49.99/yr") : null;
 
   const handleClose = () => {
     router.push("/onboarding/contact-permissions" as never);
@@ -156,6 +169,16 @@ export default function OnboardingPaywall() {
 
           <Text style={styles.habitLine}>Build a daily habit of prayer and encouragement</Text>
 
+          {isChurchMember && (
+            <View style={styles.discountBanner}>
+              <Text style={styles.discountBannerText}>
+                {churchName
+                  ? `Special pricing for ${churchName} members`
+                  : "Special pricing for church members"}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.planRow}>
             <Pressable
               style={[styles.planCard, plan === "yearly" && styles.planCardSelected]}
@@ -169,7 +192,10 @@ export default function OnboardingPaywall() {
               {offeringsLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 4 }} />
               ) : (
-                <Text style={styles.planPrice}>{annualPrice}</Text>
+                <>
+                  {annualOriginalPrice && <Text style={styles.originalPrice}>{annualOriginalPrice}</Text>}
+                  <Text style={styles.planPrice}>{annualPrice}</Text>
+                </>
               )}
             </Pressable>
 
@@ -185,7 +211,10 @@ export default function OnboardingPaywall() {
               {offeringsLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 4 }} />
               ) : (
-                <Text style={styles.planPrice}>{monthlyPrice}</Text>
+                <>
+                  {monthlyOriginalPrice && <Text style={styles.originalPrice}>{monthlyOriginalPrice}</Text>}
+                  <Text style={styles.planPrice}>{monthlyPrice}</Text>
+                </>
               )}
             </Pressable>
           </View>
@@ -404,6 +433,28 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 18,
     fontWeight: "800" as const,
     color: colors.primary,
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: colors.mutedForeground,
+    textDecorationLine: "line-through" as const,
+    marginBottom: 2,
+  },
+  discountBanner: {
+    backgroundColor: colors.accent,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 14,
+    alignItems: "center" as const,
+    borderWidth: 1,
+    borderColor: colors.primary + "33",
+  },
+  discountBannerText: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    color: colors.primary,
+    textAlign: "center" as const,
   },
   trialBtn: {
     width: "100%",
