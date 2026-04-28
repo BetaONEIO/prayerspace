@@ -61,7 +61,7 @@ function createStyles(colors: ThemeColors) {
     container: { flex: 1, backgroundColor: colors.background },
     inner: { flex: 1, paddingHorizontal: 32, paddingBottom: 32, alignItems: "center", justifyContent: "space-between" },
     imageArea: { flex: 1, alignItems: "center", justifyContent: "center", width: "100%" },
-    heroImage: { width: width * 0.75, height: width * 0.75 },
+    heroImage: { width: width * 1.125, height: width * 1.125 },
     textArea: { alignItems: "center", gap: 16, marginBottom: 40, paddingHorizontal: 8 },
     title: { fontSize: 34, fontWeight: "800" as const, color: colors.foreground, textAlign: "center", letterSpacing: -0.5, lineHeight: 42 },
     subtitle: { fontSize: 17, color: colors.mutedForeground, textAlign: "center", lineHeight: 26, maxWidth: 300 },
