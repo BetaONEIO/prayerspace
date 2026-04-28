@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import { Users, Bell, Sun, Calendar, Moon, Stars } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import { useOnboardingStore } from "@/lib/onboardingStore";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -29,17 +28,12 @@ export default function OnboardingCommunityNotifications() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { userType } = useOnboardingStore();
   const [community, setCommunity] = useState<string | null>(null);
   const [reminders, setReminders] = useState<boolean | null>(null);
   const [reminderTime, setReminderTime] = useState<string>("evening");
 
   const handleContinue = () => {
-    if (userType === "church") {
-      router.push("/onboarding/church-community" as never);
-    } else {
-      router.push("/onboarding/paywall" as never);
-    }
+    router.push("/onboarding/paywall" as never);
   };
 
   const handleReminders = (val: boolean) => {

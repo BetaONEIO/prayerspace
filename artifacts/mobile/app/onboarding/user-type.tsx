@@ -31,7 +31,11 @@ export default function OnboardingUserType() {
   const handleContinue = () => {
     if (!selected) return;
     onboardingStore.setUserType(selected);
-    router.push("/onboarding/goals" as never);
+    if (selected === "church") {
+      router.push("/onboarding/church-group-type" as never);
+    } else {
+      router.push("/onboarding/goals" as never);
+    }
   };
 
   return (
