@@ -28,7 +28,7 @@ const HELP_SECTIONS: HelpSection[] = [
   { id: "faq", title: "FAQs", icon: HelpCircle, color: "#C4662A", faqs: [
     { question: "Who can see my prayer requests?", answer: "You're in full control. When posting a prayer request, you can choose to share it with your community, with selected contacts only, or keep it private." },
     { question: "Can I delete a prayer request?", answer: "Yes. You can archive any prayer request you created at any time. Archived requests are removed from the active feed but kept safely in your prayer history." },
-    { question: "How do I join a group?", answer: "Tap the 'My Groups' tab and look for the 'Join Group' option. You'll be asked to enter a group password provided by the group admin." },
+    { question: "How do I join a group?", answer: "Tap the 'Groups' tab and look for the 'Join Group' option. You'll be asked to enter a group password provided by the group admin." },
     { question: "How does Prayer Space work?", answer: "Prayer Space is your dedicated space for quiet, focused prayer. Open it from the pray tab, set your intention, and use the guided or free-form prayer experience." },
     { question: "Can I follow up on a prayer request?", answer: "Yes! As the original author, you can tap 'Repost with Update' to share what's happened since you first posted." },
     { question: "How do I encourage someone?", answer: "On any prayer card in your feed, tap the 'Encourage' button to send a word of support." },

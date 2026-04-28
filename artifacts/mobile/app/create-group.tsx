@@ -120,7 +120,7 @@ export default function CreateGroupScreen() {
 
   const handleGoToGroup = useCallback(() => {
     setShowCreatedModal(false);
-    router.replace({ pathname: "/(tabs)/community", params: { tab: "My Groups" } });
+    router.replace({ pathname: "/(tabs)/community", params: { tab: "Groups" } });
   }, [router]);
 
   const handleNext = useCallback(() => {

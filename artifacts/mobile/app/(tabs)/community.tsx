@@ -78,7 +78,7 @@ import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { useNotifications } from "@/providers/NotificationsProvider";
 
-type Tab = "Feed" | "Community" | "My Groups";
+type Tab = "Feed" | "Community" | "Groups";
 
 interface Community {
   id: string;
@@ -466,6 +466,7 @@ interface MyGroup {
   lastActivity: string;
   avatar: string;
   activeRequests: number;
+  isAdmin?: boolean;
 }
 
 const NOTIFICATION_GROUP_MAP: Record<string, MyGroup> = {
@@ -487,6 +488,7 @@ const INITIAL_MY_GROUPS: MyGroup[] = [
     lastActivity: "2 hours ago",
     avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
     activeRequests: 3,
+    isAdmin: true,
   },
   {
     id: "g2",
@@ -495,6 +497,7 @@ const INITIAL_MY_GROUPS: MyGroup[] = [
     lastActivity: "Yesterday",
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
     activeRequests: 1,
+    isAdmin: true,
   },
   {
     id: "g3",
@@ -503,6 +506,7 @@ const INITIAL_MY_GROUPS: MyGroup[] = [
     lastActivity: "3 days ago",
     avatar: "https://images.unsplash.com/photo-1511895426328-dc8714191011?w=400&q=80",
     activeRequests: 0,
+    isAdmin: false,
   },
 ];
 
@@ -547,7 +551,7 @@ export default function CommunityScreen() {
   const [activeTab, setActiveTab] = useState<Tab>((tabParam as Tab) ?? "Feed");
 
   useEffect(() => {
-    if (tabParam && ["Feed", "Community", "My Groups"].includes(tabParam)) {
+    if (tabParam && ["Feed", "Community", "Groups"].includes(tabParam)) {
       setActiveTab(tabParam as Tab);
     }
   }, [tabParam]);
@@ -907,7 +911,7 @@ export default function CommunityScreen() {
               <Users size={20} color={colors.foreground} />
             </Pressable>
           )}
-          {activeTab === "My Groups" && (
+          {activeTab === "Groups" && (
             <Pressable
               style={styles.iconBtn}
               onPress={() => {
@@ -927,7 +931,7 @@ export default function CommunityScreen() {
 
       <View style={styles.segmentWrapper}>
         <View style={styles.segmentContainer}>
-          {(["Feed", "Community", "My Groups"] as Tab[]).map((tab) => (
+          {(["Feed", "Community", "Groups"] as Tab[]).map((tab) => (
             <Pressable
               key={tab}
               style={[styles.segmentTab, activeTab === tab && styles.segmentTabActive]}
@@ -942,7 +946,7 @@ export default function CommunityScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      {activeTab === "My Groups" ? (
+      {activeTab === "Groups" ? (
         <MyGroupsContent />
       ) : (
         <AutoScrollView
@@ -2088,12 +2092,56 @@ function CommunitySwitcherModal({
   );
 }
 
+function GroupCard({
+  group,
+  onPress,
+  showAdminBadge,
+  colors,
+  styles,
+}: {
+  group: MyGroup;
+  onPress: () => void;
+  showAdminBadge: boolean;
+  colors: ReturnType<typeof useThemeColors>;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <Pressable
+      style={styles.groupCard}
+      onPress={onPress}
+    >
+      <Image source={{ uri: group.avatar }} style={styles.groupAvatar} />
+      <View style={styles.groupInfo}>
+        <View style={styles.groupNameRow}>
+          <Text style={styles.groupName}>{group.name}</Text>
+          {showAdminBadge && (
+            <View style={[styles.adminBadge, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "30" }]}>
+              <Crown size={9} color={colors.primary} />
+              <Text style={[styles.adminBadgeText, { color: colors.primary }]}>Admin</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.groupMeta}>{group.memberCount} members · {group.lastActivity}</Text>
+      </View>
+      <View style={styles.groupRight}>
+        {group.activeRequests > 0 && (
+          <View style={styles.requestsBadge}>
+            <Text style={styles.requestsBadgeText}>{group.activeRequests}</Text>
+          </View>
+        )}
+        <ChevronRight size={18} color={colors.mutedForeground} />
+      </View>
+    </Pressable>
+  );
+}
+
 function MyGroupsContent() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const router = useRouter();
   const [myGroups, setMyGroups] = useState<MyGroup[]>(INITIAL_MY_GROUPS);
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
+  const [groupsFilter, setGroupsFilter] = useState<"all" | "leading">("all");
   const { joinedGroupIds } = useNotifications();
 
   React.useEffect(() => {
@@ -2123,11 +2171,19 @@ function MyGroupsContent() {
       lastActivity: "Just now",
       avatar: group.avatar,
       activeRequests: 0,
+      isAdmin: false,
     };
     setMyGroups((prev) => [newGroup, ...prev]);
     setJoinModalVisible(false);
     console.log("[MyGroups] Joined group:", group.name);
   }, []);
+
+  const ledGroups = myGroups.filter((g) => g.isAdmin);
+  const memberGroups = myGroups.filter((g) => !g.isAdmin);
+  const hasLedGroups = ledGroups.length > 0;
+
+  const filteredGroups =
+    groupsFilter === "leading" ? ledGroups : myGroups;
 
   return (
     <>
@@ -2163,27 +2219,107 @@ function MyGroupsContent() {
           </Pressable>
         </View>
 
-        {myGroups.map((group) => (
-          <Pressable
-            key={group.id}
-            style={styles.groupCard}
-            onPress={() => handleGroupPress(group.id)}
-          >
-            <Image source={{ uri: group.avatar }} style={styles.groupAvatar} />
-            <View style={styles.groupInfo}>
-              <Text style={styles.groupName}>{group.name}</Text>
-              <Text style={styles.groupMeta}>{group.memberCount} members · {group.lastActivity}</Text>
-            </View>
-            <View style={styles.groupRight}>
-              {group.activeRequests > 0 && (
-                <View style={styles.requestsBadge}>
-                  <Text style={styles.requestsBadgeText}>{group.activeRequests}</Text>
+        {hasLedGroups && (
+          <View style={[styles.groupsFilterRow, { borderBottomColor: colors.border }]}>
+            {(["all", "leading"] as const).map((f) => (
+              <Pressable
+                key={f}
+                style={[
+                  styles.groupsFilterTab,
+                  groupsFilter === f && [styles.groupsFilterTabActive, { borderBottomColor: colors.primary }],
+                ]}
+                onPress={() => {
+                  if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  setGroupsFilter(f);
+                }}
+              >
+                <Text style={[
+                  styles.groupsFilterText,
+                  { color: groupsFilter === f ? colors.primary : colors.mutedForeground },
+                ]}>
+                  {f === "all" ? "All" : "Leading"}
+                </Text>
+                {f === "leading" && hasLedGroups && (
+                  <View style={[styles.groupsFilterBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.groupsFilterBadgeText}>{ledGroups.length}</Text>
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {groupsFilter === "all" ? (
+          <>
+            {hasLedGroups && (
+              <>
+                <View style={styles.groupsSectionHeader}>
+                  <Crown size={13} color={colors.primary} />
+                  <Text style={[styles.groupsSectionTitle, { color: colors.mutedForeground }]}>Groups You Lead</Text>
                 </View>
-              )}
-              <ChevronRight size={18} color={colors.mutedForeground} />
-            </View>
-          </Pressable>
-        ))}
+                {ledGroups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onPress={() => handleGroupPress(group.id)}
+                    showAdminBadge
+                    colors={colors}
+                    styles={styles}
+                  />
+                ))}
+              </>
+            )}
+
+            {memberGroups.length > 0 && (
+              <>
+                <View style={styles.groupsSectionHeader}>
+                  <Users size={13} color={colors.mutedForeground} />
+                  <Text style={[styles.groupsSectionTitle, { color: colors.mutedForeground }]}>Your Groups</Text>
+                </View>
+                {memberGroups.map((group) => (
+                  <GroupCard
+                    key={group.id}
+                    group={group}
+                    onPress={() => handleGroupPress(group.id)}
+                    showAdminBadge={false}
+                    colors={colors}
+                    styles={styles}
+                  />
+                ))}
+              </>
+            )}
+
+            {myGroups.length === 0 && (
+              <View style={styles.groupsEmpty}>
+                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No groups yet</Text>
+                <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
+                  Create a group or join one with an invite code.
+                </Text>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
+            {filteredGroups.map((group) => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                onPress={() => handleGroupPress(group.id)}
+                showAdminBadge
+                colors={colors}
+                styles={styles}
+              />
+            ))}
+            {filteredGroups.length === 0 && (
+              <View style={styles.groupsEmpty}>
+                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No groups you lead</Text>
+                <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
+                  Create a new group to become an admin.
+                </Text>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
 
       <JoinGroupModal
@@ -5601,6 +5737,93 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 11,
     fontWeight: "800" as const,
     color: colors.primaryForeground,
+  },
+  groupNameRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    flexWrap: "wrap" as const,
+  },
+  adminBadge: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    letterSpacing: 0.2,
+  },
+  groupsFilterRow: {
+    flexDirection: "row" as const,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  groupsFilterTab: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    marginRight: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  groupsFilterTabActive: {
+    borderBottomWidth: 2,
+  },
+  groupsFilterText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  groupsFilterBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 4,
+  },
+  groupsFilterBadgeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: colors.primaryForeground,
+  },
+  groupsSectionHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  groupsSectionTitle: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
+  },
+  groupsEmpty: {
+    alignItems: "center" as const,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  groupsEmptyTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    textAlign: "center" as const,
+  },
+  groupsEmptyDesc: {
+    fontSize: 14,
+    textAlign: "center" as const,
+    lineHeight: 20,
   },
   modalOverlay: {
     flex: 1,
