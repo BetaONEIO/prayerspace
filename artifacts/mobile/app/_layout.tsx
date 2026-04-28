@@ -17,8 +17,10 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+const ONBOARDING_PREVIEW_EMAILS = ["david@betaone.io"];
+
 function AuthGuard() {
-  const { session, isInitialized } = useAuth();
+  const { session, isInitialized, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -30,14 +32,17 @@ function AuthGuard() {
       segments[0] === "register" ||
       segments[0] === "verify-otp";
 
+    const isOnboardingPreviewUser = ONBOARDING_PREVIEW_EMAILS.includes(user?.email ?? "");
+
     if (!session && !inAuthGroup) {
       console.log("[AuthGuard] No session, redirecting to login");
       router.replace("/login");
     } else if (session && inAuthGroup && segments[0] !== "verify-otp") {
-      console.log("[AuthGuard] Session found, redirecting to home");
-      router.replace("/");
+      const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
+      console.log("[AuthGuard] Session found, redirecting to", destination);
+      router.replace(destination);
     }
-  }, [session, isInitialized, segments]);
+  }, [session, isInitialized, segments, user]);
 
   return null;
 }
