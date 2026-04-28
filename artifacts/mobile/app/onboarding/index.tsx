@@ -4,7 +4,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import onboardingImage from "@assets/Screenshot_2026-04-28_at_17.28.30_1777393711974.png";
+
+const onboardingImage = {
+  uri: "https://ggrhecslgdflloszjkwl.supabase.co/storage/v1/object/public/user-assets/Dsd9kebVr6M/components/0GnuCY4Uy2B.png",
+};
 
 const { width } = Dimensions.get("window");
 
