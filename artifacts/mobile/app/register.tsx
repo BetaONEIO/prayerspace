@@ -138,7 +138,7 @@ export default function RegisterScreen() {
       const normalizedEmail = email.trim().toLowerCase();
       await signUp(normalizedEmail, password, name.trim(), iso);
       console.log("[Register] Sign up successful, redirecting to OTP verification");
-      router.replace({ pathname: "/verify-otp", params: { email: normalizedEmail } });
+      router.replace({ pathname: "/verify-otp", params: { email: normalizedEmail, from: "register" } });
       return;
     } catch (error: unknown) {
       let rawMessage = "";

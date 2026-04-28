@@ -18,7 +18,7 @@ export default function VerifyOtpScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { email } = useLocalSearchParams<{ email: string }>();
+  const { email, from } = useLocalSearchParams<{ email: string; from?: string }>();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -143,7 +143,7 @@ export default function VerifyOtpScreen() {
         setSuccess(true);
         Animated.spring(successAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
         Keyboard.dismiss();
-        setTimeout(() => router.replace("/"), 1800);
+        setTimeout(() => router.replace(from === "register" ? "/onboarding" : "/"), 1800);
       }
     } catch (err) {
       console.error("[VerifyOtp] verify threw:", err);
