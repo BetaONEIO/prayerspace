@@ -95,6 +95,7 @@ function RootLayoutNav() {
       <Stack.Screen name="help-centre" options={{ headerShown: false }} />
       <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
       <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
+      <Stack.Screen name="group/manage" options={{ headerShown: false }} />
     </Stack>
     </>
   );

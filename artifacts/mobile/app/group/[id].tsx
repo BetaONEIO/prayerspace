@@ -24,7 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
-  Settings,
+  MoreVertical,
   MoreHorizontal,
   Mic,
   Send,
@@ -43,6 +43,9 @@ import {
   Trash2,
   Flag,
   Info,
+  Settings,
+  LogOut,
+  UserPlus,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
@@ -112,6 +115,7 @@ interface Member {
 }
 
 const TOTAL_GROUP_MEMBERS = 12;
+const IS_CURRENT_USER_ADMIN = true;
 
 const CHAT_MESSAGES: ChatMessage[] = [
   {
@@ -376,9 +380,28 @@ export default function GroupDetailScreen() {
   const [contextMsg, setContextMsg] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
   const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const groupMenuAnim = useRef(new Animated.Value(260)).current;
+  const groupMenuBackdrop = useRef(new Animated.Value(0)).current;
   const msgPositionsRef = useRef<Map<string, number>>(new Map());
   const injectedRef = useRef<boolean>(false);
   const chatScrollRef = useRef<ScrollView>(null);
+
+  const openGroupMenu = useCallback(() => {
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowGroupMenu(true);
+    Animated.parallel([
+      Animated.timing(groupMenuBackdrop, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(groupMenuAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
+    ]).start();
+  }, [groupMenuAnim, groupMenuBackdrop]);
+
+  const closeGroupMenu = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(groupMenuBackdrop, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(groupMenuAnim, { toValue: 260, duration: 180, useNativeDriver: true }),
+    ]).start(() => setShowGroupMenu(false));
+  }, [groupMenuAnim, groupMenuBackdrop]);
 
   const handleLongPress = useCallback((msg: ChatMessage) => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -550,8 +573,8 @@ export default function GroupDetailScreen() {
               <Text style={styles.groupName}>Grace Community</Text>
               <Text style={styles.groupStats}>128 Members · Active Now</Text>
             </View>
-            <Pressable style={styles.settingsBtn}>
-              <Settings size={18} color={colors.foreground} />
+            <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
+              <MoreVertical size={18} color={colors.foreground} />
             </Pressable>
           </View>
         </View>
@@ -566,8 +589,8 @@ export default function GroupDetailScreen() {
             <Text style={styles.chatHeaderName}>Grace Community</Text>
             <Text style={styles.chatHeaderSub}>128 Members · 12 Active</Text>
           </View>
-          <Pressable style={styles.settingsBtn}>
-            <Settings size={18} color={colors.foreground} />
+          <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
+            <MoreVertical size={18} color={colors.foreground} />
           </Pressable>
         </View>
       )}
@@ -807,6 +830,88 @@ export default function GroupDetailScreen() {
 
           <View style={{ height: 32 }} />
         </ScrollView>
+      )}
+
+      {showGroupMenu && (
+        <Modal visible transparent animationType="none" onRequestClose={closeGroupMenu} statusBarTranslucent>
+          <View style={styles.groupMenuRoot}>
+            <Animated.View style={[styles.groupMenuBackdrop, { opacity: groupMenuBackdrop }]}>
+              <Pressable style={StyleSheet.absoluteFill} onPress={closeGroupMenu} />
+            </Animated.View>
+            <Animated.View style={[styles.groupMenuSheet, { backgroundColor: colors.card, transform: [{ translateY: groupMenuAnim }] }]}>
+              <View style={styles.groupMenuHandle} />
+
+              <Text style={[styles.groupMenuGroupName, { color: colors.foreground }]}>Grace Community</Text>
+
+              {IS_CURRENT_USER_ADMIN && (
+                <Pressable
+                  style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
+                  onPress={() => {
+                    closeGroupMenu();
+                    setTimeout(() => router.push(`/group/manage?id=${id}` as never), 250);
+                  }}
+                >
+                  <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.primary + "15" }]}>
+                    <Settings size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.groupMenuItemBody}>
+                    <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Manage Group</Text>
+                    <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Edit details, manage members, privacy</Text>
+                  </View>
+                </Pressable>
+              )}
+
+              <Pressable
+                style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
+                onPress={() => {
+                  closeGroupMenu();
+                  setTimeout(() => router.push("/find-friend" as never), 250);
+                }}
+              >
+                <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.accent }]}>
+                  <UserPlus size={18} color={colors.accentForeground} />
+                </View>
+                <View style={styles.groupMenuItemBody}>
+                  <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Invite Members</Text>
+                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Add friends to the group</Text>
+                </View>
+              </Pressable>
+
+              <Pressable
+                style={[styles.groupMenuItem, { borderBottomColor: "transparent" }]}
+                onPress={() => {
+                  closeGroupMenu();
+                  setTimeout(() => {
+                    Alert.alert(
+                      "Leave Group",
+                      "Are you sure you want to leave Grace Community?",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Leave",
+                          style: "destructive",
+                          onPress: () => router.replace("/(tabs)/community" as never),
+                        },
+                      ]
+                    );
+                  }, 300);
+                }}
+              >
+                <View style={[styles.groupMenuIconWrap, { backgroundColor: "#FEF2F2" }]}>
+                  <LogOut size={18} color="#DC2626" />
+                </View>
+                <View style={styles.groupMenuItemBody}>
+                  <Text style={[styles.groupMenuItemTitle, { color: "#DC2626" }]}>Leave Group</Text>
+                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>You won't receive group messages</Text>
+                </View>
+              </Pressable>
+
+              <Pressable style={[styles.groupMenuCancelBtn, { backgroundColor: colors.secondary }]} onPress={closeGroupMenu}>
+                <Text style={[styles.groupMenuCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -1495,6 +1600,78 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+  },
+  groupMenuRoot: {
+    flex: 1,
+    justifyContent: "flex-end" as const,
+  },
+  groupMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  groupMenuSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 44,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  groupMenuHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: "center" as const,
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  groupMenuGroupName: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    letterSpacing: 0.2,
+    textAlign: "center" as const,
+    marginBottom: 16,
+    opacity: 0.55,
+  },
+  groupMenuItem: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  groupMenuIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  groupMenuItemBody: {
+    flex: 1,
+  },
+  groupMenuItemTitle: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+  },
+  groupMenuItemDesc: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  groupMenuCancelBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  groupMenuCancelText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
   },
   bannerBottom: {
     flexDirection: "row" as const,
