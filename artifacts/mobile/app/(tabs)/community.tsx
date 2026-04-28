@@ -1388,6 +1388,7 @@ interface InlineBrowseCommunitiesProps {
 function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, onCreateCommunity, onOpenBrowse }: InlineBrowseCommunitiesProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { isPremiumCommunity } = useChurchEntitlements();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [privateExpanded, setPrivateExpanded] = useState<boolean>(false);
   const [privateCode, setPrivateCode] = useState<string>("");
@@ -1633,18 +1634,20 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
         </Animated.View>
       </View>
 
-      <Pressable style={styles.createCommunityRow} onPress={onCreateCommunity}>
-        <View style={styles.createCommunityRowIcon}>
-          <Crown size={18} color="#B5820A" />
-        </View>
-        <View style={styles.createCommunityRowText}>
-          <Text style={styles.createCommunityRowTitle}>Create a Community</Text>
-          <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
-        </View>
-        <View style={styles.createCommunityRowBadge}>
-          <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
-        </View>
-      </Pressable>
+      {!isPremiumCommunity && (
+        <Pressable style={styles.createCommunityRow} onPress={onCreateCommunity}>
+          <View style={styles.createCommunityRowIcon}>
+            <Crown size={18} color="#B5820A" />
+          </View>
+          <View style={styles.createCommunityRowText}>
+            <Text style={styles.createCommunityRowTitle}>Create a Community</Text>
+            <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
+          </View>
+          <View style={styles.createCommunityRowBadge}>
+            <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
+          </View>
+        </Pressable>
+      )}
 
       <View style={[styles.switcherFooterHint, { marginTop: 8 }]}>
         <Sparkles size={13} color={colors.mutedForeground} />
@@ -1722,6 +1725,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
+  const { isPremiumCommunity } = useChurchEntitlements();
   const slideAnim = useRef(new Animated.Value(900)).current;
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [privateExpanded, setPrivateExpanded] = useState<boolean>(false);
@@ -2006,18 +2010,20 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
               </Animated.View>
             </View>
 
-            <Pressable style={[styles.createCommunityRow, { marginTop: 4 }]} onPress={onCreateCommunity}>
-              <View style={styles.createCommunityRowIcon}>
-                <Crown size={18} color="#B5820A" />
-              </View>
-              <View style={styles.createCommunityRowText}>
-                <Text style={styles.createCommunityRowTitle}>Create a Community</Text>
-                <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
-              </View>
-              <View style={styles.createCommunityRowBadge}>
-                <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
-              </View>
-            </Pressable>
+            {!isPremiumCommunity && (
+              <Pressable style={[styles.createCommunityRow, { marginTop: 4 }]} onPress={onCreateCommunity}>
+                <View style={styles.createCommunityRowIcon}>
+                  <Crown size={18} color="#B5820A" />
+                </View>
+                <View style={styles.createCommunityRowText}>
+                  <Text style={styles.createCommunityRowTitle}>Create a Community</Text>
+                  <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
+                </View>
+                <View style={styles.createCommunityRowBadge}>
+                  <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
+                </View>
+              </Pressable>
+            )}
 
             <View style={styles.switcherFooterHint}>
               <Sparkles size={13} color={colors.mutedForeground} />

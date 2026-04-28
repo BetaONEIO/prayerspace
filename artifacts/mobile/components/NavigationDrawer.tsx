@@ -33,6 +33,7 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 import ConfirmModal from "@/components/ConfirmModal";
+import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.85;
@@ -91,6 +92,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, profile, signOut } = useAuth();
+  const { isPremiumCommunity } = useChurchEntitlements();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -304,22 +306,24 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
           </ScrollView>
 
           <View style={styles.footer}>
-            <Pressable
-              style={styles.proBtn}
-              onPress={() => handleNavPress("/prayer-space-pro")}
-              testID="drawer-pro-btn"
-            >
-              <View style={styles.proIconWrap}>
-                <Sparkles size={20} color={colors.primary} strokeWidth={1.8} />
-              </View>
-              <View style={styles.proTextWrap}>
-                <Text style={styles.proTitle}>Prayer Space Pro</Text>
-                <Text style={styles.proSubtitle}>Deepen your time in prayer</Text>
-              </View>
-              <View style={styles.proBadge}>
-                <Text style={styles.proBadgeText}>PRO</Text>
-              </View>
-            </Pressable>
+            {!isPremiumCommunity && (
+              <Pressable
+                style={styles.proBtn}
+                onPress={() => handleNavPress("/prayer-space-pro")}
+                testID="drawer-pro-btn"
+              >
+                <View style={styles.proIconWrap}>
+                  <Sparkles size={20} color={colors.primary} strokeWidth={1.8} />
+                </View>
+                <View style={styles.proTextWrap}>
+                  <Text style={styles.proTitle}>Prayer Space Pro</Text>
+                  <Text style={styles.proSubtitle}>Deepen your time in prayer</Text>
+                </View>
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              </Pressable>
+            )}
 
             <Pressable style={styles.logoutBtn} onPress={handleLogout}>
               <LogOut size={22} color={colors.destructive} strokeWidth={1.5} />
