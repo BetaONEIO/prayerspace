@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import onboardingImage from "@assets/ONBOARD_3_1777391826961.png";
 
 const { width } = Dimensions.get("window");
 
@@ -30,11 +31,7 @@ export default function OnboardingWelcome() {
       <View style={styles.inner}>
         <View style={styles.imageArea}>
           <Animated.View style={{ opacity: fadeAnim }}>
-            <Image
-              source={{ uri: "https://ggrhecslgdflloszjkwl.supabase.co/storage/v1/object/public/user-assets/Dsd9kebVr6M/components/0GnuCY4Uy2B.png" }}
-              style={styles.heroImage}
-              resizeMode="contain"
-            />
+            <Image source={onboardingImage} style={styles.heroImage} resizeMode="contain" />
           </Animated.View>
         </View>
 
