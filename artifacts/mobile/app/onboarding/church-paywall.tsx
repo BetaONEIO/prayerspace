@@ -10,11 +10,12 @@ import {
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ShieldCheck, Users, Settings, Check } from "lucide-react-native";
+import { ShieldCheck, Users, Settings, ChevronRight } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import { useOfferings, usePurchasePackage } from "@/hooks/usePurchases";
+import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
+import { communityStore } from "@/lib/communityStore";
 import { PurchasesPackage } from "react-native-purchases";
 
 const INCLUDED_FEATURES = [
@@ -57,44 +58,67 @@ export default function ChurchPaywall() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [selectedTier, setSelectedTier] = useState<ChurchTier["id"]>("church_medium");
+  const [purchasingTier, setPurchasingTier] = useState<ChurchTier["id"] | null>(null);
 
   const { data: offerings, isLoading: offeringsLoading } = useOfferings();
   const purchaseMutation = usePurchasePackage();
+  const restoreMutation = useRestorePurchases();
 
   const getPackageForTier = (tierId: ChurchTier["id"]): PurchasesPackage | undefined => {
     const churchOffering = offerings?.all?.["church"] ?? offerings?.current;
     return churchOffering?.availablePackages?.find((p) => p.identifier === tierId);
   };
 
-  const selectedPackage = getPackageForTier(selectedTier);
-
   const getPriceForTier = (tier: ChurchTier): string => {
     const pkg = getPackageForTier(tier.id);
     return pkg?.product?.priceString ?? tier.fallbackPrice;
   };
 
-  const handleGetStarted = async () => {
-    if (!selectedPackage) {
-      console.log("[ChurchPaywall] No package loaded — proceeding without purchase.");
-      churchMembershipStore.setOwner(churchMembershipStore.getState().churchName, selectedTier);
-      router.push("/onboarding/church-complete" as never);
+  const completeOnboarding = (tierId: ChurchTier["id"]) => {
+    const { churchName } = churchMembershipStore.getState();
+    churchMembershipStore.setOwner(churchName, tierId);
+    communityStore.addOwnedCommunity(churchName, tierId);
+    router.push("/onboarding/church-complete" as never);
+  };
+
+  const handleSelectTier = async (tierId: ChurchTier["id"]) => {
+    if (purchasingTier) return;
+    setPurchasingTier(tierId);
+
+    const pkg = getPackageForTier(tierId);
+    if (!pkg) {
+      // No RC package loaded (browser / dev preview) — skip purchase and proceed
+      console.log("[ChurchPaywall] No package for tier — proceeding without purchase.");
+      completeOnboarding(tierId);
+      setPurchasingTier(null);
       return;
     }
+
     try {
-      await purchaseMutation.mutateAsync(selectedPackage);
-      churchMembershipStore.setOwner(churchMembershipStore.getState().churchName, selectedTier);
-      router.push("/onboarding/church-complete" as never);
+      await purchaseMutation.mutateAsync(pkg);
+      completeOnboarding(tierId);
     } catch (err: unknown) {
       const error = err as { userCancelled?: boolean; message?: string };
       if (!error?.userCancelled) {
         console.error("[ChurchPaywall] Purchase error:", error);
         Alert.alert("Something went wrong", error?.message ?? "Please try again.");
       }
+    } finally {
+      setPurchasingTier(null);
     }
   };
 
-  const isPurchasing = purchaseMutation.isPending;
+  const handleRestore = async () => {
+    if (purchasingTier) return;
+    try {
+      await restoreMutation.mutateAsync();
+      Alert.alert("Purchases restored", "Your previous purchase has been restored.");
+    } catch {
+      Alert.alert("Nothing to restore", "No previous purchase found for this account.");
+    }
+  };
+
+  const isDisabled = !!purchasingTier || offeringsLoading;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -120,17 +144,23 @@ export default function ChurchPaywall() {
 
         <View style={styles.tiers}>
           {TIERS.map((tier) => {
-            const isSelected = selectedTier === tier.id;
+            const isLoading = purchasingTier === tier.id;
             return (
               <Pressable
                 key={tier.id}
-                style={[styles.tierCard, isSelected && styles.tierCardSelected]}
-                onPress={() => setSelectedTier(tier.id)}
+                style={({ pressed }) => [
+                  styles.tierCard,
+                  isLoading && styles.tierCardSelected,
+                  pressed && !isDisabled && styles.tierCardPressed,
+                  isDisabled && !isLoading && styles.tierCardDimmed,
+                ]}
+                onPress={() => { void handleSelectTier(tier.id); }}
+                disabled={isDisabled}
                 testID={`church-tier-${tier.id}`}
               >
                 {tier.tag && (
-                  <View style={[styles.tierTag, !isSelected && styles.tierTagMuted]}>
-                    <Text style={[styles.tierTagText, !isSelected && styles.tierTagTextMuted]}>{tier.tag}</Text>
+                  <View style={[styles.tierTag, !isLoading && styles.tierTagMuted]}>
+                    <Text style={[styles.tierTagText, !isLoading && styles.tierTagTextMuted]}>{tier.tag}</Text>
                   </View>
                 )}
                 <View style={styles.tierTop}>
@@ -142,10 +172,16 @@ export default function ChurchPaywall() {
                     {offeringsLoading ? (
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
-                      <Text style={styles.tierPrice}>{getPriceForTier(tier)}</Text>
+                      <Text style={[styles.tierPrice, isLoading && { color: colors.primary }]}>
+                        {getPriceForTier(tier)}
+                      </Text>
                     )}
-                    <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                      {isSelected && <Check size={14} color={colors.primaryForeground} strokeWidth={3} />}
+                    <View style={styles.tierCta}>
+                      {isLoading ? (
+                        <ActivityIndicator size="small" color={colors.primaryForeground} />
+                      ) : (
+                        <ChevronRight size={18} color={colors.primaryForeground} strokeWidth={2.5} />
+                      )}
                     </View>
                   </View>
                 </View>
@@ -154,21 +190,8 @@ export default function ChurchPaywall() {
           })}
         </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.getStartedBtn,
-            pressed && !isPurchasing && styles.btnPressed,
-            isPurchasing && styles.btnDisabled,
-          ]}
-          onPress={handleGetStarted}
-          disabled={isPurchasing || offeringsLoading}
-          testID="church-paywall-start"
-        >
-          {isPurchasing ? (
-            <ActivityIndicator color={colors.primaryForeground} />
-          ) : (
-            <Text style={styles.getStartedText}>Get started</Text>
-          )}
+        <Pressable style={styles.restoreBtn} onPress={() => { void handleRestore(); }} disabled={!!purchasingTier}>
+          <Text style={[styles.restoreText, { color: colors.mutedForeground }]}>Restore previous purchase</Text>
         </Pressable>
 
         <Text style={styles.disclaimer}>
@@ -206,7 +229,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: "center",
     },
     featureLabel: { fontSize: 14, fontWeight: "600" as const, color: colors.foreground },
-    tiers: { gap: 14, marginBottom: 28 },
+    tiers: { gap: 14, marginBottom: 20 },
     tierCard: {
       padding: 20,
       paddingTop: 26,
@@ -216,7 +239,9 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.card,
       position: "relative",
     },
-    tierCardSelected: { borderColor: colors.primary, backgroundColor: colors.accent + "30" },
+    tierCardSelected: { borderColor: colors.primary, backgroundColor: colors.accent + "20" },
+    tierCardPressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
+    tierCardDimmed: { opacity: 0.6 },
     tierTag: {
       position: "absolute",
       top: -12,
@@ -234,33 +259,17 @@ function createStyles(colors: ThemeColors) {
     tierLabel: { fontSize: 18, fontWeight: "800" as const, color: colors.foreground },
     tierRange: { fontSize: 13, color: colors.mutedForeground },
     tierRight: { alignItems: "flex-end", gap: 8 },
-    tierPrice: { fontSize: 17, fontWeight: "700" as const, color: colors.primary },
-    radio: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      borderWidth: 2,
-      borderColor: colors.border,
+    tierPrice: { fontSize: 17, fontWeight: "700" as const, color: colors.mutedForeground },
+    tierCta: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.primary,
       alignItems: "center",
       justifyContent: "center",
     },
-    radioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-    getStartedBtn: {
-      height: 62,
-      backgroundColor: colors.primary,
-      borderRadius: 20,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.22,
-      shadowRadius: 16,
-      elevation: 6,
-      marginBottom: 16,
-    },
-    btnPressed: { opacity: 0.9 },
-    btnDisabled: { opacity: 0.7 },
-    getStartedText: { fontSize: 17, fontWeight: "700" as const, color: colors.primaryForeground },
+    restoreBtn: { alignItems: "center", paddingVertical: 12, marginBottom: 8 },
+    restoreText: { fontSize: 13 },
     disclaimer: {
       fontSize: 11,
       color: colors.mutedForeground,

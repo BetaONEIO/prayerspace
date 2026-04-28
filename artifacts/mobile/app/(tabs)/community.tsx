@@ -77,6 +77,7 @@ import ImageViewer from "@/components/ImageViewer";
 import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { useNotifications } from "@/providers/NotificationsProvider";
+import { communityStore, StoredCommunity } from "@/lib/communityStore";
 
 type Tab = "Feed" | "Community" | "Groups";
 
@@ -580,6 +581,25 @@ export default function CommunityScreen() {
   const { addJournalEntry, addArchivedPost } = usePrayer();
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
+
+  // Inject communities created during church onboarding (owned communities).
+  // Subscribes to communityStore so it reacts if the user completes onboarding
+  // while this screen is already mounted (e.g. navigating back from onboarding).
+  useEffect(() => {
+    const apply = (all: StoredCommunity[]) => {
+      const owned = all.filter((c) => c.isOwned);
+      if (owned.length === 0) return;
+      setJoinedCommunities((prev) => {
+        const fresh = owned.filter((o) => !prev.find((p) => p.id === o.id));
+        if (fresh.length === 0) return prev;
+        return [...fresh, ...prev];
+      });
+      // Auto-navigate to the user's own community
+      setActiveCommunity(owned[0] as Community);
+    };
+    apply(communityStore.getAll());
+    return communityStore.subscribe(apply);
+  }, []);
 
   useEffect(() => {
     feedStore.register((post) => {
