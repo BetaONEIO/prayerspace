@@ -1,87 +1,127 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { RatingTriggerEvent } from "@/lib/ratingStore";
 
-const STORAGE_KEY_HAS_REVIEWED = "@prayer_space:has_reviewed";
+const STORAGE_KEY_HAS_RATED = "@prayer_space:has_reviewed";
 const STORAGE_KEY_LAST_PROMPT = "@prayer_space:last_review_prompt";
-const STORAGE_KEY_PRAYERS_SENT = "@prayer_space:prayers_sent_count";
+const STORAGE_KEY_APP_OPEN_COUNT = "@prayer_space:app_open_count";
+const STORAGE_KEY_ANSWERED_COUNT = "@prayer_space:answered_prayer_count";
+const STORAGE_KEY_COMMUNITY_COUNT = "@prayer_space:community_engagement_count";
 
-const REVIEW_MILESTONES = [5, 15, 30];
-const MIN_DAYS_BETWEEN_PROMPTS = 30;
+const MIN_DAYS_BETWEEN_PROMPTS = 7;
+const APP_OPENS_THRESHOLD = 5;
+const COMMUNITY_ENGAGEMENT_THRESHOLD = 3;
 
-async function getShouldShowPrompt(): Promise<boolean> {
+async function incrementKey(key: string): Promise<number> {
   try {
-    const [hasReviewed, lastPromptStr, prayersSentStr] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEY_HAS_REVIEWED),
+    const raw = await AsyncStorage.getItem(key);
+    const next = parseInt(raw ?? "0", 10) + 1;
+    await AsyncStorage.setItem(key, String(next));
+    return next;
+  } catch {
+    return 0;
+  }
+}
+
+async function getCount(key: string): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return parseInt(raw ?? "0", 10);
+  } catch {
+    return 0;
+  }
+}
+
+async function getShouldShowPrompt(event: RatingTriggerEvent): Promise<boolean> {
+  try {
+    const [hasRated, lastPromptStr, appOpens, answeredCount, communityCount] = await Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY_HAS_RATED),
       AsyncStorage.getItem(STORAGE_KEY_LAST_PROMPT),
-      AsyncStorage.getItem(STORAGE_KEY_PRAYERS_SENT),
+      getCount(STORAGE_KEY_APP_OPEN_COUNT),
+      getCount(STORAGE_KEY_ANSWERED_COUNT),
+      getCount(STORAGE_KEY_COMMUNITY_COUNT),
     ]);
 
-    if (hasReviewed === "true") {
-      console.log("[ReviewPrompt] User has already reviewed, skipping.");
-      return false;
-    }
-
-    const prayersSent = parseInt(prayersSentStr ?? "0", 10);
-
-    const hitMilestone = REVIEW_MILESTONES.includes(prayersSent);
-    if (!hitMilestone) {
-      console.log(`[ReviewPrompt] ${prayersSent} prayers sent, no milestone hit.`);
+    if (hasRated === "true") {
+      console.log("[RatingPrompt] User has already rated, skipping.");
       return false;
     }
 
     if (lastPromptStr) {
-      const lastPrompt = new Date(lastPromptStr);
-      const now = new Date();
-      const daysSince = (now.getTime() - lastPrompt.getTime()) / (1000 * 60 * 60 * 24);
+      const daysSince =
+        (Date.now() - new Date(lastPromptStr).getTime()) / (1000 * 60 * 60 * 24);
       if (daysSince < MIN_DAYS_BETWEEN_PROMPTS) {
-        console.log(`[ReviewPrompt] Only ${Math.floor(daysSince)} days since last prompt, skipping.`);
+        console.log(`[RatingPrompt] Only ${Math.floor(daysSince)}d since last prompt, skipping.`);
         return false;
       }
     }
 
-    console.log(`[ReviewPrompt] Milestone hit at ${prayersSent} prayers. Showing prompt.`);
+    const hasQualifyingEngagement =
+      event === "answered_prayer" ||
+      (event === "app_open" && appOpens >= APP_OPENS_THRESHOLD) ||
+      (event === "community_engagement" && communityCount >= COMMUNITY_ENGAGEMENT_THRESHOLD);
+
+    if (!hasQualifyingEngagement) {
+      console.log(`[RatingPrompt] Event "${event}" – engagement thresholds not met. Opens:${appOpens} Answered:${answeredCount} Community:${communityCount}`);
+      return false;
+    }
+
+    console.log(`[RatingPrompt] Showing prompt. Event: ${event}`);
     return true;
   } catch (e) {
-    console.error("[ReviewPrompt] Error checking prompt eligibility:", e);
+    console.error("[RatingPrompt] Error checking eligibility:", e);
     return false;
   }
 }
 
-export async function incrementPrayersSent(): Promise<void> {
-  try {
-    const current = await AsyncStorage.getItem(STORAGE_KEY_PRAYERS_SENT);
-    const count = parseInt(current ?? "0", 10) + 1;
-    await AsyncStorage.setItem(STORAGE_KEY_PRAYERS_SENT, String(count));
-    console.log(`[ReviewPrompt] Prayers sent count: ${count}`);
-  } catch (e) {
-    console.error("[ReviewPrompt] Error incrementing prayers sent:", e);
-  }
+export async function recordAppOpen(): Promise<void> {
+  await incrementKey(STORAGE_KEY_APP_OPEN_COUNT);
 }
 
-export async function markReviewPromptShown(): Promise<void> {
+export async function recordAnsweredPrayer(): Promise<void> {
+  await incrementKey(STORAGE_KEY_ANSWERED_COUNT);
+}
+
+export async function recordCommunityEngagement(): Promise<void> {
+  await incrementKey(STORAGE_KEY_COMMUNITY_COUNT);
+}
+
+export async function markPromptShown(): Promise<void> {
   try {
     await AsyncStorage.setItem(STORAGE_KEY_LAST_PROMPT, new Date().toISOString());
-  } catch (e) {
-    console.error("[ReviewPrompt] Error marking prompt shown:", e);
+  } catch {
   }
 }
 
-export async function markAsReviewed(): Promise<void> {
+export async function markAsRated(): Promise<void> {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY_HAS_REVIEWED, "true");
-    console.log("[ReviewPrompt] Marked as reviewed.");
-  } catch (e) {
-    console.error("[ReviewPrompt] Error marking as reviewed:", e);
+    await AsyncStorage.setItem(STORAGE_KEY_HAS_RATED, "true");
+    console.log("[RatingPrompt] Marked as rated.");
+  } catch {
+  }
+}
+
+export async function getHasRated(): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_HAS_RATED);
+    return raw === "true";
+  } catch {
+    return false;
   }
 }
 
 export function useReviewPrompt() {
   const [showReview, setShowReview] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
 
-  const checkAndShowPrompt = useCallback(async () => {
-    const should = await getShouldShowPrompt();
+  useEffect(() => {
+    getHasRated().then(setHasRated);
+  }, []);
+
+  const checkAndShowPrompt = useCallback(async (event: RatingTriggerEvent) => {
+    const should = await getShouldShowPrompt(event);
     if (should) {
-      await markReviewPromptShown();
+      await markPromptShown();
       setShowReview(true);
     }
   }, []);
@@ -95,15 +135,29 @@ export function useReviewPrompt() {
   }, []);
 
   const handleReviewed = useCallback(async () => {
-    await markAsReviewed();
+    await markAsRated();
+    setHasRated(true);
     setShowReview(false);
   }, []);
 
   return {
     showReview,
+    hasRated,
     checkAndShowPrompt,
     openReview,
     closeReview,
     handleReviewed,
   };
+}
+
+export async function incrementPrayersSent(): Promise<void> {
+  await recordAppOpen();
+}
+
+export async function markReviewPromptShown(): Promise<void> {
+  await markPromptShown();
+}
+
+export async function markAsReviewed(): Promise<void> {
+  await markAsRated();
 }

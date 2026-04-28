@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { PrayerProvider } from "@/providers/PrayerProvider";
@@ -9,6 +9,9 @@ import { FavouritesProvider } from "@/providers/FavouritesProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
 import { SelectedRecipientsProvider } from "@/providers/SelectedRecipientsProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
+import SmartRatingModal from "@/components/SmartRatingModal";
+import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
+import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,10 +42,31 @@ function AuthGuard() {
   return null;
 }
 
+function GlobalRatingPrompt() {
+  const { showReview, checkAndShowPrompt, closeReview, handleReviewed } = useReviewPrompt();
+
+  const handleTrigger = useCallback(
+    async (event: RatingTriggerEvent) => {
+      await checkAndShowPrompt(event);
+    },
+    [checkAndShowPrompt]
+  );
+
+  useEffect(() => {
+    ratingStore.register(handleTrigger);
+    return () => ratingStore.unregister();
+  }, [handleTrigger]);
+
+  return (
+    <SmartRatingModal visible={showReview} onClose={closeReview} onRated={handleReviewed} />
+  );
+}
+
 function RootLayoutNav() {
   return (
     <>
       <AuthGuard />
+      <GlobalRatingPrompt />
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -79,6 +103,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    recordAppOpen().then(() => {
+      ratingStore.trigger("app_open");
+    });
   }, []);
 
   return (

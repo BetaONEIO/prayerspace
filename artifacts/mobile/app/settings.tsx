@@ -28,7 +28,7 @@ import {
 import { useThemeColors, useTheme, ThemeMode } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
-import ReviewModal from "@/components/ReviewModal";
+import SmartRatingModal from "@/components/SmartRatingModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useReviewPrompt } from "@/hooks/useReviewPrompt";
 
@@ -40,7 +40,7 @@ export default function SettingsScreen() {
   const { signOut, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
-  const { showReview, openReview, closeReview, handleReviewed } = useReviewPrompt();
+  const { showReview, hasRated, openReview, closeReview, handleReviewed } = useReviewPrompt();
 
   const handleSignOut = useCallback(() => {
     setShowSignOutModal(true);
@@ -194,9 +194,10 @@ export default function SettingsScreen() {
             )}
             <View style={styles.divider} />
             {renderRow(
-              <Star size={18} color={colors.primary + "90"} />,
-              "Rate the App",
-              openReview
+              <Star size={18} color={hasRated ? "#F5A623" : colors.primary + "90"} fill={hasRated ? "#F5A623" : "none"} />,
+              hasRated ? "Thanks for your support 🙏" : "Rate the App",
+              hasRated ? undefined : openReview,
+              hasRated ? <View style={{ width: 16 }} /> : undefined
             )}
           </View>
         </View>
@@ -218,10 +219,10 @@ export default function SettingsScreen() {
 
         <Text style={styles.version}>VERSION 2.4.0 (BUILD 108)</Text>
 
-      <ReviewModal
+      <SmartRatingModal
         visible={showReview}
         onClose={closeReview}
-        onReviewed={handleReviewed}
+        onRated={handleReviewed}
       />
 
       <ConfirmModal

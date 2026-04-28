@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { feedStore, FEED_COMMUNITIES, type FeedCommunityId } from "@/lib/feedStore";
+import { recordAnsweredPrayer } from "@/hooks/useReviewPrompt";
+import { ratingStore } from "@/lib/ratingStore";
 import {
   View,
   Text,
@@ -213,6 +215,9 @@ export default function MyPostsScreen() {
     );
     setMarkAnsweredTarget(null);
     console.log("[MyPosts] Marked as answered:", post.id);
+    recordAnsweredPrayer().then(() => {
+      ratingStore.trigger("answered_prayer");
+    });
   }, []);
 
   const handleSubmitRepost = useCallback(

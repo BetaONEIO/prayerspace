@@ -64,5 +64,12 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
        - Use the Brevo SMTP password from secrets
        Supabase's built-in mailer is rate-limited to a few emails per hour and is meant for development.
        If no email arrives and no Brevo log appears, the signup email is still being handled by Supabase's default mailer or the template is not set to OTP mode.
+  - **Smart app rating prompt system:**
+    - `lib/ratingStore.ts` — module-level event bus (same pattern as feedStore). Any component calls `ratingStore.trigger(event)` to request a prompt check.
+    - `hooks/useReviewPrompt.ts` — tracks `hasRated`, `lastPromptDate`, engagement counters in AsyncStorage. Checks eligibility: not rated + 7+ days since last prompt + qualifying engagement.
+    - `components/SmartRatingModal.tsx` — 2-step modal: Step 1 "Are you enjoying Prayer Space?" (Yes 🙏 / Not really). Yes → native StoreReview + mark rated. Not really → feedback form (text input, submit). Both paths end in a thank-you screen.
+    - Triggers: answered prayer (`my-posts.tsx` `handleMarkAnswered`), app opens (`_layout.tsx`, threshold: 5), community praying (`community.tsx` `handlePray`, threshold: 3 engagements).
+    - `settings.tsx` — "Rate the App" changes to "Thanks for your support 🙏" (gold star, no chevron) when `hasRated = true`. Manual trigger uses `SmartRatingModal`.
+    - AsyncStorage keys: `@prayer_space:has_reviewed`, `@prayer_space:last_review_prompt`, `@prayer_space:app_open_count`, `@prayer_space:answered_prayer_count`, `@prayer_space:community_engagement_count`.
 - **api-server** (`artifacts/api-server/`) — shared Express API at `/api`.
 - **mockup-sandbox** (`artifacts/mockup-sandbox/`) — design canvas for prototyping.

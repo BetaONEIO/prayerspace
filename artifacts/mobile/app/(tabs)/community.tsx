@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { feedStore } from "@/lib/feedStore";
+import { recordCommunityEngagement } from "@/hooks/useReviewPrompt";
+import { ratingStore } from "@/lib/ratingStore";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   View,
@@ -696,6 +698,9 @@ export default function CommunityScreen() {
         return next;
       });
       showPrayingForPrompt(post);
+      recordCommunityEngagement().then(() => {
+        ratingStore.trigger("community_engagement");
+      });
     }
   }, [prayedPosts, showPrayingForPrompt]);
 
