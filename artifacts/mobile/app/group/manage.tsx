@@ -73,6 +73,13 @@ export default function ManageGroupScreen() {
   const [showMemberSheet, setShowMemberSheet] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    destructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   const memberSheetAnim = useRef(new Animated.Value(300)).current;
   const memberSheetBackdrop = useRef(new Animated.Value(0)).current;
@@ -104,21 +111,16 @@ export default function ManageGroupScreen() {
   const handleRemoveMember = useCallback((member: GroupMember) => {
     closeMemberSheet();
     setTimeout(() => {
-      Alert.alert(
-        "Remove Member",
-        `Remove ${member.name} from the group?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Remove",
-            style: "destructive",
-            onPress: () => {
-              setMembers((prev) => prev.filter((m) => m.id !== member.id));
-              markChanged();
-            },
-          },
-        ]
-      );
+      setConfirmDialog({
+        title: "Remove Member",
+        message: `Remove ${member.name} from the group? They will lose access immediately.`,
+        confirmLabel: "Remove",
+        destructive: true,
+        onConfirm: () => {
+          setMembers((prev) => prev.filter((m) => m.id !== member.id));
+          markChanged();
+        },
+      });
     }, 300);
   }, [closeMemberSheet, markChanged]);
 
@@ -126,29 +128,24 @@ export default function ManageGroupScreen() {
     closeMemberSheet();
     const isAlreadyAdmin = member.role === "Admin";
     setTimeout(() => {
-      Alert.alert(
-        isAlreadyAdmin ? "Remove Admin Role" : "Make Admin",
-        isAlreadyAdmin
-          ? `Remove ${member.name}'s admin privileges?`
+      setConfirmDialog({
+        title: isAlreadyAdmin ? "Remove Admin Role" : "Make Admin",
+        message: isAlreadyAdmin
+          ? `Remove ${member.name}'s admin privileges? They'll return to a regular member.`
           : `Make ${member.name} an admin? They'll be able to manage the group.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: isAlreadyAdmin ? "Remove Admin" : "Make Admin",
-            style: isAlreadyAdmin ? "destructive" : "default",
-            onPress: () => {
-              setMembers((prev) =>
-                prev.map((m) =>
-                  m.id === member.id
-                    ? { ...m, role: isAlreadyAdmin ? "Member" : "Admin" }
-                    : m
-                )
-              );
-              markChanged();
-            },
-          },
-        ]
-      );
+        confirmLabel: isAlreadyAdmin ? "Remove Admin" : "Make Admin",
+        destructive: isAlreadyAdmin,
+        onConfirm: () => {
+          setMembers((prev) =>
+            prev.map((m) =>
+              m.id === member.id
+                ? { ...m, role: isAlreadyAdmin ? "Member" : "Admin" }
+                : m
+            )
+          );
+          markChanged();
+        },
+      });
     }, 300);
   }, [closeMemberSheet, markChanged]);
 
@@ -189,21 +186,15 @@ export default function ManageGroupScreen() {
   }, [groupId, groupName, description, selectedFocus, selectedPrivacy, safeSpace, groupPhotoUri, members, savedModalFade, savedModalScale]);
 
   const handleDeleteGroup = useCallback(() => {
-    Alert.alert(
-      "Delete Group",
-      `This will permanently delete "${groupName}" and all its messages. This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Group",
-          style: "destructive",
-          onPress: () => {
-            console.log("[ManageGroup] Group deleted");
-            router.replace("/(tabs)/community" as never);
-          },
-        },
-      ]
-    );
+    setConfirmDialog({
+      title: "Delete Group",
+      message: `This will permanently delete "${groupName}" and all its messages. This cannot be undone.`,
+      confirmLabel: "Delete Group",
+      destructive: true,
+      onConfirm: () => {
+        router.replace("/(tabs)/community" as never);
+      },
+    });
   }, [router, groupName]);
 
   const admins = members.filter((m) => m.role === "Admin");
@@ -573,6 +564,32 @@ export default function ManageGroupScreen() {
           </Modal>
         )}
 
+        {/* Themed confirmation dialog — replaces system Alert */}
+        {confirmDialog && (
+          <Modal visible transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)} statusBarTranslucent>
+            <Pressable style={styles.dialogOverlay} onPress={() => setConfirmDialog(null)}>
+              <Pressable style={[styles.dialogBox, { backgroundColor: colors.card }]} onPress={() => {}}>
+                <Text style={[styles.dialogTitle, { color: colors.foreground }]}>{confirmDialog.title}</Text>
+                <Text style={[styles.dialogMessage, { color: colors.mutedForeground }]}>{confirmDialog.message}</Text>
+                <View style={styles.dialogButtons}>
+                  <Pressable
+                    style={[styles.dialogBtnConfirm, { backgroundColor: confirmDialog.destructive ? "#DC2626" : colors.primary }]}
+                    onPress={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                  >
+                    <Text style={[styles.dialogBtnLabel, { color: "#fff" }]}>{confirmDialog.confirmLabel}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.dialogBtnCancel, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                    onPress={() => setConfirmDialog(null)}
+                  >
+                    <Text style={[styles.dialogBtnLabel, { color: colors.foreground }]}>Cancel</Text>
+                  </Pressable>
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        )}
+
         <PhotoUploadModal
           visible={showPhotoModal}
           onClose={() => setShowPhotoModal(false)}
@@ -939,6 +956,14 @@ function createStyles(colors: ThemeColors) {
     ownerText: { fontSize: 14, fontWeight: "600" as const },
     subscriptionNote: { fontSize: 12, lineHeight: 18, marginTop: 4 },
     inactiveLabel: { fontSize: 15, fontWeight: "700" as const },
+    dialogOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 28 },
+    dialogBox: { width: "100%" as const, borderRadius: 20, padding: 24, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 16 },
+    dialogTitle: { fontSize: 17, fontWeight: "700" as const, marginBottom: 10, textAlign: "center" as const },
+    dialogMessage: { fontSize: 14, lineHeight: 21, textAlign: "center" as const, marginBottom: 24 },
+    dialogButtons: { gap: 10 },
+    dialogBtnConfirm: { borderRadius: 14, paddingVertical: 14, alignItems: "center" as const },
+    dialogBtnCancel: { borderRadius: 14, paddingVertical: 14, alignItems: "center" as const, borderWidth: 1 },
+    dialogBtnLabel: { fontSize: 15, fontWeight: "700" as const },
     deleteBtn: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
