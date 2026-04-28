@@ -40,6 +40,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
 import { groupStore, GroupMember, FocusCategory, PrivacyType } from "@/lib/groupStore";
+import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
 const FOCUS_OPTIONS: { id: FocusCategory; emoji: string; label: string }[] = [
   { id: "Prayer", emoji: "🙏", label: "Prayer" },
@@ -55,6 +56,7 @@ export default function ManageGroupScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { isPremiumCommunity, isOwner, tierLabel } = useChurchEntitlements();
   const params = useLocalSearchParams<{ id?: string }>();
   const groupId = params.id || "group-1";
   const initialState = groupStore.get(groupId);
@@ -359,6 +361,43 @@ export default function ManageGroupScreen() {
                 />
               </View>
             </View>
+
+            {(isPremiumCommunity || isOwner) && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SUBSCRIPTION</Text>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: isPremiumCommunity ? colors.primary + "40" : colors.border }]}>
+                  {isPremiumCommunity ? (
+                    <>
+                      <View style={styles.subscriptionTopRow}>
+                        <View style={[styles.premiumBadge, { backgroundColor: colors.primary }]}>
+                          <Crown size={12} color={colors.primaryForeground} />
+                          <Text style={[styles.premiumBadgeText, { color: colors.primaryForeground }]}>Premium Community</Text>
+                        </View>
+                        <Text style={[styles.tierLabel, { color: colors.mutedForeground }]}>{tierLabel}</Text>
+                      </View>
+                      {isOwner && (
+                        <View style={[styles.ownerRow, { borderTopColor: colors.border }]}>
+                          <ShieldCheck size={15} color={colors.primary} />
+                          <Text style={[styles.ownerText, { color: colors.foreground }]}>You are the billing owner</Text>
+                        </View>
+                      )}
+                      <Text style={[styles.subscriptionNote, { color: colors.mutedForeground }]}>
+                        {isOwner
+                          ? "You have full admin access and personal Pro features while your subscription is active."
+                          : "Members access community features while the subscription is active."}
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.inactiveLabel, { color: colors.foreground }]}>Subscription inactive</Text>
+                      <Text style={[styles.subscriptionNote, { color: colors.mutedForeground }]}>
+                        Renew your plan to restore premium features for all members.
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
 
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
@@ -875,6 +914,14 @@ function createStyles(colors: ThemeColors) {
       fontSize: 12,
       fontWeight: "700" as const,
     },
+    subscriptionTopRow: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, marginBottom: 12 },
+    premiumBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+    premiumBadgeText: { fontSize: 12, fontWeight: "700" as const },
+    tierLabel: { fontSize: 12 },
+    ownerRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth, marginTop: 4 },
+    ownerText: { fontSize: 14, fontWeight: "600" as const },
+    subscriptionNote: { fontSize: 12, lineHeight: 18, marginTop: 6 },
+    inactiveLabel: { fontSize: 15, fontWeight: "700" as const, marginBottom: 6 },
     deleteBtn: {
       flexDirection: "row" as const,
       alignItems: "center" as const,

@@ -4,13 +4,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { Crown } from "lucide-react-native";
 import { useChurchMembership } from "@/lib/churchMembershipStore";
 
 export default function ChurchComplete() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { churchName } = useChurchMembership();
+  const { churchName, isPremium } = useChurchMembership();
 
   const communityLabel = churchName ?? "your community";
 
@@ -35,6 +36,13 @@ export default function ChurchComplete() {
             <Text style={styles.emoji}>🙏</Text>
           </View>
         </View>
+
+        {isPremium && (
+          <View style={styles.premiumBadge}>
+            <Crown size={12} color={colors.primary} />
+            <Text style={styles.premiumBadgeText}>Premium Community</Text>
+          </View>
+        )}
 
         <View style={styles.headingArea}>
           <Text style={styles.title}>Your community is ready</Text>
@@ -142,6 +150,22 @@ function createStyles(colors: ThemeColors) {
       fontSize: 16,
       fontWeight: "700" as const,
       color: colors.foreground,
+    },
+    premiumBadge: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 6,
+      backgroundColor: colors.primary + "18",
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 20,
+      alignSelf: "center" as const,
+      marginBottom: 20,
+    },
+    premiumBadgeText: {
+      fontSize: 13,
+      fontWeight: "700" as const,
+      color: colors.primary,
     },
     footnote: {
       marginTop: 28,

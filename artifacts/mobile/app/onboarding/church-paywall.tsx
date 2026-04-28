@@ -14,6 +14,7 @@ import { ShieldCheck, Users, Settings, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useOfferings, usePurchasePackage } from "@/hooks/usePurchases";
+import { churchMembershipStore } from "@/lib/churchMembershipStore";
 import { PurchasesPackage } from "react-native-purchases";
 
 const INCLUDED_FEATURES = [
@@ -76,11 +77,13 @@ export default function ChurchPaywall() {
   const handleGetStarted = async () => {
     if (!selectedPackage) {
       console.log("[ChurchPaywall] No package loaded — proceeding without purchase.");
+      churchMembershipStore.setOwner(churchMembershipStore.getState().churchName, selectedTier);
       router.push("/onboarding/church-complete" as never);
       return;
     }
     try {
       await purchaseMutation.mutateAsync(selectedPackage);
+      churchMembershipStore.setOwner(churchMembershipStore.getState().churchName, selectedTier);
       router.push("/onboarding/church-complete" as never);
     } catch (err: unknown) {
       const error = err as { userCancelled?: boolean; message?: string };

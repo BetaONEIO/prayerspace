@@ -52,6 +52,7 @@ import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useGroupState, GroupMember as StoreGroupMember } from "@/lib/groupStore";
+import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
 type GroupTab = "Chat" | "Members" | "Media";
 
@@ -374,6 +375,7 @@ export default function GroupDetailScreen() {
   const groupId = id || "group-1";
   const groupState = useGroupState(groupId);
   const insets = useSafeAreaInsets();
+  const { isPremiumCommunity, isOwner } = useChurchEntitlements();
   const [activeTab, setActiveTab] = useState<GroupTab>("Chat");
 
   const [chatInput, setChatInput] = useState<string>("");
@@ -575,6 +577,11 @@ export default function GroupDetailScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.groupName}>{groupState.name}</Text>
+              {isPremiumCommunity && (
+                <View style={styles.premiumPill}>
+                  <Text style={styles.premiumPillText}>✦ Premium Community</Text>
+                </View>
+              )}
               <Text style={styles.groupStats}>128 Members · Active Now</Text>
             </View>
             <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
@@ -847,6 +854,15 @@ export default function GroupDetailScreen() {
               <View style={styles.groupMenuHandle} />
 
               <Text style={[styles.groupMenuGroupName, { color: colors.foreground }]}>{groupState.name}</Text>
+              {isPremiumCommunity && (
+                <View style={[styles.menuPremiumBadge, { backgroundColor: colors.primary + "15" }]}>
+                  <Crown size={11} color={colors.primary} />
+                  <Text style={[styles.menuPremiumText, { color: colors.primary }]}>Premium Community</Text>
+                </View>
+              )}
+              {isOwner && isPremiumCommunity && (
+                <Text style={[styles.menuOwnerText, { color: colors.mutedForeground }]}>You are the owner</Text>
+              )}
 
               {IS_CURRENT_USER_ADMIN && (
                 <Pressable
@@ -1643,9 +1659,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "700" as const,
     letterSpacing: 0.2,
     textAlign: "center" as const,
-    marginBottom: 16,
+    marginBottom: 8,
     opacity: 0.55,
   },
+  menuPremiumBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, alignSelf: "center" as const, marginBottom: 4 },
+  menuPremiumText: { fontSize: 12, fontWeight: "700" as const },
+  menuOwnerText: { fontSize: 11, textAlign: "center" as const, marginBottom: 12 },
+  premiumPill: { flexDirection: "row" as const, alignItems: "center" as const, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" as const, marginVertical: 3 },
+  premiumPillText: { fontSize: 11, color: "#fff", fontWeight: "700" as const },
   groupMenuItem: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
