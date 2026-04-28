@@ -44,7 +44,7 @@ export default function OnboardingWelcome() {
         <Animated.View style={[styles.footer, { opacity: fadeAnim, transform: [{ translateY: btnSlideAnim }] }]}>
           <Pressable
             style={({ pressed }) => [styles.getStartedBtn, pressed && styles.btnPressed]}
-            onPress={() => router.push("/onboarding/goals" as never)}
+            onPress={() => router.push("/onboarding/user-type" as never)}
             testID="onboarding-get-started"
           >
             <Text style={styles.getStartedText}>Get Started</Text>
