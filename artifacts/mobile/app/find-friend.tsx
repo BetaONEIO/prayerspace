@@ -1,12 +1,20 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Platform, Animated, Share, Linking } from "react-native";
+import {
+  View, Text, StyleSheet, Pressable, TextInput, ScrollView,
+  ActivityIndicator, Alert, Platform, Animated, Share, Linking,
+  Modal, TouchableWithoutFeedback,
+} from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import AvatarImage from "@/components/AvatarImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck, Clock, ChevronRight, Share2 } from "lucide-react-native";
+import {
+  ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck,
+  Clock, ChevronRight, Share2, MessageCircle, Mail, Link2, MessageSquare,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import * as Contacts from "expo-contacts";
+import * as Clipboard from "expo-clipboard";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
@@ -30,10 +38,214 @@ function deriveUsername(name: string | null): string {
   if (!name) return "@user";
   return "@" + name.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
 }
-
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
 }
+function buildInviteMessage(firstName?: string) {
+  return `Hey${firstName ? ` ${firstName}` : ""}! I've been using Prayer Space to stay connected in prayer — thought you might find it helpful 🙏\nJoin me here: ${APP_LINK}`;
+}
+
+// ─── Invite Bottom Sheet ───────────────────────────────────────────────────────
+
+interface InviteSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  firstName?: string;
+  colors: ThemeColors;
+}
+
+function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) {
+  const slideAnim = useRef(new Animated.Value(400)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [copied, setCopied] = useState(false);
+  const sheetStyles = useMemo(() => createSheetStyles(colors), [colors]);
+
+  useEffect(() => {
+    if (visible) {
+      setCopied(false);
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 400, duration: 220, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  const message = buildInviteMessage(firstName);
+
+  const handleWhatsApp = async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    const canOpen = await Linking.canOpenURL(url).catch(() => false);
+    if (canOpen) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert("WhatsApp not found", "WhatsApp doesn't appear to be installed on this device.");
+    }
+    onClose();
+  };
+
+  const handleMessages = async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const smsUrl = Platform.OS === "ios"
+      ? `sms:&body=${encodeURIComponent(message)}`
+      : `sms:?body=${encodeURIComponent(message)}`;
+    await Linking.openURL(smsUrl).catch(() => null);
+    onClose();
+  };
+
+  const handleEmail = async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const subject = encodeURIComponent("Join me on Prayer Space 🙏");
+    const body = encodeURIComponent(message);
+    await Linking.openURL(`mailto:?subject=${subject}&body=${body}`).catch(() => null);
+    onClose();
+  };
+
+  const handleCopyLink = async () => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await Clipboard.setStringAsync(APP_LINK);
+    setCopied(true);
+    setTimeout(() => { setCopied(false); onClose(); }, 1200);
+  };
+
+  const handleMore = async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    try {
+      await Share.share({ message, title: "Invite to Prayer Space" });
+    } catch { }
+    onClose();
+  };
+
+  const shareOptions = [
+    {
+      key: "whatsapp",
+      label: "WhatsApp",
+      icon: <MessageSquare size={20} color="#25D366" />,
+      iconBg: "#25D36614",
+      onPress: handleWhatsApp,
+    },
+    {
+      key: "messages",
+      label: "Messages",
+      icon: <MessageCircle size={20} color="#3B82F6" />,
+      iconBg: "#3B82F614",
+      onPress: handleMessages,
+    },
+    {
+      key: "email",
+      label: "Email",
+      icon: <Mail size={20} color={colors.primary} />,
+      iconBg: colors.primary + "14",
+      onPress: handleEmail,
+    },
+    {
+      key: "copy",
+      label: copied ? "Copied!" : "Copy Link",
+      icon: <Link2 size={20} color={colors.mutedForeground} />,
+      iconBg: colors.muted,
+      onPress: handleCopyLink,
+    },
+  ];
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent animationType="none" visible={visible} onRequestClose={onClose} statusBarTranslucent>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <Animated.View style={[sheetStyles.backdrop, { opacity: fadeAnim }]} />
+      </TouchableWithoutFeedback>
+
+      <Animated.View style={[sheetStyles.sheet, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Drag handle */}
+        <View style={sheetStyles.handle} />
+
+        {/* Header */}
+        <View style={sheetStyles.sheetHeader}>
+          <Text style={sheetStyles.sheetTitle}>Invite to Prayer Space</Text>
+          <Pressable style={({ pressed }) => [sheetStyles.closeBtn, pressed && { opacity: 0.6 }]} onPress={onClose} hitSlop={8}>
+            <X size={18} color={colors.mutedForeground} />
+          </Pressable>
+        </View>
+
+        <Text style={sheetStyles.sheetSubtitle}>Share with your friends and grow together in prayer</Text>
+
+        {/* Share options */}
+        <View style={sheetStyles.optionsList}>
+          {shareOptions.map((opt, i) => (
+            <Pressable
+              key={opt.key}
+              style={({ pressed }) => [
+                sheetStyles.optionRow,
+                i < shareOptions.length - 1 && sheetStyles.optionRowBorder,
+                pressed && { backgroundColor: colors.muted + "60" },
+              ]}
+              onPress={opt.onPress}
+            >
+              <View style={[sheetStyles.optionIconWrap, { backgroundColor: opt.iconBg }]}>
+                {opt.icon}
+              </View>
+              <Text style={[sheetStyles.optionLabel, opt.key === "copy" && copied && { color: colors.primary }]}>
+                {opt.label}
+              </Text>
+              <ChevronRight size={16} color={colors.border} />
+            </Pressable>
+          ))}
+        </View>
+
+        {/* More options */}
+        <Pressable
+          style={({ pressed }) => [sheetStyles.moreBtn, pressed && { opacity: 0.75 }]}
+          onPress={handleMore}
+        >
+          <Share2 size={15} color={colors.mutedForeground} />
+          <Text style={sheetStyles.moreBtnText}>More sharing options</Text>
+        </Pressable>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+function createSheetStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)" },
+    sheet: {
+      position: "absolute" as const,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 12,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 20,
+      elevation: 20,
+    },
+    handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center" as const, marginBottom: 20 },
+    sheetHeader: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const, marginBottom: 6 },
+    sheetTitle: { fontSize: 18, fontWeight: "700" as const, color: colors.foreground },
+    closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.muted, alignItems: "center" as const, justifyContent: "center" as const },
+    sheetSubtitle: { fontSize: 13, color: colors.mutedForeground, marginBottom: 20, lineHeight: 18 },
+    optionsList: { backgroundColor: colors.background, borderRadius: 18, borderWidth: 1, borderColor: colors.border, overflow: "hidden" as const, marginBottom: 16 },
+    optionRow: { flexDirection: "row" as const, alignItems: "center" as const, paddingVertical: 14, paddingHorizontal: 16, gap: 14 },
+    optionRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    optionIconWrap: { width: 40, height: 40, borderRadius: 13, alignItems: "center" as const, justifyContent: "center" as const },
+    optionLabel: { flex: 1, fontSize: 15, fontWeight: "600" as const, color: colors.foreground },
+    moreBtn: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, gap: 7, paddingVertical: 13, borderRadius: 16, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
+    moreBtnText: { fontSize: 14, fontWeight: "600" as const, color: colors.mutedForeground },
+  });
+}
+
+// ─── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function FindFriendScreen() {
   const router = useRouter();
@@ -49,6 +261,8 @@ export default function FindFriendScreen() {
   const [requestingPermission, setRequestingPermission] = useState(false);
   const [contactsList, setContactsList] = useState<ContactWithStatus[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
+  const [inviteContactFirstName, setInviteContactFirstName] = useState<string | undefined>(undefined);
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,10 +277,8 @@ export default function FindFriendScreen() {
     }
   }, [contactsPermission]);
 
-  // Load and cross-reference contacts when permission is granted
   useEffect(() => {
     if (contactsPermission !== "granted" || Platform.OS === "web") return;
-
     const loadContacts = async () => {
       setLoadingContacts(true);
       try {
@@ -74,39 +286,26 @@ export default function FindFriendScreen() {
           fields: [Contacts.Fields.Name, Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
           sort: Contacts.SortTypes.FirstName,
         });
-
-        // Collect unique emails
         const emailMap = new Map<string, Contacts.Contact>();
         const emails: string[] = [];
         for (const contact of rawContacts) {
           if (!contact.name) continue;
           const email = contact.emails?.[0]?.email?.toLowerCase();
-          if (email && !emailMap.has(email)) {
-            emailMap.set(email, contact);
-            emails.push(email);
-          }
+          if (email && !emailMap.has(email)) { emailMap.set(email, contact); emails.push(email); }
         }
-
-        // Cross-reference with Prayer Space profiles by email
         const emailToUser = new Map<string, FoundUser>();
         if (emails.length > 0) {
           try {
             const { data: profiles } = await supabase
-              .from("profiles")
-              .select("id, full_name, avatar_url, bio, email")
-              .in("email", emails)
-              .neq("id", user?.id ?? "");
+              .from("profiles").select("id, full_name, avatar_url, bio, email")
+              .in("email", emails).neq("id", user?.id ?? "");
             if (profiles) {
               for (const p of profiles as (FoundUser & { email?: string })[]) {
                 if (p.email) emailToUser.set(p.email.toLowerCase(), p);
               }
             }
-          } catch {
-            // email column may not exist — treat all as non-users
-          }
+          } catch { }
         }
-
-        // Build final list — limit to 60 contacts
         const list: ContactWithStatus[] = [];
         const seen = new Set<string>();
         for (const contact of rawContacts) {
@@ -116,32 +315,18 @@ export default function FindFriendScreen() {
           const key = email ?? `${contact.name}-${phone ?? ""}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          list.push({
-            id: contact.id ?? key,
-            name: contact.name,
-            initials: getInitials(contact.name),
-            email,
-            phone,
-            existingUser: email ? emailToUser.get(email) : undefined,
-          });
+          list.push({ id: contact.id ?? key, name: contact.name, initials: getInitials(contact.name), email, phone, existingUser: email ? emailToUser.get(email) : undefined });
           if (list.length >= 60) break;
         }
-
-        // Existing users first, then alphabetically
         list.sort((a, b) => {
           if (a.existingUser && !b.existingUser) return -1;
           if (!a.existingUser && b.existingUser) return 1;
           return a.name.localeCompare(b.name);
         });
-
         setContactsList(list);
-      } catch (err) {
-        console.error("[FindFriend] Failed to load contacts:", err);
-      } finally {
-        setLoadingContacts(false);
-      }
+      } catch (err) { console.error("[FindFriend] contacts:", err); }
+      finally { setLoadingContacts(false); }
     };
-
     void loadContacts();
   }, [contactsPermission, user?.id]);
 
@@ -200,7 +385,10 @@ export default function FindFriendScreen() {
       const { error } = await supabase.from("friend_requests").insert({ sender_id: user.id, receiver_id: receiverId, status: "pending" });
       if (error) throw error;
     },
-    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] }); if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
     onError: () => { Alert.alert("Error", "Could not send friend request. Please try again."); },
   });
 
@@ -212,38 +400,10 @@ export default function FindFriendScreen() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  const buildInviteMessage = (firstName?: string) =>
-    `Hey${firstName ? ` ${firstName}` : ""}! I've been using Prayer Space to stay connected in prayer — thought you might find it helpful 🙏\nJoin me here: ${APP_LINK}`;
-
-  // Generic invite (header button / empty state / no-results)
-  const handleInvite = useCallback(async () => {
+  const openInviteSheet = useCallback((firstName?: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
-    try {
-      await Share.share({ message: buildInviteMessage(), title: "Invite to Prayer Space" });
-    } catch { }
-  }, []);
-
-  // Per-contact invite with personalised first name
-  const handleInviteContact = useCallback(async (contact: ContactWithStatus) => {
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-    const firstName = contact.name.split(" ")[0];
-    const message = buildInviteMessage(firstName);
-
-    // Try WhatsApp deep link if contact has a phone number
-    if (contact.phone) {
-      const encoded = encodeURIComponent(message);
-      const waUrl = `https://wa.me/?text=${encoded}`;
-      const canOpen = await Linking.canOpenURL(waUrl).catch(() => false);
-      if (canOpen) {
-        await Linking.openURL(waUrl).catch(() => null);
-        return;
-      }
-    }
-
-    // Fallback: native share sheet (includes WhatsApp, Messages, Mail, Copy link)
-    try {
-      await Share.share({ message, title: "Invite to Prayer Space" });
-    } catch { }
+    setInviteContactFirstName(firstName);
+    setInviteSheetVisible(true);
   }, []);
 
   const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
@@ -256,7 +416,7 @@ export default function FindFriendScreen() {
           <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>
           <Text style={styles.headerTitle}>Find Friends</Text>
           <View style={styles.headerRight}>
-            <Pressable style={styles.inviteBtn} onPress={() => { void handleInvite(); }}>
+            <Pressable style={styles.inviteBtn} onPress={() => openInviteSheet()}>
               <Share2 size={18} color={colors.primary} />
             </Pressable>
             <Pressable style={styles.requestsBtn} onPress={() => router.push("/friend-requests" as never)}>
@@ -314,7 +474,7 @@ export default function FindFriendScreen() {
         {hasSearched && results.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
           <View style={styles.noResultsDropdown}>
             <Text style={styles.noResultsText}>User not found</Text>
-            <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => { void handleInvite(); }}>
+            <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
               <Share2 size={14} color={colors.primary} />
               <Text style={styles.noResultsInviteText}>Invite them to Prayer Space</Text>
             </Pressable>
@@ -335,24 +495,21 @@ export default function FindFriendScreen() {
         )}
 
         <AutoScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {/* Empty state — only shown when contacts list is not active */}
           {!hasSearched && !searchMutation.isPending && !showContactsList && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrap}><Users size={40} color={colors.primary + "40"} /></View>
               <Text style={styles.emptyTitle}>Find people on Prayer Space</Text>
               <Text style={styles.emptyDesc}>Search by name or username to connect with friends and start praying together.</Text>
-              <Pressable style={({ pressed }) => [styles.emptyInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => { void handleInvite(); }}>
+              <Pressable style={({ pressed }) => [styles.emptyInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
                 <Share2 size={15} color={colors.primary} />
                 <Text style={styles.emptyInviteText}>Invite friends</Text>
               </Pressable>
             </View>
           )}
 
-          {/* Contacts list — shown when permission granted and not actively searching */}
           {showContactsList && (
             <View style={styles.contactsSection}>
               <Text style={styles.contactsSectionTitle}>From Your Contacts</Text>
-
               {loadingContacts ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
               ) : contactsList.length === 0 ? (
@@ -363,7 +520,6 @@ export default function FindFriendScreen() {
                   const isLast = index === contactsList.length - 1;
                   return (
                     <View key={contact.id} style={[styles.contactRow, !isLast && styles.contactRowBorder]}>
-                      {/* Avatar */}
                       {contact.existingUser?.avatar_url ? (
                         <AvatarImage avatarPath={contact.existingUser.avatar_url} fallbackSeed={contact.name} style={styles.contactAvatar} />
                       ) : (
@@ -371,8 +527,6 @@ export default function FindFriendScreen() {
                           <Text style={styles.contactInitials}>{contact.initials}</Text>
                         </View>
                       )}
-
-                      {/* Info */}
                       <View style={styles.contactInfo}>
                         <Text style={styles.contactName} numberOfLines={1}>{contact.name}</Text>
                         {contact.existingUser ? (
@@ -381,8 +535,6 @@ export default function FindFriendScreen() {
                           <Text style={styles.contactNotOnApp} numberOfLines={1}>{contact.email ?? contact.phone ?? "Not on Prayer Space"}</Text>
                         )}
                       </View>
-
-                      {/* Action */}
                       {contact.existingUser ? (
                         status === "accepted" ? (
                           <View style={[styles.contactStatusBadge, styles.contactStatusFriends]}>
@@ -395,19 +547,13 @@ export default function FindFriendScreen() {
                             <Text style={styles.contactStatusTextMuted}>Requested</Text>
                           </View>
                         ) : (
-                          <Pressable
-                            style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]}
-                            onPress={() => { if (contact.existingUser) sendRequestMutation.mutate(contact.existingUser.id); }}
-                          >
+                          <Pressable style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]} onPress={() => { if (contact.existingUser) sendRequestMutation.mutate(contact.existingUser.id); }}>
                             <UserPlus size={13} color={colors.primaryForeground} />
                             <Text style={styles.contactAddBtnText}>Add</Text>
                           </Pressable>
                         )
                       ) : (
-                        <Pressable
-                          style={({ pressed }) => [styles.contactInviteBtn, pressed && { opacity: 0.75 }]}
-                          onPress={() => { void handleInviteContact(contact); }}
-                        >
+                        <Pressable style={({ pressed }) => [styles.contactInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet(contact.name.split(" ")[0])}>
                           <Share2 size={13} color={colors.primary} />
                           <Text style={styles.contactInviteBtnText}>Invite</Text>
                         </Pressable>
@@ -418,10 +564,16 @@ export default function FindFriendScreen() {
               )}
             </View>
           )}
-
           <View style={{ height: 40 }} />
         </AutoScrollView>
       </SafeAreaView>
+
+      <InviteSheet
+        visible={inviteSheetVisible}
+        onClose={() => setInviteSheetVisible(false)}
+        firstName={inviteContactFirstName}
+        colors={colors}
+      />
     </>
   );
 }
@@ -477,7 +629,6 @@ function createStyles(colors: ThemeColors) {
     contactsBannerDesc: { fontSize: 12, color: colors.mutedForeground, lineHeight: 17 },
     contactsBannerBtn: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, minWidth: 74 },
     contactsBannerBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
-    // Contacts list
     contactsSection: { gap: 0 },
     contactsSectionTitle: { fontSize: 12, fontWeight: "700" as const, color: colors.mutedForeground, letterSpacing: 0.6, textTransform: "uppercase" as const, marginBottom: 12 },
     contactsEmpty: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" as const, marginTop: 32 },
