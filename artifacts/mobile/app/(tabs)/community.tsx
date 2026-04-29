@@ -4939,10 +4939,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 30,
-    fontWeight: "800" as const,
+    fontSize: 18,
+    fontWeight: "700" as const,
     color: colors.foreground,
-    letterSpacing: -0.8,
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 12,
