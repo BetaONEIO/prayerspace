@@ -71,7 +71,8 @@ export default function ChurchPaywall() {
 
   const getPriceForTier = (tier: ChurchTier): string => {
     const pkg = getPackageForTier(tier.id);
-    return pkg?.product?.priceString ?? tier.fallbackPrice;
+    const price = pkg?.product?.priceString ?? tier.fallbackPrice;
+    return `${price}/month`;
   };
 
   const completeOnboarding = (tierId: ChurchTier["id"]) => {

@@ -80,6 +80,7 @@ import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { communityStore, StoredCommunity } from "@/lib/communityStore";
+import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
 type Tab = "Feed" | "Community" | "Groups";
 
