@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Platform, Animated, Share } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Platform, Animated, Share, Linking } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import AvatarImage from "@/components/AvatarImage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,10 +15,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface FoundUser { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; }
 interface FriendRequest { id: string; sender_id: string; receiver_id: string; status: "pending" | "accepted" | "declined"; }
+interface ContactWithStatus {
+  id: string;
+  name: string;
+  initials: string;
+  email?: string;
+  phone?: string;
+  existingUser?: FoundUser;
+}
+
+const APP_LINK = "https://prayerspace.app";
 
 function deriveUsername(name: string | null): string {
   if (!name) return "@user";
   return "@" + name.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+}
+
+function getInitials(name: string): string {
+  return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
 }
 
 export default function FindFriendScreen() {
@@ -33,6 +47,8 @@ export default function FindFriendScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [contactsPermission, setContactsPermission] = useState<"granted" | "denied" | "undetermined" | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
+  const [contactsList, setContactsList] = useState<ContactWithStatus[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -46,6 +62,88 @@ export default function FindFriendScreen() {
       Animated.spring(bannerAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 10 }).start();
     }
   }, [contactsPermission]);
+
+  // Load and cross-reference contacts when permission is granted
+  useEffect(() => {
+    if (contactsPermission !== "granted" || Platform.OS === "web") return;
+
+    const loadContacts = async () => {
+      setLoadingContacts(true);
+      try {
+        const { data: rawContacts } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.Name, Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
+          sort: Contacts.SortTypes.FirstName,
+        });
+
+        // Collect unique emails
+        const emailMap = new Map<string, Contacts.Contact>();
+        const emails: string[] = [];
+        for (const contact of rawContacts) {
+          if (!contact.name) continue;
+          const email = contact.emails?.[0]?.email?.toLowerCase();
+          if (email && !emailMap.has(email)) {
+            emailMap.set(email, contact);
+            emails.push(email);
+          }
+        }
+
+        // Cross-reference with Prayer Space profiles by email
+        const emailToUser = new Map<string, FoundUser>();
+        if (emails.length > 0) {
+          try {
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url, bio, email")
+              .in("email", emails)
+              .neq("id", user?.id ?? "");
+            if (profiles) {
+              for (const p of profiles as (FoundUser & { email?: string })[]) {
+                if (p.email) emailToUser.set(p.email.toLowerCase(), p);
+              }
+            }
+          } catch {
+            // email column may not exist — treat all as non-users
+          }
+        }
+
+        // Build final list — limit to 60 contacts
+        const list: ContactWithStatus[] = [];
+        const seen = new Set<string>();
+        for (const contact of rawContacts) {
+          if (!contact.name) continue;
+          const email = contact.emails?.[0]?.email?.toLowerCase();
+          const phone = contact.phoneNumbers?.[0]?.number;
+          const key = email ?? `${contact.name}-${phone ?? ""}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          list.push({
+            id: contact.id ?? key,
+            name: contact.name,
+            initials: getInitials(contact.name),
+            email,
+            phone,
+            existingUser: email ? emailToUser.get(email) : undefined,
+          });
+          if (list.length >= 60) break;
+        }
+
+        // Existing users first, then alphabetically
+        list.sort((a, b) => {
+          if (a.existingUser && !b.existingUser) return -1;
+          if (!a.existingUser && b.existingUser) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        setContactsList(list);
+      } catch (err) {
+        console.error("[FindFriend] Failed to load contacts:", err);
+      } finally {
+        setLoadingContacts(false);
+      }
+    };
+
+    void loadContacts();
+  }, [contactsPermission, user?.id]);
 
   const { data: myRequests = [] } = useQuery<FriendRequest[]>({
     queryKey: ["friend_requests_sent", user?.id],
@@ -114,15 +212,41 @@ export default function FindFriendScreen() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
+  const buildInviteMessage = (firstName?: string) =>
+    `Hey${firstName ? ` ${firstName}` : ""}! I've been using Prayer Space to stay connected in prayer — thought you might find it helpful 🙏\nJoin me here: ${APP_LINK}`;
+
+  // Generic invite (header button / empty state / no-results)
   const handleInvite = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     try {
-      await Share.share({
-        message: "Join me on Prayer Space — a community for praying together. Download the app: https://prayerspace.app",
-        title: "Invite to Prayer Space",
-      });
+      await Share.share({ message: buildInviteMessage(), title: "Invite to Prayer Space" });
     } catch { }
   }, []);
+
+  // Per-contact invite with personalised first name
+  const handleInviteContact = useCallback(async (contact: ContactWithStatus) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const firstName = contact.name.split(" ")[0];
+    const message = buildInviteMessage(firstName);
+
+    // Try WhatsApp deep link if contact has a phone number
+    if (contact.phone) {
+      const encoded = encodeURIComponent(message);
+      const waUrl = `https://wa.me/?text=${encoded}`;
+      const canOpen = await Linking.canOpenURL(waUrl).catch(() => false);
+      if (canOpen) {
+        await Linking.openURL(waUrl).catch(() => null);
+        return;
+      }
+    }
+
+    // Fallback: native share sheet (includes WhatsApp, Messages, Mail, Copy link)
+    try {
+      await Share.share({ message, title: "Invite to Prayer Space" });
+    } catch { }
+  }, []);
+
+  const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
 
   return (
     <>
@@ -211,7 +335,8 @@ export default function FindFriendScreen() {
         )}
 
         <AutoScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {!hasSearched && !searchMutation.isPending && (
+          {/* Empty state — only shown when contacts list is not active */}
+          {!hasSearched && !searchMutation.isPending && !showContactsList && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrap}><Users size={40} color={colors.primary + "40"} /></View>
               <Text style={styles.emptyTitle}>Find people on Prayer Space</Text>
@@ -222,6 +347,78 @@ export default function FindFriendScreen() {
               </Pressable>
             </View>
           )}
+
+          {/* Contacts list — shown when permission granted and not actively searching */}
+          {showContactsList && (
+            <View style={styles.contactsSection}>
+              <Text style={styles.contactsSectionTitle}>From Your Contacts</Text>
+
+              {loadingContacts ? (
+                <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
+              ) : contactsList.length === 0 ? (
+                <Text style={styles.contactsEmpty}>No contacts found</Text>
+              ) : (
+                contactsList.map((contact, index) => {
+                  const status = contact.existingUser ? getRequestStatus(contact.existingUser.id) : "none";
+                  const isLast = index === contactsList.length - 1;
+                  return (
+                    <View key={contact.id} style={[styles.contactRow, !isLast && styles.contactRowBorder]}>
+                      {/* Avatar */}
+                      {contact.existingUser?.avatar_url ? (
+                        <AvatarImage avatarPath={contact.existingUser.avatar_url} fallbackSeed={contact.name} style={styles.contactAvatar} />
+                      ) : (
+                        <View style={[styles.contactAvatar, styles.contactInitialsWrap]}>
+                          <Text style={styles.contactInitials}>{contact.initials}</Text>
+                        </View>
+                      )}
+
+                      {/* Info */}
+                      <View style={styles.contactInfo}>
+                        <Text style={styles.contactName} numberOfLines={1}>{contact.name}</Text>
+                        {contact.existingUser ? (
+                          <Text style={styles.contactOnApp}>On Prayer Space</Text>
+                        ) : (
+                          <Text style={styles.contactNotOnApp} numberOfLines={1}>{contact.email ?? contact.phone ?? "Not on Prayer Space"}</Text>
+                        )}
+                      </View>
+
+                      {/* Action */}
+                      {contact.existingUser ? (
+                        status === "accepted" ? (
+                          <View style={[styles.contactStatusBadge, styles.contactStatusFriends]}>
+                            <UserCheck size={12} color={colors.primary} />
+                            <Text style={styles.contactStatusTextPrimary}>Friends</Text>
+                          </View>
+                        ) : status === "pending" ? (
+                          <View style={[styles.contactStatusBadge, styles.contactStatusPending]}>
+                            <Clock size={12} color={colors.mutedForeground} />
+                            <Text style={styles.contactStatusTextMuted}>Requested</Text>
+                          </View>
+                        ) : (
+                          <Pressable
+                            style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]}
+                            onPress={() => { if (contact.existingUser) sendRequestMutation.mutate(contact.existingUser.id); }}
+                          >
+                            <UserPlus size={13} color={colors.primaryForeground} />
+                            <Text style={styles.contactAddBtnText}>Add</Text>
+                          </Pressable>
+                        )
+                      ) : (
+                        <Pressable
+                          style={({ pressed }) => [styles.contactInviteBtn, pressed && { opacity: 0.75 }]}
+                          onPress={() => { void handleInviteContact(contact); }}
+                        >
+                          <Share2 size={13} color={colors.primary} />
+                          <Text style={styles.contactInviteBtnText}>Invite</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+
           <View style={{ height: 40 }} />
         </AutoScrollView>
       </SafeAreaView>
@@ -280,5 +477,27 @@ function createStyles(colors: ThemeColors) {
     contactsBannerDesc: { fontSize: 12, color: colors.mutedForeground, lineHeight: 17 },
     contactsBannerBtn: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const, minWidth: 74 },
     contactsBannerBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
+    // Contacts list
+    contactsSection: { gap: 0 },
+    contactsSectionTitle: { fontSize: 12, fontWeight: "700" as const, color: colors.mutedForeground, letterSpacing: 0.6, textTransform: "uppercase" as const, marginBottom: 12 },
+    contactsEmpty: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" as const, marginTop: 32 },
+    contactRow: { flexDirection: "row" as const, alignItems: "center" as const, paddingVertical: 11, gap: 12 },
+    contactRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border + "50" },
+    contactAvatar: { width: 44, height: 44, borderRadius: 22 },
+    contactInitialsWrap: { backgroundColor: colors.primary + "18", alignItems: "center" as const, justifyContent: "center" as const },
+    contactInitials: { fontSize: 15, fontWeight: "700" as const, color: colors.primary },
+    contactInfo: { flex: 1, gap: 2 },
+    contactName: { fontSize: 15, fontWeight: "600" as const, color: colors.foreground },
+    contactOnApp: { fontSize: 12, color: colors.primary, fontWeight: "500" as const },
+    contactNotOnApp: { fontSize: 12, color: colors.mutedForeground },
+    contactStatusBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    contactStatusFriends: { backgroundColor: colors.primary + "14" },
+    contactStatusPending: { backgroundColor: colors.secondary },
+    contactStatusTextPrimary: { fontSize: 12, fontWeight: "600" as const, color: colors.primary },
+    contactStatusTextMuted: { fontSize: 12, fontWeight: "600" as const, color: colors.mutedForeground },
+    contactAddBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.primary },
+    contactAddBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
+    contactInviteBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary + "50", backgroundColor: colors.primary + "0A" },
+    contactInviteBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primary },
   });
 }
