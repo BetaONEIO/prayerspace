@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useCallback } from "react";
+import { Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { PrayerProvider } from "@/providers/PrayerProvider";
@@ -12,6 +13,15 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import SmartRatingModal from "@/components/SmartRatingModal";
 import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
 import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
+import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+
+try {
+  initializeRevenueCat();
+} catch (err: unknown) {
+  const msg = err instanceof Error ? err.message : "Unknown error";
+  console.warn("[RevenueCat] Initialization failed:", msg);
+  if (__DEV__) Alert.alert("RevenueCat Unavailable", msg);
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -116,21 +126,23 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <AuthProvider>
-            <PrayerProvider>
-              <FavouritesProvider>
-                <NotificationsProvider>
-                  <SelectedRecipientsProvider>
-                    <RootLayoutNav />
-                  </SelectedRecipientsProvider>
-                </NotificationsProvider>
-              </FavouritesProvider>
-            </PrayerProvider>
-          </AuthProvider>
-        </GestureHandlerRootView>
-      </ThemeProvider>
+      <SubscriptionProvider>
+        <ThemeProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AuthProvider>
+              <PrayerProvider>
+                <FavouritesProvider>
+                  <NotificationsProvider>
+                    <SelectedRecipientsProvider>
+                      <RootLayoutNav />
+                    </SelectedRecipientsProvider>
+                  </NotificationsProvider>
+                </FavouritesProvider>
+              </PrayerProvider>
+            </AuthProvider>
+          </GestureHandlerRootView>
+        </ThemeProvider>
+      </SubscriptionProvider>
     </QueryClientProvider>
   );
 }
