@@ -316,7 +316,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                   <Sparkles size={20} color={colors.primary} strokeWidth={1.8} />
                 </View>
                 <View style={styles.proTextWrap}>
-                  <Text style={styles.proTitle}>Prayer Space Pro</Text>
+                  <Text style={styles.proTitle}>Prayer Space Plus+</Text>
                   <Text style={styles.proSubtitle}>Deepen your time in prayer</Text>
                 </View>
                 <View style={styles.proBadge}>

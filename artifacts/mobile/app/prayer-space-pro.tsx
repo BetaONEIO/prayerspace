@@ -156,7 +156,7 @@ export default function PrayerSpaceProScreen() {
             />
           </View>
 
-          <Text style={styles.title}>Prayer Space Pro</Text>
+          <Text style={styles.title}>Prayer Space Plus+</Text>
           <Text style={styles.subtitle}>
             Deepen your time in prayer with tools built for intentional, consistent spiritual growth.
           </Text>

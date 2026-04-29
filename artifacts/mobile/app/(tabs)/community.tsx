@@ -4038,7 +4038,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
 
               <Text style={styles.paywallTitle}>Private Community</Text>
               <Text style={styles.paywallSubtitle}>
-                Perfect for churches and small groups. Available on Prayer Space Pro.
+                Perfect for churches and small groups. Available on Prayer Space Plus+.
               </Text>
 
               <Animated.View style={[styles.paywallFeatures, { opacity: featuresAnim }]}>
