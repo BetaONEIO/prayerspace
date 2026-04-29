@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Platform, Animated } from "react-native";
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Platform, Animated, Share } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import AvatarImage from "@/components/AvatarImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck, Clock, ChevronRight } from "lucide-react-native";
+import { ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck, Clock, ChevronRight, Share2 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import * as Contacts from "expo-contacts";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -114,6 +114,16 @@ export default function FindFriendScreen() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
+  const handleInvite = useCallback(async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    try {
+      await Share.share({
+        message: "Join me on Prayer Space — a community for praying together. Download the app: https://prayerspace.app",
+        title: "Invite to Prayer Space",
+      });
+    } catch { }
+  }, []);
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -121,10 +131,15 @@ export default function FindFriendScreen() {
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>
           <Text style={styles.headerTitle}>Find Friends</Text>
-          <Pressable style={styles.requestsBtn} onPress={() => router.push("/friend-requests" as never)}>
-            <Users size={18} color={colors.primary} />
-            {incomingCount > 0 && <View style={styles.requestsBadge}><Text style={styles.requestsBadgeText}>{incomingCount}</Text></View>}
-          </Pressable>
+          <View style={styles.headerRight}>
+            <Pressable style={styles.inviteBtn} onPress={() => { void handleInvite(); }}>
+              <Share2 size={18} color={colors.primary} />
+            </Pressable>
+            <Pressable style={styles.requestsBtn} onPress={() => router.push("/friend-requests" as never)}>
+              <Users size={18} color={colors.primary} />
+              {incomingCount > 0 && <View style={styles.requestsBadge}><Text style={styles.requestsBadgeText}>{incomingCount}</Text></View>}
+            </Pressable>
+          </View>
         </View>
 
         {incomingCount > 0 && (
@@ -173,7 +188,13 @@ export default function FindFriendScreen() {
         )}
 
         {hasSearched && results.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
-          <View style={styles.noResultsDropdown}><Text style={styles.noResultsText}>No users found for "{query.trim()}"</Text></View>
+          <View style={styles.noResultsDropdown}>
+            <Text style={styles.noResultsText}>User not found</Text>
+            <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => { void handleInvite(); }}>
+              <Share2 size={14} color={colors.primary} />
+              <Text style={styles.noResultsInviteText}>Invite them to Prayer Space</Text>
+            </Pressable>
+          </View>
         )}
 
         {contactsPermission !== null && contactsPermission !== "granted" && Platform.OS !== "web" && (
@@ -195,6 +216,10 @@ export default function FindFriendScreen() {
               <View style={styles.emptyIconWrap}><Users size={40} color={colors.primary + "40"} /></View>
               <Text style={styles.emptyTitle}>Find people on Prayer Space</Text>
               <Text style={styles.emptyDesc}>Search by name or username to connect with friends and start praying together.</Text>
+              <Pressable style={({ pressed }) => [styles.emptyInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => { void handleInvite(); }}>
+                <Share2 size={15} color={colors.primary} />
+                <Text style={styles.emptyInviteText}>Invite friends</Text>
+              </Pressable>
             </View>
           )}
           <View style={{ height: 40 }} />
@@ -210,6 +235,8 @@ function createStyles(colors: ThemeColors) {
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, alignItems: "center" as const, justifyContent: "center" as const },
     headerTitle: { fontSize: 20, fontWeight: "700" as const, color: colors.foreground },
+    headerRight: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
+    inviteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "14", alignItems: "center" as const, justifyContent: "center" as const },
     requestsBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "14", alignItems: "center" as const, justifyContent: "center" as const },
     requestsBadge: { position: "absolute" as const, top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.primary, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 3, borderWidth: 1.5, borderColor: colors.background },
     requestsBadgeText: { fontSize: 9, fontWeight: "800" as const, color: colors.primaryForeground },
@@ -234,14 +261,18 @@ function createStyles(colors: ThemeColors) {
     statusBadgePending: { backgroundColor: colors.secondary },
     statusBadgeTextPrimary: { fontSize: 12, fontWeight: "600" as const, color: colors.primary },
     statusBadgeTextMuted: { fontSize: 12, fontWeight: "600" as const, color: colors.mutedForeground },
-    noResultsDropdown: { marginHorizontal: 24, marginTop: 4, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 20, paddingVertical: 18 },
+    noResultsDropdown: { marginHorizontal: 24, marginTop: 4, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 20, paddingVertical: 18, gap: 12 },
     noResultsText: { fontSize: 14, fontWeight: "500" as const, color: colors.mutedForeground, textAlign: "center" as const },
+    noResultsInviteBtn: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, gap: 7, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 14, borderWidth: 1.5, borderColor: colors.primary + "40", backgroundColor: colors.primary + "0A" },
+    noResultsInviteText: { fontSize: 14, fontWeight: "600" as const, color: colors.primary },
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 40 },
     emptyState: { alignItems: "center" as const, paddingTop: 60, paddingHorizontal: 32 },
     emptyIconWrap: { width: 80, height: 80, borderRadius: 28, backgroundColor: colors.primary + "0D", alignItems: "center" as const, justifyContent: "center" as const, marginBottom: 20 },
     emptyTitle: { fontSize: 18, fontWeight: "700" as const, color: colors.foreground, marginBottom: 8, textAlign: "center" as const },
-    emptyDesc: { fontSize: 14, color: colors.mutedForeground, fontWeight: "500" as const, textAlign: "center" as const, lineHeight: 21 },
+    emptyDesc: { fontSize: 14, color: colors.mutedForeground, fontWeight: "500" as const, textAlign: "center" as const, lineHeight: 21, marginBottom: 24 },
+    emptyInviteBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8, paddingVertical: 13, paddingHorizontal: 28, borderRadius: 22, borderWidth: 1.5, borderColor: colors.primary + "50", backgroundColor: colors.primary + "0A" },
+    emptyInviteText: { fontSize: 15, fontWeight: "700" as const, color: colors.primary },
     contactsBanner: { marginHorizontal: 24, marginTop: 12, backgroundColor: colors.accent, borderRadius: 20, borderWidth: 1, borderColor: colors.primary + "30", padding: 14, flexDirection: "row" as const, alignItems: "center" as const, gap: 12 },
     contactsBannerIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.card, alignItems: "center" as const, justifyContent: "center" as const, flexShrink: 0, borderWidth: 1, borderColor: colors.primary + "20" },
     contactsBannerText: { flex: 1, gap: 2 },
