@@ -1019,7 +1019,7 @@ export default function CommunityScreen() {
               joinedCommunityIds={joinedCommunities.map((c) => c.id)}
               onJoin={handleJoinCommunity}
               onViewProfile={handleViewCommunityProfile}
-              onCreateCommunity={() => router.push("/onboarding/church-group-type" as never)}
+              onCreateCommunity={() => router.push("/onboarding/community-intro" as never)}
               onOpenBrowse={() => setBrowseCommunitiesVisible(true)}
             />
           ) : (
@@ -1099,7 +1099,7 @@ export default function CommunityScreen() {
         onClose={() => setBrowseCommunitiesVisible(false)}
         onCreateCommunity={() => {
           setBrowseCommunitiesVisible(false);
-          setTimeout(() => router.push("/onboarding/church-group-type" as never), 260);
+          setTimeout(() => router.push("/onboarding/community-intro" as never), 260);
         }}
       />
 

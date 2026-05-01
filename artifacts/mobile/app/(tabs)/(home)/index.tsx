@@ -379,7 +379,7 @@ export default function HomeScreen() {
             </View>
             <Pressable
               style={styles.communityNudgeBody}
-              onPress={() => router.push("/onboarding/church-group-type" as never)}
+              onPress={() => router.push("/onboarding/community-intro" as never)}
             >
               <Text style={styles.communityNudgeTitle}>Start a community</Text>
               <Text style={styles.communityNudgeSub}>For your church, group, or ministry</Text>
