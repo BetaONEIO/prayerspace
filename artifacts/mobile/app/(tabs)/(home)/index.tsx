@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
@@ -29,7 +30,9 @@ import {
   Inbox,
   Heart,
   X,
+  Users,
 } from "lucide-react-native";
+import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import {
   receivedPrayerRequests,
@@ -89,6 +92,20 @@ export default function HomeScreen() {
   const [activity, setActivity] = useState<ActivityItem[]>(initialActivity);
   const [thankToast, setThankToast] = useState<{ name: string } | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
+
+  const { isPremiumCommunity } = useChurchEntitlements();
+  const [nudgeDismissed, setNudgeDismissed] = useState(true);
+
+  useEffect(() => {
+    AsyncStorage.getItem("community_nudge_dismissed").then((val) => {
+      setNudgeDismissed(val === "true");
+    });
+  }, []);
+
+  const handleDismissNudge = useCallback(async () => {
+    await AsyncStorage.setItem("community_nudge_dismissed", "true");
+    setNudgeDismissed(true);
+  }, []);
 
   const displayName = profile?.full_name ?? user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Friend";
   const firstName = displayName.split(" ")[0];
@@ -353,6 +370,29 @@ export default function HomeScreen() {
             </Text>
             <ChevronRight size={16} color={colors.primary} />
           </Pressable>
+        )}
+
+        {!isPremiumCommunity && !nudgeDismissed && (
+          <View style={styles.communityNudge} testID="community-nudge-card">
+            <View style={styles.communityNudgeIconWrap}>
+              <Users size={20} color={colors.primary} />
+            </View>
+            <Pressable
+              style={styles.communityNudgeBody}
+              onPress={() => router.push("/onboarding/church-group-type" as never)}
+            >
+              <Text style={styles.communityNudgeTitle}>Start a community</Text>
+              <Text style={styles.communityNudgeSub}>For your church, group, or ministry</Text>
+            </Pressable>
+            <Pressable
+              style={styles.communityNudgeDismiss}
+              onPress={() => void handleDismissNudge()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              testID="community-nudge-dismiss"
+            >
+              <X size={14} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
         )}
 
         <View style={styles.section}>
@@ -1071,6 +1111,50 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "600" as const,
       color: colors.mutedForeground,
       marginTop: 2,
+    },
+    communityNudge: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      backgroundColor: colors.primary + "10",
+      borderRadius: 18,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.primary + "22",
+      gap: 12,
+    },
+    communityNudgeIconWrap: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary + "18",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
+    },
+    communityNudgeBody: {
+      flex: 1,
+      gap: 2,
+    },
+    communityNudgeTitle: {
+      fontSize: 14,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    communityNudgeSub: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      fontWeight: "500" as const,
+    },
+    communityNudgeDismiss: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.muted,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
     },
   });
 }
