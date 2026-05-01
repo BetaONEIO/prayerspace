@@ -246,10 +246,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signInWithGoogle = useCallback(async () => {
     console.log("[Auth] Starting Google sign in...");
+
+    const redirectTo = Linking.createURL("/");
+
     if (Platform.OS === "web") {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {},
+        options: { redirectTo },
       });
       if (error) {
         console.error("[Auth] Google OAuth error (web):", error.message);
@@ -262,6 +265,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       provider: "google",
       options: {
         skipBrowserRedirect: true,
+        redirectTo,
       },
     });
 
@@ -271,8 +275,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
     if (!data?.url) throw new Error("No OAuth URL returned from Supabase");
 
-    console.log("[Auth] Opening Google auth browser...");
-    const result = await WebBrowser.openAuthSessionAsync(data.url);
+    console.log("[Auth] Opening Google auth browser, redirectTo:", redirectTo);
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     console.log("[Auth] WebBrowser result type:", result.type);
 
     if (result.type === "success" && result.url) {
@@ -283,6 +287,45 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw sessionError;
       }
       console.log("[Auth] Google sign in successful");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: existingProfile, error: profileCheckErr } = await supabase
+          .from("profiles")
+          .select("id, deletion_requested_at")
+          .eq("id", user.id)
+          .single();
+
+        if (profileCheckErr && profileCheckErr.code !== "PGRST116") {
+          console.error("[Auth] Google profile check error (non-fatal):", profileCheckErr.message);
+        }
+
+        if (existingProfile?.deletion_requested_at) {
+          console.log("[Auth] Google sign in blocked — account pending deletion:", user.id);
+          await supabase.auth.signOut();
+          throw new Error("ACCOUNT_DELETED");
+        }
+
+        if (!existingProfile) {
+          console.log("[Auth] Creating profile for new Google user...");
+          const fullName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
+          const avatarUrl = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
+          const { error: upsertError } = await supabase.from("profiles").upsert(
+            {
+              id: user.id,
+              full_name: fullName,
+              avatar_url: avatarUrl,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "id" }
+          );
+          if (upsertError) {
+            console.error("[Auth] Failed to create Google user profile (non-fatal):", upsertError.message);
+          } else {
+            console.log("[Auth] Google user profile created");
+          }
+        }
+      }
     } else {
       console.log("[Auth] Google sign in cancelled or failed:", result.type);
     }
