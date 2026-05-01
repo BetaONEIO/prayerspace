@@ -24,7 +24,14 @@ const DENOMINATIONS = [
   "Other",
 ];
 
-const COMMUNITY_TYPES = ["Church", "Small group", "Prayer circle", "Ministry"];
+const COMMUNITY_TYPES = [
+  "Church",
+  "Ministry",
+  "Christian Union",
+  "Small Group",
+  "Prayer Group",
+  "Other",
+];
 
 const AUDIENCE_OPTIONS = [
   { id: "open", label: "Open to anyone", sub: "Anyone can discover and join", icon: Globe },

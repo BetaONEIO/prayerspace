@@ -17,7 +17,7 @@ const OPTIONS: { id: UserType; icon: typeof User; label: string; sublabel: strin
   {
     id: "church",
     icon: Users,
-    label: "Church / Group",
+    label: "Community",
     sublabel: "Private community, member management, and group prayer tools.",
   },
 ];

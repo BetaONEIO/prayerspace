@@ -2,11 +2,21 @@ import { useState, useEffect } from "react";
 
 export type UserType = "personal" | "church" | null;
 
+export type CommunityType =
+  | "church"
+  | "ministry"
+  | "christian_union"
+  | "small_group"
+  | "prayer_group"
+  | "other"
+  | null;
+
 interface OnboardingState {
   userType: UserType;
+  communityType: CommunityType;
 }
 
-let _state: OnboardingState = { userType: null };
+let _state: OnboardingState = { userType: null, communityType: null };
 const _listeners = new Set<(s: OnboardingState) => void>();
 
 function notify() {
@@ -21,8 +31,12 @@ export const onboardingStore = {
     _state = { ..._state, userType };
     notify();
   },
+  setCommunityType(communityType: CommunityType) {
+    _state = { ..._state, communityType };
+    notify();
+  },
   reset() {
-    _state = { userType: null };
+    _state = { userType: null, communityType: null };
     notify();
   },
   subscribe(fn: (s: OnboardingState) => void): () => void {
