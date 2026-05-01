@@ -6,6 +6,9 @@ export const CHURCH_TIER_LABELS: Record<string, string> = {
   church_small: "Small Community Plan",
   church_medium: "Growing Community Plan",
   church_large: "Large Community Plan",
+  church_small_yearly: "Small Community Plan (Yearly)",
+  church_medium_yearly: "Growing Community Plan (Yearly)",
+  church_large_yearly: "Large Community Plan (Yearly)",
 };
 
 export interface ChurchEntitlements {
