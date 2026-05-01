@@ -35,6 +35,11 @@ export interface Message {
   deleted_for_sender: boolean;
   created_at: string;
   message_reactions: MessageReaction[];
+  reply_to?: {
+    id?: string;
+    senderName: string;
+    content: string;
+  } | null;
 }
 
 export interface ConversationListItem {

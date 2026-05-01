@@ -9,12 +9,34 @@ import {
   Platform,
   Animated,
   Modal,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Search, Edit, Check, CheckCheck, MessageSquarePlus, X, Bell } from "lucide-react-native";
+import {
+  Search,
+  Edit,
+  Check,
+  CheckCheck,
+  MessageSquarePlus,
+  X,
+  Bell,
+  Archive,
+  Pin,
+  PinOff,
+  BellOff,
+  Volume2,
+  MailOpen,
+  Mail,
+  Trash2,
+  UserX,
+  ShieldAlert,
+  ArchiveRestore,
+} from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { Swipeable } from "react-native-gesture-handler";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -25,6 +47,21 @@ import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import NotificationsPanel from "@/components/NotificationsPanel";
+
+const CONV_META_KEY = "conv_meta_v1";
+
+type ConvMeta = {
+  isPinned: boolean;
+  isArchived: boolean;
+  isMuted: boolean;
+  isUnreadForced: boolean | null;
+};
+
+type EnrichedConv = ConversationListItem & {
+  _isPinned: boolean;
+  _isArchived: boolean;
+  _isMuted: boolean;
+};
 
 function timeAgo(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
@@ -39,19 +76,112 @@ function timeAgo(isoString: string): string {
   return new Date(isoString).toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
+function RightSwipeActions({
+  onArchive,
+  isArchived,
+  colors,
+  progress,
+}: {
+  onArchive: () => void;
+  isArchived: boolean;
+  colors: ThemeColors;
+  progress: Animated.AnimatedInterpolation<number>;
+}) {
+  const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
+  return (
+    <Animated.View style={{ transform: [{ translateX: trans }] }}>
+      <Pressable
+        style={[styles_swipe.actionBtn, { backgroundColor: isArchived ? "#6366F1" : "#EF4444" }]}
+        onPress={onArchive}
+      >
+        {isArchived ? (
+          <ArchiveRestore size={20} color="#fff" />
+        ) : (
+          <Archive size={20} color="#fff" />
+        )}
+        <Text style={styles_swipe.actionLabel}>{isArchived ? "Unarchive" : "Archive"}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function LeftSwipeActions({
+  onPin,
+  onToggleRead,
+  isPinned,
+  isUnread,
+  colors,
+  progress,
+}: {
+  onPin: () => void;
+  onToggleRead: () => void;
+  isPinned: boolean;
+  isUnread: boolean;
+  colors: ThemeColors;
+  progress: Animated.AnimatedInterpolation<number>;
+}) {
+  const trans = progress.interpolate({ inputRange: [0, 1], outputRange: [-160, 0] });
+  return (
+    <Animated.View style={[styles_swipe.leftWrap, { transform: [{ translateX: trans }] }]}>
+      <Pressable
+        style={[styles_swipe.actionBtn, { backgroundColor: "#3B82F6" }]}
+        onPress={onPin}
+      >
+        {isPinned ? <PinOff size={18} color="#fff" /> : <Pin size={18} color="#fff" />}
+        <Text style={styles_swipe.actionLabel}>{isPinned ? "Unpin" : "Pin"}</Text>
+      </Pressable>
+      <Pressable
+        style={[styles_swipe.actionBtn, { backgroundColor: "#F59E0B" }]}
+        onPress={onToggleRead}
+      >
+        {isUnread ? <Mail size={18} color="#fff" /> : <MailOpen size={18} color="#fff" />}
+        <Text style={styles_swipe.actionLabel}>{isUnread ? "Read" : "Unread"}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles_swipe = StyleSheet.create({
+  actionBtn: {
+    width: 80,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 14,
+    flex: 1,
+  },
+  actionLabel: { fontSize: 11, color: "#fff", fontWeight: "700" as const },
+  leftWrap: { flexDirection: "row", width: 160 },
+});
+
 function ConversationRow({
   item,
   currentUserId,
   onPress,
+  onLongPress,
   colors,
+  isPinned,
+  swipeRef,
+  onSwipeOpen,
+  onArchive,
+  onPin,
+  onToggleRead,
 }: {
-  item: ConversationListItem;
+  item: EnrichedConv;
   currentUserId: string;
   onPress: () => void;
+  onLongPress: () => void;
   colors: ThemeColors;
+  isPinned: boolean;
+  swipeRef: (ref: Swipeable | null) => void;
+  onSwipeOpen: () => void;
+  onArchive: () => void;
+  onPin: () => void;
+  onToggleRead: () => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const localSwipeRef = useRef<Swipeable | null>(null);
 
   const handlePressIn = () =>
     Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, tension: 300, friction: 20 }).start();
@@ -60,62 +190,121 @@ function ConversationRow({
 
   const isMine = item.last_sender_id === currentUserId;
   const initial = (item.other_user_name ?? "?").charAt(0).toUpperCase();
+  const isUnread = item.unread_count > 0;
+
+  const handleArchive = useCallback(() => {
+    localSwipeRef.current?.close();
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onArchive();
+  }, [onArchive]);
+
+  const handlePin = useCallback(() => {
+    localSwipeRef.current?.close();
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPin();
+  }, [onPin]);
+
+  const handleToggleRead = useCallback(() => {
+    localSwipeRef.current?.close();
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onToggleRead();
+  }, [onToggleRead]);
 
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      testID={`conversation-${item.conversation_id}`}
+    <Swipeable
+      ref={(ref) => {
+        localSwipeRef.current = ref;
+        swipeRef(ref);
+      }}
+      renderRightActions={(progress) => (
+        <RightSwipeActions
+          onArchive={handleArchive}
+          isArchived={item._isArchived}
+          colors={colors}
+          progress={progress}
+        />
+      )}
+      renderLeftActions={(progress) => (
+        <LeftSwipeActions
+          onPin={handlePin}
+          onToggleRead={handleToggleRead}
+          isPinned={isPinned}
+          isUnread={isUnread}
+          colors={colors}
+          progress={progress}
+        />
+      )}
+      onSwipeableWillOpen={onSwipeOpen}
+      rightThreshold={80}
+      leftThreshold={80}
+      friction={2}
+      overshootLeft={false}
+      overshootRight={false}
     >
-      <Animated.View style={[styles.row, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.avatarWrap}>
-          {item.other_user_avatar ? (
-            <Image source={{ uri: item.other_user_avatar }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarInitial}>{initial}</Text>
-            </View>
-          )}
-          {item.is_muted && (
-            <View style={styles.mutedBadge}>
-              <Text style={styles.mutedBadgeText}>🔕</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.rowContent}>
-          <View style={styles.rowTop}>
-            <Text style={[styles.name, item.unread_count > 0 && styles.nameBold]}>
-              {item.other_user_name ?? "Unknown"}
-            </Text>
-            {item.last_message_at && (
-              <Text style={[styles.time, item.unread_count > 0 && styles.timeUnread]}>
-                {timeAgo(item.last_message_at)}
-              </Text>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        delayLongPress={380}
+        testID={`conversation-${item.conversation_id}`}
+      >
+        <Animated.View style={[styles.row, { transform: [{ scale: scaleAnim }] }]}>
+          <View style={styles.avatarWrap}>
+            {item.other_user_avatar ? (
+              <Image source={{ uri: item.other_user_avatar }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarFallback]}>
+                <Text style={styles.avatarInitial}>{initial}</Text>
+              </View>
             )}
-          </View>
-          <View style={styles.rowBottom}>
-            <View style={styles.previewRow}>
-              {isMine && (
-                <CheckCheck size={13} color={colors.primary} style={styles.checkIcon} />
-              )}
-              <Text
-                style={[styles.preview, item.unread_count > 0 && styles.previewBold]}
-                numberOfLines={1}
-              >
-                {item.last_message ?? "Start a conversation..."}
-              </Text>
-            </View>
-            {item.unread_count > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{item.unread_count}</Text>
+            {item._isMuted && (
+              <View style={styles.mutedBadge}>
+                <Text style={styles.mutedBadgeText}>🔕</Text>
+              </View>
+            )}
+            {isPinned && !item._isMuted && (
+              <View style={styles.pinBadge}>
+                <Text style={styles.pinBadgeText}>📌</Text>
               </View>
             )}
           </View>
-        </View>
-      </Animated.View>
-    </Pressable>
+
+          <View style={styles.rowContent}>
+            <View style={styles.rowTop}>
+              <View style={styles.nameRow}>
+                <Text style={[styles.name, isUnread && styles.nameBold]} numberOfLines={1}>
+                  {item.other_user_name ?? "Unknown"}
+                </Text>
+              </View>
+              {item.last_message_at && (
+                <Text style={[styles.time, isUnread && styles.timeUnread]}>
+                  {timeAgo(item.last_message_at)}
+                </Text>
+              )}
+            </View>
+            <View style={styles.rowBottom}>
+              <View style={styles.previewRow}>
+                {isMine && (
+                  <CheckCheck size={13} color={colors.primary} style={styles.checkIcon} />
+                )}
+                <Text
+                  style={[styles.preview, isUnread && styles.previewBold]}
+                  numberOfLines={1}
+                >
+                  {item.last_message ?? "Start a conversation..."}
+                </Text>
+              </View>
+              {isUnread && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{item.unread_count}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </Animated.View>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -145,7 +334,7 @@ const SAMPLE_CONVERSATIONS: ConversationListItem[] = [
     other_user_id: "sample-marcus",
     other_user_name: "Marcus Webb",
     other_user_avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    last_message: "I’m feeling hopeful again. Your prayer helped a lot.",
+    last_message: "I'm feeling hopeful again. Your prayer helped a lot.",
     last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
     last_sender_id: "sample-marcus",
     unread_count: 0,
@@ -187,11 +376,36 @@ export default function MessagesScreen() {
   const [search, setSearch] = useState("");
   const [newConvVisible, setNewConvVisible] = useState(false);
   const [newConvSearch, setNewConvSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
+  const [convMeta, setConvMeta] = useState<Record<string, Partial<ConvMeta>>>({});
+  const [selectedConv, setSelectedConv] = useState<EnrichedConv | null>(null);
+  const [actionSheetVisible, setActionSheetVisible] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const sheetSlide = useRef(new Animated.Value(600)).current;
   const sheetOpacity = useRef(new Animated.Value(0)).current;
+  const actionSheetSlide = useRef(new Animated.Value(600)).current;
+  const actionSheetOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const openSwipeRef = useRef<Swipeable | null>(null);
+  const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
 
   const currentUserId = user?.id ?? "";
+
+  useEffect(() => {
+    AsyncStorage.getItem(CONV_META_KEY).then((val) => {
+      if (val) {
+        try { setConvMeta(JSON.parse(val) as Record<string, Partial<ConvMeta>>); } catch {}
+      }
+    });
+  }, []);
+
+  const updateMeta = useCallback((convId: string, update: Partial<ConvMeta>) => {
+    setConvMeta((prev) => {
+      const next = { ...prev, [convId]: { ...prev[convId], ...update } };
+      void AsyncStorage.setItem(CONV_META_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const conversationsQuery = useQuery({
     queryKey: ["conversations", currentUserId],
@@ -202,16 +416,11 @@ export default function MessagesScreen() {
 
   useEffect(() => {
     if (!currentUserId) return;
-    console.log("[Messages] Subscribing to real-time conversation updates");
     const channel = supabase
       .channel("messages-list")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "messages" },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ["conversations", currentUserId] });
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["conversations", currentUserId] });
+      })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [currentUserId, queryClient]);
@@ -220,42 +429,187 @@ export default function MessagesScreen() {
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
-  const conversations = conversationsQuery.data ?? [];
-  const showSamples = conversations.length === 0;
-  const displayConversations = showSamples ? SAMPLE_CONVERSATIONS : conversations;
+  const rawConversations = conversationsQuery.data ?? [];
+  const showSamples = rawConversations.length === 0;
+  const baseConversations = showSamples ? SAMPLE_CONVERSATIONS : rawConversations;
+
+  const enriched: EnrichedConv[] = useMemo(() =>
+    baseConversations.map((c) => {
+      const meta = convMeta[c.conversation_id] ?? {};
+      const unreadForced = meta.isUnreadForced;
+      return {
+        ...c,
+        is_muted: meta.isMuted ?? c.is_muted,
+        unread_count:
+          unreadForced === true ? Math.max(1, c.unread_count)
+          : unreadForced === false ? 0
+          : c.unread_count,
+        _isPinned: meta.isPinned ?? false,
+        _isArchived: meta.isArchived ?? false,
+        _isMuted: meta.isMuted ?? c.is_muted,
+      };
+    }),
+    [baseConversations, convMeta]
+  );
+
+  const activeConvs = useMemo(() =>
+    enriched
+      .filter((c) => !c._isArchived)
+      .sort((a, b) => {
+        if (a._isPinned && !b._isPinned) return -1;
+        if (!a._isPinned && b._isPinned) return 1;
+        if (!a.last_message_at && !b.last_message_at) return 0;
+        if (!a.last_message_at) return 1;
+        if (!b.last_message_at) return -1;
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      }),
+    [enriched]
+  );
+
+  const archivedConvs = useMemo(() =>
+    enriched.filter((c) => c._isArchived),
+    [enriched]
+  );
+
+  const displayList = showArchived ? archivedConvs : activeConvs;
 
   const filtered = search.trim()
-    ? displayConversations.filter((c) =>
+    ? displayList.filter((c) =>
         (c.other_user_name ?? "").toLowerCase().includes(search.toLowerCase())
       )
-    : displayConversations;
+    : displayList;
+
+  const totalUnread = activeConvs.reduce((sum, c) => sum + c.unread_count, 0);
 
   const handleOpen = useCallback(
-    (item: ConversationListItem) => {
+    (item: EnrichedConv) => {
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       router.push(`/chat/${item.other_user_id}`);
     },
     [router]
   );
 
-  const totalUnread = displayConversations.reduce((sum, c) => sum + c.unread_count, 0);
+  const handleLongPress = useCallback((item: EnrichedConv) => {
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    openSwipeRef.current?.close();
+    setSelectedConv(item);
+    setActionSheetVisible(true);
+    Animated.parallel([
+      Animated.spring(actionSheetSlide, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
+      Animated.timing(actionSheetOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [actionSheetSlide, actionSheetOpacity]);
+
+  const closeActionSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(actionSheetSlide, { toValue: 600, duration: 250, useNativeDriver: true }),
+      Animated.timing(actionSheetOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      setActionSheetVisible(false);
+      setSelectedConv(null);
+    });
+  }, [actionSheetSlide, actionSheetOpacity]);
+
+  const handleArchive = useCallback((conv: EnrichedConv) => {
+    updateMeta(conv.conversation_id, { isArchived: !conv._isArchived });
+  }, [updateMeta]);
+
+  const handlePin = useCallback((conv: EnrichedConv) => {
+    updateMeta(conv.conversation_id, { isPinned: !conv._isPinned });
+  }, [updateMeta]);
+
+  const handleMute = useCallback((conv: EnrichedConv) => {
+    updateMeta(conv.conversation_id, { isMuted: !conv._isMuted });
+  }, [updateMeta]);
+
+  const handleToggleRead = useCallback((conv: EnrichedConv) => {
+    const currentlyUnread = conv.unread_count > 0;
+    updateMeta(conv.conversation_id, { isUnreadForced: currentlyUnread ? false : true });
+  }, [updateMeta]);
+
+  const handleMarkRead = useCallback((conv: EnrichedConv) => {
+    updateMeta(conv.conversation_id, { isUnreadForced: false });
+  }, [updateMeta]);
+
+  const handleMarkUnread = useCallback((conv: EnrichedConv) => {
+    updateMeta(conv.conversation_id, { isUnreadForced: true });
+  }, [updateMeta]);
+
+  const handleDeleteRequest = useCallback((conv: EnrichedConv) => {
+    closeActionSheet();
+    setTimeout(() => {
+      setSelectedConv(conv);
+      setDeleteConfirmVisible(true);
+    }, 300);
+  }, [closeActionSheet]);
+
+  const confirmDelete = useCallback(() => {
+    if (!selectedConv) return;
+    updateMeta(selectedConv.conversation_id, { isArchived: true });
+    setDeleteConfirmVisible(false);
+    setSelectedConv(null);
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [selectedConv, updateMeta]);
+
+  const handleBlock = useCallback((conv: EnrichedConv) => {
+    closeActionSheet();
+    setTimeout(() => {
+      Alert.alert(
+        "Block User",
+        `Block ${conv.other_user_name ?? "this user"}? They won't be able to message you.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Block", style: "destructive", onPress: () => {} },
+        ]
+      );
+    }, 300);
+  }, [closeActionSheet]);
+
+  const handleReport = useCallback(() => {
+    closeActionSheet();
+    setTimeout(() => {
+      Alert.alert(
+        "Report User",
+        "Thank you for helping keep Prayer Space safe. Our team will review this report.",
+        [{ text: "OK" }]
+      );
+    }, 300);
+  }, [closeActionSheet]);
+
+  const handleSwipeOpen = useCallback((ref: Swipeable | null) => {
+    if (openSwipeRef.current && openSwipeRef.current !== ref) {
+      openSwipeRef.current.close();
+    }
+    openSwipeRef.current = ref;
+  }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: ConversationListItem }) => (
-      <ConversationRow
-        item={item}
-        currentUserId={currentUserId}
-        onPress={() => handleOpen(item)}
-        colors={colors}
-      />
-    ),
-    [currentUserId, handleOpen, colors]
+    ({ item }: { item: EnrichedConv }) => {
+      const meta = convMeta[item.conversation_id] ?? {};
+      return (
+        <ConversationRow
+          item={item}
+          currentUserId={currentUserId}
+          onPress={() => handleOpen(item)}
+          onLongPress={() => handleLongPress(item)}
+          colors={colors}
+          isPinned={meta.isPinned ?? false}
+          swipeRef={(ref) => {
+            swipeRefs.current.set(item.conversation_id, ref);
+          }}
+          onSwipeOpen={() => handleSwipeOpen(swipeRefs.current.get(item.conversation_id) ?? null)}
+          onArchive={() => handleArchive(item)}
+          onPin={() => handlePin(item)}
+          onToggleRead={() => handleToggleRead(item)}
+        />
+      );
+    },
+    [currentUserId, handleOpen, handleLongPress, colors, convMeta, handleSwipeOpen, handleArchive, handlePin, handleToggleRead]
   );
 
   const connectionsQuery = useQuery<Profile[]>({
     queryKey: ["connections", currentUserId],
     queryFn: async () => {
-      console.log("[Messages] Fetching connected profiles");
       const { data: convParticipants, error: cpErr } = await supabase
         .from("conversation_participants")
         .select("conversation_id")
@@ -319,7 +673,7 @@ export default function MessagesScreen() {
     (p.full_name ?? "").toLowerCase().includes(newConvSearch.toLowerCase())
   );
 
-  const isLoading = conversationsQuery.isLoading && conversations.length === 0;
+  const isLoading = conversationsQuery.isLoading && rawConversations.length === 0;
   const swipeHandlers = useTabSwipe("/(tabs)/community", null);
 
   return (
@@ -328,7 +682,9 @@ export default function MessagesScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Messages</Text>
-            {totalUnread > 0 ? (
+            {showArchived ? (
+              <Text style={styles.headerSub}>Archived conversations</Text>
+            ) : totalUnread > 0 ? (
               <Text style={styles.headerSub}>
                 {totalUnread} unread message{totalUnread !== 1 ? "s" : ""}
               </Text>
@@ -359,6 +715,26 @@ export default function MessagesScreen() {
           />
         </View>
 
+        <View style={styles.filterRow}>
+          <Pressable
+            style={[styles.filterChip, !showArchived && styles.filterChipActive]}
+            onPress={() => setShowArchived(false)}
+          >
+            <Text style={[styles.filterChipText, !showArchived && styles.filterChipTextActive]}>
+              All
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.filterChip, showArchived && styles.filterChipActive]}
+            onPress={() => setShowArchived(true)}
+          >
+            <Archive size={12} color={showArchived ? colors.primary : colors.mutedForeground} />
+            <Text style={[styles.filterChipText, showArchived && styles.filterChipTextActive]}>
+              Archived{archivedConvs.length > 0 ? ` (${archivedConvs.length})` : ""}
+            </Text>
+          </Pressable>
+        </View>
+
         {isLoading ? (
           <View style={styles.loadingState}>
             {[0, 1, 2].map((i) => (
@@ -384,6 +760,11 @@ export default function MessagesScreen() {
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyTitle}>No results for "{search}"</Text>
                 </View>
+              ) : showArchived ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyTitle}>No archived conversations</Text>
+                  <Text style={styles.emptySub}>Archived chats will appear here.</Text>
+                </View>
               ) : (
                 <EmptyState colors={colors} />
               )
@@ -391,7 +772,10 @@ export default function MessagesScreen() {
           />
         )}
       </Animated.View>
+
       <NotificationsPanel visible={notifVisible} onClose={() => setNotifVisible(false)} />
+
+      {/* New conversation sheet */}
       <Modal visible={newConvVisible} transparent animationType="none" onRequestClose={closeNewConv}>
         <Animated.View style={[styles.modalOverlay, { opacity: sheetOpacity }]}>
           <Pressable style={styles.overlayDismiss} onPress={closeNewConv} />
@@ -433,10 +817,7 @@ export default function MessagesScreen() {
                 renderItem={({ item }) => {
                   const initial = (item.full_name ?? "?").charAt(0).toUpperCase();
                   return (
-                    <Pressable
-                      style={styles.sheetPersonRow}
-                      onPress={() => handleStartConversation(item)}
-                    >
+                    <Pressable style={styles.sheetPersonRow} onPress={() => handleStartConversation(item)}>
                       <View style={styles.sheetAvatarWrap}>
                         {item.avatar_url ? (
                           <Image source={{ uri: item.avatar_url }} style={styles.sheetAvatar} />
@@ -458,6 +839,160 @@ export default function MessagesScreen() {
           </Animated.View>
         </Animated.View>
       </Modal>
+
+      {/* Long-press action sheet */}
+      <Modal visible={actionSheetVisible} transparent animationType="none" onRequestClose={closeActionSheet}>
+        <Animated.View style={[styles.modalOverlay, { opacity: actionSheetOpacity }]}>
+          <Pressable style={styles.overlayDismiss} onPress={closeActionSheet} />
+          <Animated.View style={[styles.actionSheet, { transform: [{ translateY: actionSheetSlide }] }]}>
+            <View style={styles.sheetHandle} />
+            {selectedConv && (
+              <>
+                <View style={styles.actionSheetHeader}>
+                  {selectedConv.other_user_avatar ? (
+                    <Image source={{ uri: selectedConv.other_user_avatar }} style={styles.actionSheetAvatar} />
+                  ) : (
+                    <View style={[styles.actionSheetAvatar, styles.actionSheetAvatarFallback]}>
+                      <Text style={styles.actionSheetAvatarInitial}>
+                        {(selectedConv.other_user_name ?? "?").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.actionSheetName}>{selectedConv.other_user_name ?? "Unknown"}</Text>
+                </View>
+
+                <View style={styles.actionSheetDivider} />
+
+                <Pressable
+                  style={styles.actionOption}
+                  onPress={() => {
+                    closeActionSheet();
+                    if (selectedConv.unread_count > 0) handleMarkRead(selectedConv);
+                    else handleMarkUnread(selectedConv);
+                  }}
+                >
+                  <View style={[styles.actionOptionIcon, { backgroundColor: colors.secondary }]}>
+                    {selectedConv.unread_count > 0
+                      ? <Mail size={16} color={colors.foreground} />
+                      : <MailOpen size={16} color={colors.foreground} />
+                    }
+                  </View>
+                  <Text style={styles.actionOptionText}>
+                    {selectedConv.unread_count > 0 ? "Mark as read" : "Mark as unread"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionOption}
+                  onPress={() => {
+                    handlePin(selectedConv);
+                    closeActionSheet();
+                  }}
+                >
+                  <View style={[styles.actionOptionIcon, { backgroundColor: "#EFF6FF" }]}>
+                    {selectedConv._isPinned
+                      ? <PinOff size={16} color="#3B82F6" />
+                      : <Pin size={16} color="#3B82F6" />
+                    }
+                  </View>
+                  <Text style={styles.actionOptionText}>
+                    {selectedConv._isPinned ? "Unpin conversation" : "Pin conversation"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionOption}
+                  onPress={() => {
+                    handleMute(selectedConv);
+                    closeActionSheet();
+                  }}
+                >
+                  <View style={[styles.actionOptionIcon, { backgroundColor: colors.muted }]}>
+                    {selectedConv._isMuted
+                      ? <Volume2 size={16} color={colors.foreground} />
+                      : <BellOff size={16} color={colors.foreground} />
+                    }
+                  </View>
+                  <Text style={styles.actionOptionText}>
+                    {selectedConv._isMuted ? "Unmute notifications" : "Mute notifications"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={styles.actionOption}
+                  onPress={() => {
+                    handleArchive(selectedConv);
+                    closeActionSheet();
+                  }}
+                >
+                  <View style={[styles.actionOptionIcon, { backgroundColor: "#F0FDF4" }]}>
+                    {selectedConv._isArchived
+                      ? <ArchiveRestore size={16} color="#22C55E" />
+                      : <Archive size={16} color="#22C55E" />
+                    }
+                  </View>
+                  <Text style={styles.actionOptionText}>
+                    {selectedConv._isArchived ? "Unarchive conversation" : "Archive conversation"}
+                  </Text>
+                </Pressable>
+
+                <View style={styles.actionSheetDivider} />
+
+                <Pressable style={styles.actionOption} onPress={() => handleDeleteRequest(selectedConv)}>
+                  <View style={[styles.actionOptionIcon, { backgroundColor: "#FFF0F0" }]}>
+                    <Trash2 size={16} color={colors.destructive} />
+                  </View>
+                  <Text style={[styles.actionOptionText, { color: colors.destructive }]}>Delete conversation</Text>
+                </Pressable>
+
+                <Pressable style={styles.actionOption} onPress={() => handleBlock(selectedConv)}>
+                  <View style={[styles.actionOptionIcon, { backgroundColor: "#FFF0F0" }]}>
+                    <UserX size={16} color={colors.destructive} />
+                  </View>
+                  <Text style={[styles.actionOptionText, { color: colors.destructive }]}>Block user</Text>
+                </Pressable>
+
+                <Pressable style={styles.actionOption} onPress={handleReport}>
+                  <View style={[styles.actionOptionIcon, { backgroundColor: "#FFF0F0" }]}>
+                    <ShieldAlert size={16} color={colors.destructive} />
+                  </View>
+                  <Text style={[styles.actionOptionText, { color: colors.destructive }]}>Report user</Text>
+                </Pressable>
+
+                <Pressable style={[styles.actionOption, styles.cancelOption]} onPress={closeActionSheet}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </Pressable>
+              </>
+            )}
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal visible={deleteConfirmVisible} transparent animationType="fade" onRequestClose={() => setDeleteConfirmVisible(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIconWrap}>
+              <Trash2 size={24} color={colors.destructive} />
+            </View>
+            <Text style={styles.confirmTitle}>Delete this conversation?</Text>
+            <Text style={styles.confirmSub}>
+              The conversation will be removed from your inbox. This cannot be undone.
+            </Text>
+            <View style={styles.confirmActions}>
+              <Pressable
+                style={[styles.confirmBtn, styles.confirmBtnCancel]}
+                onPress={() => { setDeleteConfirmVisible(false); setSelectedConv(null); }}
+              >
+                <Text style={styles.confirmBtnCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={[styles.confirmBtn, styles.confirmBtnDelete]} onPress={confirmDelete}>
+                <Text style={styles.confirmBtnDeleteText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -475,12 +1010,7 @@ function EmptyState({ colors }: { colors: ThemeColors }) {
   }, [fadeAnim, slideAnim]);
 
   return (
-    <Animated.View
-      style={[
-        styles.emptyState,
-        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-      ]}
-    >
+    <Animated.View style={[styles.emptyState, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.emptyIconRing}>
         <View style={styles.emptyIconInner}>
           <MessageSquarePlus size={28} color={colors.primary} />
@@ -559,7 +1089,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       marginHorizontal: 24,
-      marginBottom: 16,
+      marginBottom: 12,
       backgroundColor: colors.secondary + "80",
       borderRadius: 14,
       paddingHorizontal: 14,
@@ -569,6 +1099,35 @@ function createStyles(colors: ThemeColors) {
       borderColor: colors.border + "50",
     },
     searchInput: { flex: 1, fontSize: 14, color: colors.foreground, padding: 0 },
+    filterRow: {
+      flexDirection: "row",
+      paddingHorizontal: 24,
+      marginBottom: 12,
+      gap: 8,
+    },
+    filterChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
+      borderRadius: 20,
+      backgroundColor: colors.secondary,
+      borderWidth: 1,
+      borderColor: colors.border + "50",
+    },
+    filterChipActive: {
+      backgroundColor: colors.accent,
+      borderColor: colors.primary + "60",
+    },
+    filterChipText: {
+      fontSize: 12,
+      fontWeight: "600" as const,
+      color: colors.mutedForeground,
+    },
+    filterChipTextActive: {
+      color: colors.primary,
+    },
     listContent: { paddingHorizontal: 16, paddingBottom: 32 },
     separator: { height: 1, backgroundColor: colors.border + "35", marginLeft: 82 },
     row: {
@@ -578,7 +1137,9 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 8,
       gap: 14,
       borderRadius: 16,
+      backgroundColor: colors.background,
     },
+    nameRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
     avatarWrap: { position: "relative" as const },
     avatar: { width: 52, height: 52, borderRadius: 26 },
     avatarFallback: {
@@ -605,6 +1166,20 @@ function createStyles(colors: ThemeColors) {
       borderColor: colors.border,
     },
     mutedBadgeText: { fontSize: 9 },
+    pinBadge: {
+      position: "absolute" as const,
+      bottom: -2,
+      right: -2,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: colors.background,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    pinBadgeText: { fontSize: 9 },
     rowContent: { flex: 1, gap: 4 },
     rowTop: {
       flexDirection: "row",
@@ -806,5 +1381,140 @@ function createStyles(colors: ThemeColors) {
     sheetPersonInfo: { flex: 1, gap: 2 },
     sheetPersonName: { fontSize: 15, fontWeight: "600" as const, color: colors.foreground },
     sheetPersonSub: { fontSize: 12, color: colors.mutedForeground },
+    actionSheet: {
+      backgroundColor: colors.card,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      paddingTop: 12,
+      paddingBottom: Platform.OS === "ios" ? 40 : 24,
+      paddingHorizontal: 16,
+    },
+    actionSheetHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 4,
+      paddingBottom: 16,
+    },
+    actionSheetAvatar: { width: 40, height: 40, borderRadius: 20 },
+    actionSheetAvatarFallback: {
+      backgroundColor: colors.accent,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    actionSheetAvatarInitial: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: colors.primary,
+    },
+    actionSheetName: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+      flex: 1,
+    },
+    actionSheetDivider: {
+      height: 1,
+      backgroundColor: colors.border + "60",
+      marginBottom: 8,
+      marginTop: 4,
+    },
+    actionOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+    },
+    actionOptionIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    actionOptionText: {
+      fontSize: 15,
+      color: colors.foreground,
+      fontWeight: "500" as const,
+    },
+    cancelOption: {
+      marginTop: 4,
+      justifyContent: "center" as const,
+    },
+    cancelText: {
+      fontSize: 15,
+      fontWeight: "600" as const,
+      color: colors.mutedForeground,
+      textAlign: "center" as const,
+      flex: 1,
+    },
+    confirmOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 32,
+    },
+    confirmCard: {
+      backgroundColor: colors.card,
+      borderRadius: 24,
+      padding: 28,
+      alignItems: "center",
+      gap: 12,
+      width: "100%",
+      maxWidth: 340,
+    },
+    confirmIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: "#FFF0F0",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      marginBottom: 4,
+    },
+    confirmTitle: {
+      fontSize: 18,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+      textAlign: "center" as const,
+    },
+    confirmSub: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      textAlign: "center" as const,
+      lineHeight: 20,
+    },
+    confirmActions: {
+      flexDirection: "row",
+      gap: 12,
+      marginTop: 8,
+      width: "100%",
+    },
+    confirmBtn: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 14,
+      alignItems: "center" as const,
+    },
+    confirmBtnCancel: {
+      backgroundColor: colors.secondary,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    confirmBtnCancelText: {
+      fontSize: 15,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    confirmBtnDelete: {
+      backgroundColor: colors.destructive,
+    },
+    confirmBtnDeleteText: {
+      fontSize: 15,
+      fontWeight: "700" as const,
+      color: "#FFFFFF",
+    },
   });
 }

@@ -220,12 +220,14 @@ export default function ChatScreen() {
       prayerContent,
       image_url,
       image_path,
+      reply_to,
     }: {
       content: string;
       type?: "text" | "prayer_share";
       prayerContent?: string;
       image_url?: string | null;
       image_path?: string | null;
+      reply_to?: { id: string; senderName: string; content: string } | null;
     }) => {
       const insertData: Record<string, unknown> = {
         conversation_id: conversationId,
@@ -239,6 +241,7 @@ export default function ChatScreen() {
       };
       if (image_url) insertData.image_url = image_url;
       if (image_path) insertData.image_path = image_path;
+      if (reply_to) insertData.reply_to = reply_to;
       const { error } = await supabase.from("messages").insert(insertData);
       if (error) throw error;
       await supabase
@@ -456,12 +459,14 @@ export default function ChatScreen() {
         content: text || "",
         image_url: uploadedUrl,
         image_path: uploadedPath,
+        reply_to: replyingTo ? { id: replyingTo.id, senderName: replyingTo.senderName, content: replyingTo.content } : null,
       });
     }
     setInputText("");
     setImageUri(null);
     setImageUploadError(null);
-  }, [inputText, imageUri, isRealUser, currentUserId, conversationId, sendMutation]);
+    setReplyingTo(null);
+  }, [inputText, imageUri, isRealUser, currentUserId, conversationId, sendMutation, replyingTo]);
 
   const handleSharePrayer = useCallback((prayerText: string) => {
     if (!conversationId) return;
@@ -815,71 +820,77 @@ export default function ChatScreen() {
         </View>
       )}
 
-      {isLoading ? (
-        <View style={styles.loadingState}>
-          <Text style={styles.loadingText}>Opening conversation...</Text>
-        </View>
-      ) : convQuery.isError ? (
-        <View style={styles.loadingState}>
-          <Text style={styles.errorText}>Could not load conversation.</Text>
-          <Pressable onPress={() => convQuery.refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.chatContent}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyChat}>
-              <View style={styles.emptyChatIcon}>
-                <Text style={styles.emptyChatEmoji}>🙏</Text>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
+        {isLoading ? (
+          <View style={[styles.loadingState, styles.flex]}>
+            <Text style={styles.loadingText}>Opening conversation...</Text>
+          </View>
+        ) : convQuery.isError ? (
+          <View style={[styles.loadingState, styles.flex]}>
+            <Text style={styles.errorText}>Could not load conversation.</Text>
+            <Pressable onPress={() => convQuery.refetch()} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            style={styles.flex}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            contentContainerStyle={styles.chatContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyChat}>
+                <View style={styles.emptyChatIcon}>
+                  <Text style={styles.emptyChatEmoji}>🙏</Text>
+                </View>
+                <Text style={styles.emptyChatTitle}>Start the conversation</Text>
+                <Text style={styles.emptyChatSub}>
+                  Send a prayer or encouragement to get started.
+                </Text>
               </View>
-              <Text style={styles.emptyChatTitle}>Start the conversation</Text>
-              <Text style={styles.emptyChatSub}>
-                Send a prayer or encouragement to get started.
-              </Text>
-            </View>
-          }
-        />
-      )}
+            }
+          />
+        )}
 
-      {editingMessage ? (
-        <SafeAreaView edges={["bottom"]} style={styles.editingBar}>
-          <View style={styles.editingHeader}>
-            <Pencil size={14} color={colors.primary} />
-            <Text style={styles.editingLabel}>Editing message</Text>
-            <Pressable onPress={() => { setEditingMessage(null); setEditText(""); }}>
-              <X size={16} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-          <View style={styles.editInputRow}>
-            <TextInput
-              style={styles.editInput}
-              value={editText}
-              onChangeText={setEditText}
-              autoFocus
-              multiline
-              placeholderTextColor={colors.mutedForeground + "80"}
-            />
-            <Pressable
-              style={[styles.editSaveBtn, !editText.trim() && styles.editSaveBtnDisabled]}
-              onPress={handleEditSave}
-              disabled={!editText.trim()}
-            >
-              <Check size={18} color={colors.primaryForeground} />
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      ) : (
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        {editingMessage ? (
+          <SafeAreaView edges={["bottom"]} style={styles.editingBar}>
+            <View style={styles.editingHeader}>
+              <Pencil size={14} color={colors.primary} />
+              <Text style={styles.editingLabel}>Editing message</Text>
+              <Pressable onPress={() => { setEditingMessage(null); setEditText(""); }}>
+                <X size={16} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <View style={styles.editInputRow}>
+              <TextInput
+                style={styles.editInput}
+                value={editText}
+                onChangeText={setEditText}
+                autoFocus
+                multiline
+                placeholderTextColor={colors.mutedForeground + "80"}
+              />
+              <Pressable
+                style={[styles.editSaveBtn, !editText.trim() && styles.editSaveBtnDisabled]}
+                onPress={handleEditSave}
+                disabled={!editText.trim()}
+              >
+                <Check size={18} color={colors.primaryForeground} />
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        ) : (
           <SafeAreaView edges={["bottom"]} style={styles.inputAreaWrap}>
             {replyingTo && (
               <View style={styles.replyBanner}>
@@ -940,8 +951,8 @@ export default function ChatScreen() {
               </Pressable>
             </View>
           </SafeAreaView>
-        </KeyboardAvoidingView>
-      )}
+        )}
+      </KeyboardAvoidingView>
 
       {/* Context Menu */}
       <Modal visible={contextMenuVisible} transparent animationType="none" onRequestClose={closeContextMenu}>
@@ -1137,6 +1148,7 @@ export default function ChatScreen() {
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
