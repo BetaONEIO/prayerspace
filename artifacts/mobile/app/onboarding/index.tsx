@@ -37,14 +37,14 @@ export default function OnboardingWelcome() {
         </View>
 
         <Animated.View style={[styles.textArea, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Text style={styles.title}>A place to pray and connect</Text>
-          <Text style={styles.subtitle}>Share prayer requests, encourage others, and stay connected.</Text>
+          <Text style={styles.title}>Welcome to Prayer Space</Text>
+          <Text style={styles.subtitle}>A place to pray, reflect, and connect with others.</Text>
         </Animated.View>
 
         <Animated.View style={[styles.footer, { opacity: fadeAnim, transform: [{ translateY: btnSlideAnim }] }]}>
           <Pressable
             style={({ pressed }) => [styles.getStartedBtn, pressed && styles.btnPressed]}
-            onPress={() => router.push("/onboarding/user-type" as never)}
+            onPress={() => router.push("/onboarding/goals" as never)}
             testID="onboarding-get-started"
           >
             <Text style={styles.getStartedText}>Get Started</Text>
