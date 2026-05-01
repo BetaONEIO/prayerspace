@@ -11,15 +11,12 @@ export default function OnboardingLayout() {
       <Stack.Screen name="focus" />
       <Stack.Screen name="improvement" />
       <Stack.Screen name="paywall" />
-      {/* Church / group flow */}
+      {/* Community flow */}
       <Stack.Screen name="community-intro" />
-      <Stack.Screen name="church-group-type" />
-      <Stack.Screen name="church-purpose" />
-      <Stack.Screen name="church-size" />
-      <Stack.Screen name="church-setup" />
-      <Stack.Screen name="church-details" />
-      <Stack.Screen name="church-value" />
       <Stack.Screen name="church-paywall" />
+      <Stack.Screen name="church-group-type" />
+      <Stack.Screen name="church-size" />
+      <Stack.Screen name="church-details" />
       <Stack.Screen name="church-complete" />
       {/* Shared closing steps */}
       <Stack.Screen name="contact-permissions" />

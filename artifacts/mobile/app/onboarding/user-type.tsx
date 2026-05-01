@@ -32,7 +32,7 @@ export default function OnboardingUserType() {
     if (!selected) return;
     onboardingStore.setUserType(selected);
     if (selected === "church") {
-      router.push("/onboarding/church-group-type" as never);
+      router.push("/onboarding/community-intro" as never);
     } else {
       router.push("/onboarding/goals" as never);
     }

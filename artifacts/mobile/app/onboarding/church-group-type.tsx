@@ -67,12 +67,12 @@ export default function ChurchGroupType() {
 
   const handleContinue = () => {
     onboardingStore.setCommunityType(selected);
-    router.push("/onboarding/church-purpose" as never);
+    router.push("/onboarding/church-size" as never);
   };
 
   const handleSkip = () => {
     onboardingStore.setCommunityType(null);
-    router.push("/onboarding/church-purpose" as never);
+    router.push("/onboarding/church-size" as never);
   };
 
   return (
@@ -80,9 +80,9 @@ export default function ChurchGroupType() {
       <View style={styles.inner}>
         <View style={styles.progressRow}>
           <View style={styles.progressBg}>
-            <View style={[styles.progressFill, { width: "16.7%" }]} />
+            <View style={[styles.progressFill, { width: "33.3%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 1 of 6</Text>
+          <Text style={styles.stepText}>Step 1 of 3</Text>
         </View>
 
         <View style={styles.headingArea}>

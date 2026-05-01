@@ -25,7 +25,6 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
-import { communityStore } from "@/lib/communityStore";
 import { PurchasesPackage } from "react-native-purchases";
 
 type BillingInterval = "monthly" | "yearly";
@@ -132,10 +131,8 @@ export default function ChurchPaywall() {
   };
 
   const completeOnboarding = (tierId: string) => {
-    const { churchName } = churchMembershipStore.getState();
-    churchMembershipStore.setOwner(churchName, tierId);
-    communityStore.addOwnedCommunity(churchName, tierId);
-    router.push("/onboarding/church-complete" as never);
+    churchMembershipStore.setOwner(null, tierId);
+    router.push("/onboarding/church-group-type" as never);
   };
 
   const handleSelectTier = async (tier: ChurchTier) => {
