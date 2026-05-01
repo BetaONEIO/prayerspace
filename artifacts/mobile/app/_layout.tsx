@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 const ONBOARDING_PREVIEW_EMAILS = ["david@betaone.io"];
 
 function AuthGuard() {
-  const { session, isInitialized, user } = useAuth();
+  const { session, isInitialized, user, profile, isProfileLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -42,17 +42,40 @@ function AuthGuard() {
       segments[0] === "register" ||
       segments[0] === "verify-otp";
 
+    const inCompleteProfile = segments[0] === "complete-profile";
+
     const isOnboardingPreviewUser = ONBOARDING_PREVIEW_EMAILS.includes(user?.email ?? "");
 
     if (!session && !inAuthGroup) {
       console.log("[AuthGuard] No session, redirecting to login");
       router.replace("/login");
-    } else if (session && inAuthGroup && segments[0] !== "verify-otp") {
+      return;
+    }
+
+    if (session && inAuthGroup && segments[0] !== "verify-otp") {
       const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
       console.log("[AuthGuard] Session found, redirecting to", destination);
       router.replace(destination);
+      return;
     }
-  }, [session, isInitialized, segments, user]);
+
+    if (session && !inAuthGroup && !inCompleteProfile) {
+      const isOAuthUser = user?.app_metadata?.provider && user.app_metadata.provider !== "email";
+      if (isOAuthUser && !isProfileLoading && !profile?.date_of_birth) {
+        console.log("[AuthGuard] OAuth user missing DOB, redirecting to complete-profile");
+        router.replace("/complete-profile");
+      }
+    }
+
+    if (session && inCompleteProfile) {
+      const isOAuthUser = user?.app_metadata?.provider && user.app_metadata.provider !== "email";
+      if (!isOAuthUser || (!isProfileLoading && profile?.date_of_birth)) {
+        const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
+        console.log("[AuthGuard] DOB complete, redirecting to", destination);
+        router.replace(destination);
+      }
+    }
+  }, [session, isInitialized, segments, user, profile, isProfileLoading]);
 
   return null;
 }
@@ -111,6 +134,7 @@ function RootLayoutNav() {
       <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
       <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
       <Stack.Screen name="group/manage" options={{ headerShown: false }} />
+      <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
     </Stack>
     </>
   );
