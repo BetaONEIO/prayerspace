@@ -16,7 +16,7 @@ import {
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,6 +32,7 @@ import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
+import { communityGroupStore } from "@/lib/communityGroupStore";
 
 type Step = 1 | 2;
 type FocusCategory = "Prayer" | "Bible Study" | "Support" | "Testimony";
@@ -54,9 +55,11 @@ export default function CreateGroupScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
+  const { communityId } = useLocalSearchParams<{ communityId?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState<Step>(1);
   const [groupName, setGroupName] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
   const [selectedFocus, setSelectedFocus] = useState<FocusCategory | null>(null);
   const [safeSpaceEnabled, setSafeSpaceEnabled] = useState<boolean>(true);
   const [selectedPrivacy, setSelectedPrivacy] = useState<PrivacyType>("Private");
@@ -134,10 +137,22 @@ export default function CreateGroupScreen() {
       setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: false }), 50);
     } else {
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      console.log("Creating group:", { groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri });
+      if (communityId) {
+        communityGroupStore.add({
+          communityId,
+          name: groupName.trim(),
+          description: description.trim() || "A focused prayer group within your community.",
+          memberCount: 1,
+          privacy: selectedPrivacy,
+          focus: selectedFocus ?? "Prayer",
+          isJoined: true,
+          lastActivity: "Just now",
+          photoUri: groupPhotoUri,
+        });
+      }
       openCreatedModal();
     }
-  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal]);
+  }, [step, groupName, description, communityId, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal]);
 
   const handleBack = useCallback(() => {
     if (step === 2) {
@@ -233,6 +248,19 @@ export default function CreateGroupScreen() {
                   placeholderTextColor={colors.mutedForeground + "70"}
                   value={groupName}
                   onChangeText={setGroupName}
+                />
+              </View>
+
+              <View style={styles.formSection}>
+                <Text style={styles.fieldLabel}>DESCRIPTION</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 80, paddingTop: 14, textAlignVertical: "top" }]}
+                  placeholder="What is this group for? Who should join?"
+                  placeholderTextColor={colors.mutedForeground + "70"}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={3}
                 />
               </View>
 
