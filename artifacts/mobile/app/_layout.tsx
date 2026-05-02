@@ -42,11 +42,10 @@ function AuthGuard() {
       segments[0] === "register" ||
       segments[0] === "verify-otp";
 
-    const inCompleteProfile = segments[0] === "complete-profile";
-
+    const inCompleteProfile = (segments[0] as string) === "complete-profile";
     const isOnboardingPreviewUser = ONBOARDING_PREVIEW_EMAILS.includes(user?.email ?? "");
 
-    if (!session && !inAuthGroup) {
+    if (!session && !inAuthGroup && !inCompleteProfile) {
       console.log("[AuthGuard] No session, redirecting to login");
       router.replace("/login");
       return;
@@ -59,20 +58,21 @@ function AuthGuard() {
       return;
     }
 
-    if (session && !inAuthGroup && !inCompleteProfile) {
-      const isOAuthUser = user?.app_metadata?.provider && user.app_metadata.provider !== "email";
-      if (isOAuthUser && !isProfileLoading && !profile?.date_of_birth) {
+    if (session && !inAuthGroup) {
+      if (isProfileLoading) return;
+      const isOAuthUser =
+        session.user.app_metadata?.provider &&
+        session.user.app_metadata.provider !== "email";
+      const needsDob = isOAuthUser && profile !== null && !profile?.date_of_birth;
+      if (needsDob && !inCompleteProfile) {
         console.log("[AuthGuard] OAuth user missing DOB, redirecting to complete-profile");
-        router.replace("/complete-profile");
+        router.replace("/complete-profile" as never);
+        return;
       }
-    }
-
-    if (session && inCompleteProfile) {
-      const isOAuthUser = user?.app_metadata?.provider && user.app_metadata.provider !== "email";
-      if (!isOAuthUser || (!isProfileLoading && profile?.date_of_birth)) {
-        const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
-        console.log("[AuthGuard] DOB complete, redirecting to", destination);
-        router.replace(destination);
+      if (!needsDob && inCompleteProfile) {
+        console.log("[AuthGuard] DOB already set, redirecting away from complete-profile");
+        router.replace("/");
+        return;
       }
     }
   }, [session, isInitialized, segments, user, profile, isProfileLoading]);
@@ -130,11 +130,11 @@ function RootLayoutNav() {
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="bulk-notify" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
+      <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
       <Stack.Screen name="help-centre" options={{ headerShown: false }} />
       <Stack.Screen name="privacy-settings" options={{ headerShown: false }} />
       <Stack.Screen name="notification-settings" options={{ headerShown: false }} />
       <Stack.Screen name="group/manage" options={{ headerShown: false }} />
-      <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
     </Stack>
     </>
   );

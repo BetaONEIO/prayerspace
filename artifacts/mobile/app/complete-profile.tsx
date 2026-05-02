@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,18 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Calendar } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
 
-const LOGO_URI =
-  "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
+const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
 const MIN_AGE_YEARS = 13;
 
 function pad2(n: string): string {
@@ -59,6 +59,7 @@ function calculateAge(iso: string): number {
 }
 
 export default function CompleteProfileScreen() {
+  const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, updateProfile, isUpdatingProfile } = useAuth();
@@ -97,7 +98,7 @@ export default function CompleteProfileScreen() {
     setDobError("");
   }, []);
 
-  const handleContinue = useCallback(async () => {
+  const handleSave = useCallback(async () => {
     const iso = buildIsoDate(dobDay, dobMonth, dobYear);
     if (!iso) {
       setDobError("Please enter a valid date of birth.");
@@ -111,13 +112,12 @@ export default function CompleteProfileScreen() {
 
     try {
       await updateProfile({ date_of_birth: iso });
-      console.log("[CompleteProfile] DOB saved successfully");
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to save. Please try again.";
-      console.error("[CompleteProfile] Failed to save DOB:", msg);
-      Alert.alert("Something went wrong", msg);
+      router.replace("/");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      Alert.alert("Could Not Save", message);
     }
-  }, [dobDay, dobMonth, dobYear, updateProfile]);
+  }, [dobDay, dobMonth, dobYear, updateProfile, router]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,33 +126,28 @@ export default function CompleteProfileScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.container}>
-          <View style={styles.header}>
-            <Image
-              source={{ uri: LOGO_URI }}
-              style={styles.logo}
-              contentFit="contain"
-            />
+          <View style={styles.logoArea}>
+            <Image source={{ uri: LOGO_URI }} style={styles.logoImage} contentFit="contain" />
             <Text style={styles.greeting}>
               {firstName ? `Welcome, ${firstName}!` : "Welcome!"}
             </Text>
-            <Text style={styles.title}>One last thing</Text>
+            <Text style={styles.title}>One More Step</Text>
             <Text style={styles.subtitle}>
-              To keep Prayer Space safe for everyone, we need to verify your age.
-              This is a one-time step.
+              To keep Prayer Space safe for everyone, we need your date of birth. This is required for all users.
             </Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.fieldLabel}>Date of birth</Text>
+          <View style={styles.field}>
+            <Text style={styles.label}>Date of Birth</Text>
             <View
               style={[
-                styles.dobRow,
-                dobError ? styles.dobRowError : undefined,
+                styles.inputWrap,
+                dobError ? styles.inputWrapError : undefined,
               ]}
             >
-              <Calendar size={18} color={colors.mutedForeground} style={styles.calIcon} />
+              <Calendar size={18} color={colors.mutedForeground} />
               <TextInput
-                style={[styles.dobInput, styles.dobSmall]}
+                style={[styles.input, styles.dobSegment]}
                 placeholder="DD"
                 placeholderTextColor={colors.mutedForeground + "90"}
                 value={dobDay}
@@ -162,10 +157,10 @@ export default function CompleteProfileScreen() {
                 testID="complete-profile-dob-day"
                 editable={!isUpdatingProfile}
               />
-              <Text style={styles.dobSep}>/</Text>
+              <Text style={styles.dobSeparator}>/</Text>
               <TextInput
                 ref={monthRef}
-                style={[styles.dobInput, styles.dobSmall]}
+                style={[styles.input, styles.dobSegment]}
                 placeholder="MM"
                 placeholderTextColor={colors.mutedForeground + "90"}
                 value={dobMonth}
@@ -175,10 +170,10 @@ export default function CompleteProfileScreen() {
                 testID="complete-profile-dob-month"
                 editable={!isUpdatingProfile}
               />
-              <Text style={styles.dobSep}>/</Text>
+              <Text style={styles.dobSeparator}>/</Text>
               <TextInput
                 ref={yearRef}
-                style={[styles.dobInput, styles.dobYear]}
+                style={[styles.input, styles.dobYear]}
                 placeholder="YYYY"
                 placeholderTextColor={colors.mutedForeground + "90"}
                 value={dobYear}
@@ -189,7 +184,6 @@ export default function CompleteProfileScreen() {
                 editable={!isUpdatingProfile}
               />
             </View>
-
             {dobError ? (
               <Text style={styles.errorText} testID="complete-profile-dob-error">
                 {dobError}
@@ -202,18 +196,17 @@ export default function CompleteProfileScreen() {
           </View>
 
           <Pressable
-            style={[styles.btn, isUpdatingProfile && styles.btnDisabled]}
-            onPress={handleContinue}
+            style={[styles.saveBtn, isUpdatingProfile && styles.saveBtnDisabled]}
+            onPress={handleSave}
             disabled={isUpdatingProfile}
-            testID="complete-profile-submit"
+            testID="complete-profile-save"
           >
             {isUpdatingProfile ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
-              <Text style={styles.btnText}>Continue</Text>
+              <Text style={styles.saveBtnText}>Continue</Text>
             )}
           </Pressable>
-
           <Text style={styles.legalNote}>
             Your date of birth is used only for age verification and is never
             shared publicly.
@@ -235,19 +228,18 @@ function createStyles(colors: ThemeColors) {
     },
     container: {
       flex: 1,
-      paddingHorizontal: 24,
-      paddingTop: 32,
-      paddingBottom: 24,
-      justifyContent: "center",
+      justifyContent: "center" as const,
+      paddingHorizontal: 28,
+      paddingVertical: 32,
     },
-    header: {
-      alignItems: "center",
-      marginBottom: 32,
+    logoArea: {
+      alignItems: "center" as const,
+      marginBottom: 36,
     },
-    logo: {
-      width: 72,
-      height: 72,
-      marginBottom: 16,
+    logoImage: {
+      width: 100,
+      height: 100,
+      marginBottom: 20,
     },
     greeting: {
       fontSize: 15,
@@ -255,99 +247,101 @@ function createStyles(colors: ThemeColors) {
       marginBottom: 6,
     },
     title: {
-      fontSize: 26,
-      fontWeight: "800",
+      fontSize: 28,
+      fontWeight: "800" as const,
       color: colors.foreground,
       letterSpacing: -0.5,
       marginBottom: 10,
-      textAlign: "center",
     },
     subtitle: {
       fontSize: 14,
       color: colors.mutedForeground,
-      textAlign: "center",
-      lineHeight: 21,
+      textAlign: "center" as const,
       maxWidth: 300,
+      lineHeight: 22,
     },
-    card: {
+    field: {
+      gap: 8,
+      marginBottom: 28,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+      marginLeft: 4,
+    },
+    inputWrap: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 8,
       backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 20,
-      marginBottom: 16,
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      height: 54,
       borderWidth: 1,
       borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.04,
+      shadowRadius: 4,
+      elevation: 1,
     },
-    fieldLabel: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: colors.foreground,
-      marginBottom: 10,
+    inputWrapError: {
+      borderColor: "#D9534F",
     },
-    dobRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.secondary,
-      borderRadius: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 2,
-      height: 52,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-    },
-    dobRowError: {
-      borderColor: colors.destructive,
-      backgroundColor: colors.destructive + "10",
-    },
-    calIcon: {
-      marginRight: 10,
-    },
-    dobInput: {
-      fontSize: 16,
+    input: {
+      flex: 1,
+      fontSize: 15,
       color: colors.foreground,
       padding: 0,
-      textAlign: "center",
     },
-    dobSmall: {
+    dobSegment: {
+      flex: 0,
       width: 36,
+      textAlign: "center" as const,
     },
     dobYear: {
-      flex: 1,
+      flex: 0,
+      width: 64,
+      textAlign: "center" as const,
     },
-    dobSep: {
-      fontSize: 18,
+    dobSeparator: {
+      fontSize: 15,
       color: colors.mutedForeground,
-      marginHorizontal: 6,
+      fontWeight: "600" as const,
     },
     helperText: {
       fontSize: 12,
       color: colors.mutedForeground,
-      marginTop: 8,
+      marginLeft: 4,
+      lineHeight: 18,
     },
     errorText: {
       fontSize: 12,
-      color: colors.destructive,
-      marginTop: 8,
-      fontWeight: "600",
+      color: "#D9534F",
+      marginLeft: 4,
+      lineHeight: 18,
+      fontWeight: "600" as const,
     },
-    btn: {
+    saveBtn: {
       height: 54,
       backgroundColor: colors.primary,
       borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
       shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      elevation: 6,
       marginBottom: 16,
     },
-    btnDisabled: {
+    saveBtnDisabled: {
       opacity: 0.7,
     },
-    btnText: {
+    saveBtnText: {
       fontSize: 16,
-      fontWeight: "700",
+      fontWeight: "700" as const,
       color: colors.primaryForeground,
     },
     legalNote: {
@@ -359,3 +353,4 @@ function createStyles(colors: ThemeColors) {
     },
   });
 }
+
