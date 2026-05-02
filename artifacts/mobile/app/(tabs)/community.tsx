@@ -546,6 +546,102 @@ const JOINABLE_GROUPS: Record<string, JoinableGroup> = {
   },
 };
 
+interface CommunityGroup {
+  id: string;
+  communityId: string;
+  name: string;
+  memberCount: number;
+  lastActivity: string;
+  avatar: string;
+  activeRequests: number;
+}
+
+const COMMUNITY_GROUPS: CommunityGroup[] = [
+  {
+    id: "cg1",
+    communityId: "castle-church",
+    name: "Men's Prayer Circle",
+    memberCount: 14,
+    lastActivity: "1 hour ago",
+    avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
+    activeRequests: 2,
+  },
+  {
+    id: "cg2",
+    communityId: "castle-church",
+    name: "Women of Faith",
+    memberCount: 22,
+    lastActivity: "3 hours ago",
+    avatar: "https://images.unsplash.com/photo-1511895426328-dc8714191011?w=400&q=80",
+    activeRequests: 1,
+  },
+  {
+    id: "cg3",
+    communityId: "castle-church",
+    name: "Intercessors Team",
+    memberCount: 8,
+    lastActivity: "Yesterday",
+    avatar: "https://images.unsplash.com/photo-1548625149-720754507716?w=400&q=80",
+    activeRequests: 0,
+  },
+  {
+    id: "cg4",
+    communityId: "hope-church",
+    name: "Youth Prayer Group",
+    memberCount: 31,
+    lastActivity: "2 hours ago",
+    avatar: "https://images.unsplash.com/photo-1476231682828-37e571bc172f?w=400&q=80",
+    activeRequests: 3,
+  },
+  {
+    id: "cg5",
+    communityId: "hope-church",
+    name: "Home Groups",
+    memberCount: 16,
+    lastActivity: "Yesterday",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+    activeRequests: 0,
+  },
+  {
+    id: "cg6",
+    communityId: "city-light",
+    name: "Bible Study",
+    memberCount: 12,
+    lastActivity: "Today",
+    avatar: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=400&q=80",
+    activeRequests: 1,
+  },
+  {
+    id: "cg7",
+    communityId: "city-light",
+    name: "Outreach Team",
+    memberCount: 19,
+    lastActivity: "3 days ago",
+    avatar: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80",
+    activeRequests: 0,
+  },
+  {
+    id: "cg8",
+    communityId: "young-adults",
+    name: "Early Risers",
+    memberCount: 9,
+    lastActivity: "This morning",
+    avatar: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&q=80",
+    activeRequests: 2,
+  },
+  {
+    id: "cg9",
+    communityId: "prayer-partners",
+    name: "Intercessory Core",
+    memberCount: 6,
+    lastActivity: "2 days ago",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
+    activeRequests: 0,
+  },
+];
+
+type GroupSubTab = "My Groups" | "Community";
+
 export default function CommunityScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
@@ -988,7 +1084,7 @@ export default function CommunityScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       {activeTab === "Groups" ? (
-        <MyGroupsContent />
+        <GroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
       ) : (
         <AutoScrollView
           contentContainerStyle={styles.scrollContent}
@@ -2411,6 +2507,172 @@ function MyGroupsContent() {
         onJoin={handleJoinGroup}
       />
     </>
+  );
+}
+
+function CommunityGroupsContent({
+  joinedCommunities,
+  activeCommunity,
+}: {
+  joinedCommunities: Community[];
+  activeCommunity: Community;
+}) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const router = useRouter();
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string>("all");
+  const [dropdownVisible, setDropdownVisible] = useState<boolean>(false);
+
+  const relevantCommunities: Community[] = joinedCommunities.length > 0 ? joinedCommunities : [activeCommunity];
+
+  const filteredCommunities =
+    selectedCommunityId === "all"
+      ? relevantCommunities
+      : relevantCommunities.filter((c) => c.id === selectedCommunityId);
+
+  const groupsByCommunity = filteredCommunities.map((community) => ({
+    community,
+    groups: COMMUNITY_GROUPS.filter((g) => g.communityId === community.id),
+  }));
+
+  const hasAnyGroups = groupsByCommunity.some((c) => c.groups.length > 0);
+
+  const selectedLabel =
+    selectedCommunityId === "all"
+      ? "All communities"
+      : (relevantCommunities.find((c) => c.id === selectedCommunityId)?.name ?? "All communities");
+
+  return (
+    <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Community filter dropdown */}
+      <View style={styles.cgFilterRow}>
+        <Pressable
+          style={[styles.cgFilterBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => {
+            if (Platform.OS !== "web") void Haptics.selectionAsync();
+            setDropdownVisible((v) => !v);
+          }}
+        >
+          <Text style={[styles.cgFilterLabel, { color: colors.foreground }]} numberOfLines={1}>
+            {selectedLabel}
+          </Text>
+          <ChevronDown size={16} color={colors.mutedForeground} style={{ transform: [{ rotate: dropdownVisible ? "180deg" : "0deg" }] }} />
+        </Pressable>
+      </View>
+
+      {dropdownVisible && (
+        <View style={[styles.cgDropdown, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {([{ id: "all", name: "All communities" }, ...relevantCommunities] as Array<{ id: string; name: string }>).map((c) => (
+            <Pressable
+              key={c.id}
+              style={[
+                styles.cgDropdownItem,
+                { borderBottomColor: colors.border },
+                selectedCommunityId === c.id && { backgroundColor: colors.primary + "0C" },
+              ]}
+              onPress={() => {
+                if (Platform.OS !== "web") void Haptics.selectionAsync();
+                setSelectedCommunityId(c.id);
+                setDropdownVisible(false);
+              }}
+            >
+              <Text style={[styles.cgDropdownText, { color: selectedCommunityId === c.id ? colors.primary : colors.foreground }]}>
+                {c.name}
+              </Text>
+              {selectedCommunityId === c.id && <Check size={15} color={colors.primary} />}
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {!hasAnyGroups ? (
+        <View style={styles.groupsEmpty}>
+          <Users size={36} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
+          <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No community groups yet</Text>
+          <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
+            Groups created by your community admin will appear here once available.
+          </Text>
+        </View>
+      ) : (
+        groupsByCommunity.map(({ community, groups }) =>
+          groups.length > 0 ? (
+            <View key={community.id} style={styles.cgCommunitySection}>
+              <View style={styles.cgCommunityHeader}>
+                <View style={[styles.cgCommunityDot, { backgroundColor: community.accentColor }]} />
+                <Text style={[styles.cgCommunityName, { color: colors.foreground }]}>{community.name}</Text>
+                <View style={[styles.cgCountPill, { backgroundColor: community.accentColor + "18" }]}>
+                  <Text style={[styles.cgCountText, { color: community.accentColor }]}>
+                    {groups.length} {groups.length === 1 ? "group" : "groups"}
+                  </Text>
+                </View>
+              </View>
+              {groups.map((group) => (
+                <GroupCard
+                  key={group.id}
+                  group={group as MyGroup}
+                  onPress={() => {
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    router.push(`/group/${group.id}`);
+                  }}
+                  showAdminBadge={false}
+                  colors={colors}
+                  styles={styles}
+                />
+              ))}
+            </View>
+          ) : null
+        )
+      )}
+    </ScrollView>
+  );
+}
+
+function GroupsContent({
+  joinedCommunities,
+  activeCommunity,
+}: {
+  joinedCommunities: Community[];
+  activeCommunity: Community;
+}) {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const [subTab, setSubTab] = useState<GroupSubTab>("My Groups");
+
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Sub-tabs */}
+      <View style={[styles.groupsSubTabRow, { borderBottomColor: colors.border }]}>
+        {(["My Groups", "Community"] as GroupSubTab[]).map((t) => (
+          <Pressable
+            key={t}
+            style={[
+              styles.groupsSubTab,
+              subTab === t && [styles.groupsSubTabActive, { borderBottomColor: colors.primary }],
+            ]}
+            onPress={() => {
+              if (Platform.OS !== "web") void Haptics.selectionAsync();
+              setSubTab(t);
+            }}
+          >
+            <Text
+              style={[
+                styles.groupsSubTabText,
+                { color: subTab === t ? colors.primary : colors.mutedForeground },
+                subTab === t && styles.groupsSubTabTextActive,
+              ]}
+            >
+              {t}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {subTab === "My Groups" ? (
+        <MyGroupsContent />
+      ) : (
+        <CommunityGroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
+      )}
+    </View>
   );
 }
 
@@ -7855,4 +8117,98 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   adminMenuItemText: { flex: 1, fontSize: 15, fontWeight: "600" as const },
   groupsContextCard: { borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
   groupsContextText: { fontSize: 13, lineHeight: 19 },
+
+  // Groups screen sub-tabs (My Groups / Community)
+  groupsSubTabRow: {
+    flexDirection: "row" as const,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  groupsSubTab: {
+    paddingVertical: 11,
+    paddingHorizontal: 4,
+    marginRight: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  groupsSubTabActive: {
+    borderBottomWidth: 2,
+  },
+  groupsSubTabText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  groupsSubTabTextActive: {
+    fontWeight: "700" as const,
+  },
+
+  // Community Groups tab styles
+  cgFilterRow: {
+    marginBottom: 12,
+  },
+  cgFilterBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 8,
+  },
+  cgFilterLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  cgDropdown: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden" as const,
+    marginBottom: 12,
+  },
+  cgDropdownItem: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  cgDropdownText: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+  },
+  cgCommunitySection: {
+    marginBottom: 8,
+  },
+  cgCommunityHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  cgCommunityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  cgCommunityName: {
+    fontSize: 13,
+    fontWeight: "700" as const,
+    letterSpacing: 0.2,
+    flex: 1,
+  },
+  cgCountPill: {
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  cgCountText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+  },
 });
