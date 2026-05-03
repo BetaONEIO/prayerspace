@@ -680,6 +680,7 @@ export default function CommunityScreen() {
   const { addJournalEntry, addArchivedPost } = usePrayer();
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
+  const [feedFilter, setFeedFilter] = useState<"all" | "mine">("all");
 
   // Inject communities created during church onboarding (owned communities).
   // Subscribes to communityStore so it reacts if the user completes onboarding
@@ -952,6 +953,14 @@ export default function CommunityScreen() {
     setPostActionsTarget(post);
   }, []);
 
+  const handleMarkAnswered = useCallback((post: FeedPost) => {
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const updater = (all: FeedPost[]) =>
+      all.map((p) => p.id === post.id ? { ...p, updateTag: "answered" as UpdateTag } : p);
+    setAllFeedPosts(updater);
+    setAllCommunityPosts(updater);
+  }, []);
+
   const handleAddComment = useCallback((postId: string, text: string) => {
     const newComment: Comment = {
       id: `c_${Date.now()}`,
@@ -977,7 +986,9 @@ export default function CommunityScreen() {
 
   const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
-  const posts = activeTab === "Feed" ? filteredFeedPosts : filteredCommunityPosts;
+  const posts = activeTab === "Feed"
+    ? (feedFilter === "mine" ? filteredFeedPosts.filter((p) => p.authorId === currentUserId) : filteredFeedPosts)
+    : filteredCommunityPosts;
   const currentUserId = "user-1";
   const [createCommunityPaywallVisible, setCreateCommunityPaywallVisible] = useState<boolean>(false);
   const [communityAdminMenuVisible, setCommunityAdminMenuVisible] = useState<boolean>(false);
@@ -1128,7 +1139,35 @@ export default function CommunityScreen() {
               />
 
               {activeTab === "Feed" && (
-                <MyRequestsBanner onPress={() => router.push("/my-posts")} />
+                <View style={styles.feedFilterRow}>
+                  {(["all", "mine"] as const).map((f) => (
+                    <Pressable
+                      key={f}
+                      style={[
+                        styles.feedFilterBtn,
+                        feedFilter === f && [styles.feedFilterBtnActive, { backgroundColor: colors.primary }],
+                      ]}
+                      onPress={() => {
+                        if (Platform.OS !== "web") void Haptics.selectionAsync();
+                        setFeedFilter(f);
+                      }}
+                    >
+                      <Text style={[
+                        styles.feedFilterText,
+                        { color: feedFilter === f ? colors.primaryForeground : colors.mutedForeground },
+                        feedFilter === f && styles.feedFilterTextActive,
+                      ]}>
+                        {f === "all" ? "All" : "Mine"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {activeTab === "Feed" && feedFilter === "mine" && (
+                <Text style={[styles.mineHelperText, { color: colors.mutedForeground }]}>
+                  Update your prayer requests or mark them as answered
+                </Text>
               )}
 
               {posts.length === 0 ? (
@@ -1147,6 +1186,9 @@ export default function CommunityScreen() {
                     onMorePress={handleOpenPostActions}
                     currentUserId={currentUserId}
                     onPrayingUsersPress={handlePrayingUsersPress}
+                    showOwnerActions={activeTab === "Feed" && feedFilter === "mine" && post.authorId === currentUserId}
+                    onAddUpdate={handleRepostWithUpdate}
+                    onMarkAnswered={handleMarkAnswered}
                   />
                 ))
               )}
@@ -2937,9 +2979,12 @@ interface FeedCardProps {
   onMorePress: (post: FeedPost) => void;
   onPrayingUsersPress: (post: FeedPost) => void;
   currentUserId: string;
+  showOwnerActions?: boolean;
+  onAddUpdate?: (post: FeedPost) => void;
+  onMarkAnswered?: (post: FeedPost) => void;
 }
 
-function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress }: FeedCardProps) {
+function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered }: FeedCardProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
@@ -3126,6 +3171,33 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
           </>
         )}
       </View>
+
+      {showOwnerActions && (
+        <View style={[styles.mineActionRow, { borderTopColor: colors.border }]}>
+          <Pressable
+            style={[styles.mineActionBtn, { backgroundColor: colors.accent, borderColor: colors.primary + "30" }]}
+            onPress={() => {
+              if (Platform.OS !== "web") void Haptics.selectionAsync();
+              onAddUpdate?.(post);
+            }}
+          >
+            <Repeat2 size={14} color={colors.primary} />
+            <Text style={[styles.mineActionBtnText, { color: colors.primary }]}>Add update</Text>
+          </Pressable>
+          {post.updateTag !== "answered" && (
+            <Pressable
+              style={[styles.mineActionBtn, styles.mineActionBtnAnswered]}
+              onPress={() => {
+                if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                onMarkAnswered?.(post);
+              }}
+            >
+              <CheckCircle2 size={14} color="#166534" />
+              <Text style={[styles.mineActionBtnText, { color: "#166534" }]}>Mark as answered</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -8117,6 +8189,65 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   adminMenuItemText: { flex: 1, fontSize: 15, fontWeight: "600" as const },
   groupsContextCard: { borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
   groupsContextText: { fontSize: 13, lineHeight: 19 },
+
+  // Feed All / Mine filter toggle
+  feedFilterRow: {
+    flexDirection: "row" as const,
+    gap: 8,
+    marginBottom: 14,
+  },
+  feedFilterBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.secondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  feedFilterBtnActive: {
+    borderColor: "transparent",
+  },
+  feedFilterText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+  },
+  feedFilterTextActive: {
+    fontWeight: "700" as const,
+  },
+  mineHelperText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 12,
+    marginTop: -4,
+    paddingHorizontal: 2,
+  },
+
+  // Owner quick-action buttons on Mine feed cards
+  mineActionRow: {
+    flexDirection: "row" as const,
+    gap: 8,
+    paddingTop: 12,
+    marginTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexWrap: "wrap" as const,
+  },
+  mineActionBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  mineActionBtnAnswered: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#86EFAC",
+  },
+  mineActionBtnText: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+  },
 
   // Groups screen sub-tabs (My Groups / Community)
   groupsSubTabRow: {
