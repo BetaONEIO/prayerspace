@@ -984,12 +984,12 @@ export default function CommunityScreen() {
     );
   }, []);
 
+  const currentUserId = "user-1";
   const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const posts = activeTab === "Feed"
     ? (feedFilter === "mine" ? filteredFeedPosts.filter((p) => p.authorId === currentUserId) : filteredFeedPosts)
     : filteredCommunityPosts;
-  const currentUserId = "user-1";
   const [createCommunityPaywallVisible, setCreateCommunityPaywallVisible] = useState<boolean>(false);
   const [communityAdminMenuVisible, setCommunityAdminMenuVisible] = useState<boolean>(false);
   const [communityProfileTarget, setCommunityProfileTarget] = useState<Community | null>(null);
