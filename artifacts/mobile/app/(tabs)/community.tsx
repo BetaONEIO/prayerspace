@@ -418,6 +418,7 @@ export default function CommunityScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
   const { profile, session } = useAuth();
+  const currentUserId = session?.user?.id ?? "user-1";
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
@@ -757,7 +758,6 @@ export default function CommunityScreen() {
     );
   }, []);
 
-  const currentUserId = session?.user?.id ?? "user-1";
   const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const posts = activeTab === "Feed"
