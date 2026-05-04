@@ -8027,7 +8027,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: "row" as const,
     borderBottomWidth: StyleSheet.hairlineWidth,
     marginHorizontal: -20,
-    paddingHorizontal: 20,
+    paddingLeft: 28,
+    paddingRight: 20,
   },
   groupsSubTab: {
     paddingVertical: 11,
