@@ -14,6 +14,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Animated,
+  Easing,
   Keyboard,
   Alert,
   Share,
@@ -455,6 +456,12 @@ export default function CommunityScreen() {
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
   const [feedFilter, setFeedFilter] = useState<"all" | "mine">("all");
+  const [lastAddedPostId, setLastAddedPostId] = useState<string | null>(null);
+
+  // Animation refs
+  const tabContentAnim = useRef(new Animated.Value(1)).current;
+  const tabSlideAnim = useRef(new Animated.Value(0)).current;
+  const feedFilterAnim = useRef(new Animated.Value(1)).current;
 
   // Inject communities created during church onboarding (owned communities).
   // Subscribes to communityStore so it reacts if the user completes onboarding
@@ -640,6 +647,7 @@ export default function CommunityScreen() {
     };
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
+    setLastAddedPostId(newPost.id);
     console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "eventDate:", eventDate);
   }, [activeCommunity.id, profile, currentUserId]);
 
@@ -758,6 +766,31 @@ export default function CommunityScreen() {
     );
   }, []);
 
+  // Tab transition: fade + slide up on change
+  useEffect(() => {
+    tabContentAnim.setValue(0);
+    tabSlideAnim.setValue(10);
+    Animated.parallel([
+      Animated.timing(tabContentAnim, {
+        toValue: 1, duration: 230,
+        easing: Easing.out(Easing.ease), useNativeDriver: true,
+      }),
+      Animated.timing(tabSlideAnim, {
+        toValue: 0, duration: 220,
+        easing: Easing.out(Easing.ease), useNativeDriver: true,
+      }),
+    ]).start();
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Feed filter transition: fade in new posts on filter change
+  useEffect(() => {
+    feedFilterAnim.setValue(0);
+    Animated.timing(feedFilterAnim, {
+      toValue: 1, duration: 200,
+      easing: Easing.out(Easing.ease), useNativeDriver: true,
+    }).start();
+  }, [feedFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const posts = activeTab === "Feed"
@@ -867,6 +900,7 @@ export default function CommunityScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <Animated.View style={{ flex: 1, opacity: tabContentAnim, transform: [{ translateY: tabSlideAnim }] }}>
       {activeTab === "Groups" ? (
         <GroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
       ) : (
@@ -946,29 +980,33 @@ export default function CommunityScreen() {
               {posts.length === 0 ? (
                 <CommunityEmptyState communityName={activeCommunity.name} />
               ) : (
-                posts.map((post) => (
-                  <FeedCard
-                    key={post.id}
-                    post={post}
-                    hasPrayed={prayedPosts.has(post.id)}
-                    onPray={(id) => handlePray(id, post)}
-                    onComment={handleOpenComments}
-                    onAvatarPress={handleAvatarPress}
-                    isAuthor={post.authorId === currentUserId}
-                    onRepost={handleRepostWithUpdate}
-                    onMorePress={handleOpenPostActions}
-                    currentUserId={currentUserId}
-                    onPrayingUsersPress={handlePrayingUsersPress}
-                    showOwnerActions={activeTab === "Feed" && feedFilter === "mine" && post.authorId === currentUserId}
-                    onAddUpdate={handleRepostWithUpdate}
-                    onMarkAnswered={handleMarkAnswered}
-                  />
-                ))
+                <Animated.View style={{ opacity: feedFilterAnim }}>
+                  {posts.map((post) => (
+                    <FeedCard
+                      key={post.id}
+                      post={post}
+                      hasPrayed={prayedPosts.has(post.id)}
+                      onPray={(id) => handlePray(id, post)}
+                      onComment={handleOpenComments}
+                      onAvatarPress={handleAvatarPress}
+                      isAuthor={post.authorId === currentUserId}
+                      onRepost={handleRepostWithUpdate}
+                      onMorePress={handleOpenPostActions}
+                      currentUserId={currentUserId}
+                      onPrayingUsersPress={handlePrayingUsersPress}
+                      showOwnerActions={activeTab === "Feed" && feedFilter === "mine" && post.authorId === currentUserId}
+                      onAddUpdate={handleRepostWithUpdate}
+                      onMarkAnswered={handleMarkAnswered}
+                      isNew={post.id === lastAddedPostId}
+                    />
+                  ))}
+                </Animated.View>
               )}
             </>
           )}
         </AutoScrollView>
       )}
+      </Animated.View>
       </KeyboardAvoidingView>
 
       {commentPost && (
@@ -2755,16 +2793,66 @@ interface FeedCardProps {
   showOwnerActions?: boolean;
   onAddUpdate?: (post: FeedPost) => void;
   onMarkAnswered?: (post: FeedPost) => void;
+  isNew?: boolean;
 }
 
-function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered }: FeedCardProps) {
+function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew }: FeedCardProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
   const isUpdatePost = !!post.originalPost;
 
+  // Entry animation (new posts)
+  const entryOpacity = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+  const entryScale = useRef(new Animated.Value(isNew ? 0.94 : 1)).current;
+  const entryTranslateY = useRef(new Animated.Value(isNew ? 14 : 0)).current;
+
+  // Pray button scale bounce
+  const prayScaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Long-press card scale
+  const cardLongPressScale = useRef(new Animated.Value(1)).current;
+
+  const handleCardLongPress = () => {
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.sequence([
+      Animated.timing(cardLongPressScale, { toValue: 0.97, duration: 100, useNativeDriver: true }),
+      Animated.spring(cardLongPressScale, { toValue: 1, tension: 180, friction: 12, useNativeDriver: true }),
+    ]).start();
+    onMorePress(post);
+  };
+
+  useEffect(() => {
+    if (!isNew) return;
+    Animated.parallel([
+      Animated.timing(entryOpacity, {
+        toValue: 1, duration: 300,
+        easing: Easing.out(Easing.ease), useNativeDriver: true,
+      }),
+      Animated.timing(entryTranslateY, {
+        toValue: 0, duration: 280,
+        easing: Easing.out(Easing.ease), useNativeDriver: true,
+      }),
+      Animated.spring(entryScale, {
+        toValue: 1, tension: 140, friction: 14, useNativeDriver: true,
+      }),
+    ]).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePrayPress = () => {
+    Animated.sequence([
+      Animated.timing(prayScaleAnim, { toValue: 0.80, duration: 75, useNativeDriver: true }),
+      Animated.spring(prayScaleAnim, { toValue: 1, tension: 220, friction: 10, useNativeDriver: true }),
+    ]).start();
+    onPray(post.id);
+  };
+
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, {
+      opacity: entryOpacity,
+      transform: [{ scale: entryScale }, { translateY: entryTranslateY }, { scale: cardLongPressScale }],
+    }]}>
       {isUpdatePost && (
         <View style={styles.updateHeaderBanner}>
           <Repeat2 size={13} color={colors.primary} />
@@ -2810,7 +2898,12 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
           </View>
         </View>
         <View style={styles.cardHeaderRight}>
-          <Pressable style={styles.moreBtn} onPress={() => onMorePress(post)}>
+          <Pressable
+            style={({ pressed }) => [styles.moreBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => onMorePress(post)}
+            onLongPress={handleCardLongPress}
+            delayLongPress={350}
+          >
             <MoreHorizontal size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
@@ -2923,19 +3016,21 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
           </>
         ) : (
           <>
-            <Pressable
-              style={[styles.prayBtn, hasPrayed && styles.prayBtnActive]}
-              onPress={() => onPray(post.id)}
-            >
-              <Heart
-                size={16}
-                color={hasPrayed ? colors.primaryForeground : colors.primary}
-                fill={hasPrayed ? colors.primaryForeground : "transparent"}
-              />
-              <Text style={[styles.prayBtnText, hasPrayed && styles.prayBtnTextActive]}>
-                {hasPrayed ? "Praying" : "Pray"}
-              </Text>
-            </Pressable>
+            <Animated.View style={{ transform: [{ scale: prayScaleAnim }] }}>
+              <Pressable
+                style={[styles.prayBtn, hasPrayed && styles.prayBtnActive]}
+                onPress={handlePrayPress}
+              >
+                <Heart
+                  size={16}
+                  color={hasPrayed ? colors.primaryForeground : colors.primary}
+                  fill={hasPrayed ? colors.primaryForeground : "transparent"}
+                />
+                <Text style={[styles.prayBtnText, hasPrayed && styles.prayBtnTextActive]}>
+                  {hasPrayed ? "Praying" : "Pray"}
+                </Text>
+              </Pressable>
+            </Animated.View>
 
             <Pressable style={styles.encourageBtn} onPress={() => onComment(post)}>
               <MessageCircle size={16} color={colors.mutedForeground} />
@@ -2971,7 +3066,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
           )}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 

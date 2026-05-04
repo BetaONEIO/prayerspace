@@ -126,11 +126,17 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
     }, 300);
   }, [onClose, tagRotate]);
 
+  const [isPosting, setIsPosting] = useState(false);
+
   const handleSubmit = useCallback(() => {
     if (!text.trim() || selectedTags.length === 0) return;
+    setIsPosting(true);
     console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate });
-    onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate);
-    handleClose();
+    setTimeout(() => {
+      onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate);
+      setIsPosting(false);
+      handleClose();
+    }, 320);
   }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate]);
 
   const handleTagPress = useCallback((id: string) => {
@@ -435,11 +441,11 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
               <View style={styles.footer}>
                 <Pressable
-                  style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+                  style={[styles.submitBtn, (!canSubmit || isPosting) && styles.submitBtnDisabled]}
                   onPress={handleSubmit}
-                  disabled={!canSubmit}
+                  disabled={!canSubmit || isPosting}
                 >
-                  <Text style={styles.submitText}>Update Status</Text>
+                  <Text style={styles.submitText}>{isPosting ? "Posting…" : "Update Status"}</Text>
                 </Pressable>
               </View>
             </ScrollView>
