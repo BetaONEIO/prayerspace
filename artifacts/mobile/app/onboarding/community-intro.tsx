@@ -47,14 +47,22 @@ export default function CommunityIntro() {
   const slideAnim = useRef(new Animated.Value(16)).current;
 
   const { data: offerings } = useOfferings();
-  const startingPrice =
-    offerings?.all?.["church"]?.availablePackages?.find(
+  const startingPrice = (() => {
+    const yearlyPkg = offerings?.all?.["church"]?.availablePackages?.find(
       (p) => p.identifier === "church_small_yearly"
-    )?.product?.priceString ??
-    offerings?.all?.["church"]?.availablePackages?.find(
+    );
+    if (yearlyPkg?.product?.price) {
+      const monthly = yearlyPkg.product.price / 12;
+      const currency = yearlyPkg.product.currencyCode ?? "";
+      const symbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
+      return `${symbol}${monthly.toFixed(2)}`;
+    }
+    const monthlyPkg = offerings?.all?.["church"]?.availablePackages?.find(
       (p) => p.identifier === "church_small"
-    )?.product?.priceString ??
-    "$191.90";
+    );
+    if (monthlyPkg?.product?.priceString) return monthlyPkg.product.priceString;
+    return "£15.99";
+  })();
 
   useEffect(() => {
     Animated.parallel([
@@ -120,7 +128,7 @@ export default function CommunityIntro() {
               <Text style={[styles.pricingLabel, { color: colors.mutedForeground }]}>Plans from</Text>
               <View style={styles.pricingAmountRow}>
                 <Text style={[styles.pricingAmount, { color: colors.primary }]}>{startingPrice}</Text>
-                <Text style={[styles.pricingCycle, { color: colors.mutedForeground }]}>/yr</Text>
+                <Text style={[styles.pricingCycle, { color: colors.mutedForeground }]}>/mo</Text>
               </View>
             </View>
             <View style={styles.pricingRight}>
