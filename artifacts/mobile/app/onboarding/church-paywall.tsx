@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Alert,
   Animated,
   Platform,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,6 +22,7 @@ import {
   ChevronRight,
   Sparkles,
   Star,
+  X,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -97,6 +100,21 @@ export default function ChurchPaywall() {
   const [billing, setBilling] = useState<BillingInterval>("yearly");
   const [purchasingTier, setPurchasingTier] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(1)).current;
+  const dismissedRef = useRef(false);
+
+  const handleClose = useCallback(() => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    router.back();
+  }, [router]);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    if (y < -72 && !dismissedRef.current && !purchasingTier) {
+      dismissedRef.current = true;
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.back();
+    }
+  }, [router, purchasingTier]);
 
   const { data: offerings, isLoading: offeringsLoading } = useOfferings();
   const purchaseMutation = usePurchasePackage();
@@ -179,17 +197,36 @@ export default function ChurchPaywall() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* Sticky header row with close button */}
+      <View style={[styles.headerRow, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Choose your plan</Text>
+        <Pressable
+          style={[styles.closeBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+          onPress={handleClose}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <X size={17} color={colors.mutedForeground} strokeWidth={2.5} />
+        </Pressable>
+      </View>
+
       <AutoScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        bounces
       >
-        {/* Header */}
+        {/* Drag-to-dismiss hint pill */}
+        <View style={styles.dragPillWrap}>
+          <View style={[styles.dragPill, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Subtitle only — title lives in sticky header */}
         <View style={styles.headingArea}>
           <View style={styles.iconBadge}>
             <Sparkles size={18} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Choose your plan</Text>
           <Text style={styles.subtitle}>
             From £15.99/month · Private community for your church or group
           </Text>
@@ -369,8 +406,44 @@ export default function ChurchPaywall() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+
+    // Sticky header row
+    headerRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+    },
+    closeBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      borderWidth: 1,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+
+    // Drag pill
+    dragPillWrap: {
+      alignItems: "center" as const,
+      paddingBottom: 8,
+      marginTop: -4,
+    },
+    dragPill: {
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      opacity: 0.5,
+    },
+
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 40 },
 
     // Header
     headingArea: { alignItems: "center", gap: 8, marginBottom: 20 },

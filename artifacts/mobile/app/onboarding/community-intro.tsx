@@ -14,6 +14,7 @@ import {
   Users,
   Bell,
   ArrowRight,
+  X,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -62,8 +63,22 @@ export default function CommunityIntro() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
+  const handleClose = () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    router.back();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* Close button */}
+      <Pressable
+        style={[styles.closeBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+        onPress={handleClose}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <X size={18} color={colors.mutedForeground} strokeWidth={2.5} />
+      </Pressable>
+
       <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
         {/* Headline */}
@@ -147,6 +162,18 @@ export default function CommunityIntro() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    closeBtn: {
+      position: "absolute" as const,
+      top: 52,
+      right: 20,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      borderWidth: 1,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      zIndex: 10,
+    },
     inner: {
       flex: 1,
       paddingHorizontal: 24,
