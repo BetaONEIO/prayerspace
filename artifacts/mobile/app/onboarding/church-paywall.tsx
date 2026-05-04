@@ -19,6 +19,7 @@ import {
   Check,
   ChevronRight,
   Sparkles,
+  Star,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -47,9 +48,9 @@ const TIERS: ChurchTier[] = [
     yearlyId: "church_small_yearly",
     label: "Small",
     memberRange: "1–50 members",
-    monthlyFallback: "$19.99",
-    yearlyFallback: "$191.90",
-    yearlyMonthlyEquivFallback: "$15.99",
+    monthlyFallback: "£19.99",
+    yearlyFallback: "£191.90",
+    yearlyMonthlyEquivFallback: "£15.99",
     features: ["Private community", "Prayer requests", "Admin controls"],
   },
   {
@@ -57,9 +58,9 @@ const TIERS: ChurchTier[] = [
     yearlyId: "church_medium_yearly",
     label: "Medium",
     memberRange: "51–150 members",
-    monthlyFallback: "$39.99",
-    yearlyFallback: "$383.90",
-    yearlyMonthlyEquivFallback: "$31.99",
+    monthlyFallback: "£39.99",
+    yearlyFallback: "£383.90",
+    yearlyMonthlyEquivFallback: "£31.99",
     tag: "Most popular",
     features: ["Everything in Small", "Member management", "Group channels"],
   },
@@ -68,9 +69,9 @@ const TIERS: ChurchTier[] = [
     yearlyId: "church_large_yearly",
     label: "Large",
     memberRange: "151+ members",
-    monthlyFallback: "$79.99",
-    yearlyFallback: "$767.90",
-    yearlyMonthlyEquivFallback: "$63.99",
+    monthlyFallback: "£79.99",
+    yearlyFallback: "£767.90",
+    yearlyMonthlyEquivFallback: "£63.99",
     features: ["Everything in Medium", "Advanced analytics", "Priority support"],
   },
 ];
@@ -95,7 +96,7 @@ export default function ChurchPaywall() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [billing, setBilling] = useState<BillingInterval>("yearly");
   const [purchasingTier, setPurchasingTier] = useState<string | null>(null);
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(1)).current;
 
   const { data: offerings, isLoading: offeringsLoading } = useOfferings();
   const purchaseMutation = usePurchasePackage();
@@ -121,12 +122,12 @@ export default function ChurchPaywall() {
     if (billing === "monthly") {
       const pkg = getPackage(tier.id);
       const price = pkg?.product?.priceString ?? tier.monthlyFallback;
-      return { main: `${price}/mo`, sub: null };
+      return { main: price, period: "/mo", sub: null };
     } else {
       const pkg = getPackage(tier.yearlyId);
       const price = pkg?.product?.priceString ?? tier.yearlyFallback;
       const equiv = formatMonthlyEquiv(pkg, tier.yearlyMonthlyEquivFallback);
-      return { main: `${price}/yr`, sub: equiv };
+      return { main: equiv.replace("/mo", ""), period: "/mo", sub: `${price} billed yearly` };
     }
   };
 
@@ -186,16 +187,16 @@ export default function ChurchPaywall() {
         {/* Header */}
         <View style={styles.headingArea}>
           <View style={styles.iconBadge}>
-            <Sparkles size={20} color={colors.primary} />
+            <Sparkles size={18} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Choose your community plan</Text>
+          <Text style={styles.title}>Choose your plan</Text>
           <Text style={styles.subtitle}>
-            Create a space for your church, ministry, or group to pray together.
+            From £15.99/month · Private community for your church or group
           </Text>
         </View>
 
-        {/* Billing toggle */}
-        <View style={styles.toggleContainer}>
+        {/* Billing toggle — compact, inline save badge */}
+        <View style={styles.toggleWrapper}>
           <View style={styles.toggleTrack}>
             <Animated.View style={[styles.toggleThumb, { left: toggleLeft }]} />
             <Pressable
@@ -221,11 +222,9 @@ export default function ChurchPaywall() {
               </Text>
             </Pressable>
           </View>
-          {billing === "yearly" && (
-            <View style={styles.saveBadge}>
-              <Text style={styles.saveBadgeText}>Save 20%</Text>
-            </View>
-          )}
+          <View style={styles.saveBadge}>
+            <Text style={styles.saveBadgeText}>Save 20%</Text>
+          </View>
         </View>
 
         {/* Tier cards */}
@@ -234,7 +233,7 @@ export default function ChurchPaywall() {
             const isPopular = !!tier.tag;
             const tierId = billing === "monthly" ? tier.id : tier.yearlyId;
             const isLoading = purchasingTier === tierId;
-            const { main: priceMain, sub: priceSub } = getPriceDisplay(tier);
+            const { main: priceMain, period, sub: priceSub } = getPriceDisplay(tier);
 
             return (
               <Pressable
@@ -242,7 +241,6 @@ export default function ChurchPaywall() {
                 style={({ pressed }) => [
                   styles.tierCard,
                   isPopular && styles.tierCardPopular,
-                  isLoading && styles.tierCardActive,
                   pressed && !isDisabled && styles.tierCardPressed,
                   isDisabled && !isLoading && styles.tierCardDimmed,
                 ]}
@@ -250,14 +248,15 @@ export default function ChurchPaywall() {
                 disabled={isDisabled}
                 testID={`church-tier-${tier.id}`}
               >
+                {/* Popular badge */}
                 {isPopular && (
-                  <View style={[styles.tierTag, isLoading && styles.tierTagActive]}>
-                    <Text style={[styles.tierTagText, isLoading && styles.tierTagTextActive]}>
-                      {tier.tag}
-                    </Text>
+                  <View style={styles.popularBadge}>
+                    <Star size={9} color={colors.primary} fill={colors.primary} />
+                    <Text style={styles.popularBadgeText}>Most popular</Text>
                   </View>
                 )}
 
+                {/* Header row: name + price */}
                 <View style={styles.tierHeader}>
                   <View style={styles.tierInfo}>
                     <Text style={[styles.tierLabel, isPopular && styles.tierLabelPopular]}>
@@ -271,47 +270,58 @@ export default function ChurchPaywall() {
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <>
-                        <Text style={[styles.tierPrice, isPopular && styles.tierPricePopular]}>
-                          {priceMain}
-                        </Text>
+                        <View style={styles.tierPriceRow}>
+                          <Text style={[styles.tierPrice, isPopular && styles.tierPricePopular]}>
+                            {priceMain}
+                          </Text>
+                          <Text style={[styles.tierPeriod, isPopular && styles.tierPeriodPopular]}>
+                            {period}
+                          </Text>
+                        </View>
                         {priceSub && (
-                          <Text style={styles.tierPriceSub}>~{priceSub}</Text>
+                          <Text style={[styles.tierPriceSub, isPopular && styles.tierPriceSubPopular]}>
+                            {priceSub}
+                          </Text>
                         )}
                       </>
                     )}
                   </View>
                 </View>
 
-                <View style={styles.tierDivider} />
-
+                {/* Features */}
                 <View style={styles.tierFeatures}>
                   {tier.features.map((f) => (
                     <View key={f} style={styles.tierFeatureRow}>
                       <View style={[styles.tierCheckIcon, isPopular && styles.tierCheckIconPopular]}>
-                        <Check size={11} color={isPopular ? colors.primaryForeground : colors.primary} strokeWidth={3} />
+                        <Check size={10} color={isPopular ? "#fff" : colors.primary} strokeWidth={3} />
                       </View>
-                      <Text style={styles.tierFeatureText}>{f}</Text>
+                      <Text style={[styles.tierFeatureText, isPopular && styles.tierFeatureTextPopular]}>
+                        {f}
+                      </Text>
                     </View>
                   ))}
                 </View>
 
+                {/* CTA */}
                 <View style={styles.tierCta}>
                   {isLoading ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={isPopular ? colors.primaryForeground : colors.primary}
-                    />
+                    <ActivityIndicator size="small" color={isPopular ? "#fff" : colors.primary} />
                   ) : (
-                    <View style={[styles.tierCtaBtn, isPopular && styles.tierCtaBtnPopular]}>
-                      <Text style={[styles.tierCtaText, isPopular && styles.tierCtaTextPopular]}>
-                        Get started
+                    <>
+                      <View style={[styles.tierCtaBtn, isPopular && styles.tierCtaBtnPopular]}>
+                        <Text style={[styles.tierCtaText, isPopular && styles.tierCtaTextPopular]}>
+                          Get started
+                        </Text>
+                        <ChevronRight
+                          size={15}
+                          color={isPopular ? "#fff" : colors.primary}
+                          strokeWidth={2.5}
+                        />
+                      </View>
+                      <Text style={[styles.trialNote, isPopular && styles.trialNotePopular]}>
+                        7-day free trial · Cancel anytime
                       </Text>
-                      <ChevronRight
-                        size={16}
-                        color={isPopular ? colors.primaryForeground : colors.primary}
-                        strokeWidth={2.5}
-                      />
-                    </View>
+                    </>
                   )}
                 </View>
               </Pressable>
@@ -328,7 +338,7 @@ export default function ChurchPaywall() {
               return (
                 <View key={f.label} style={styles.includedRow}>
                   <View style={styles.includedIcon}>
-                    <Icon size={15} color={colors.primary} />
+                    <Icon size={14} color={colors.primary} />
                   </View>
                   <Text style={styles.includedLabel}>{f.label}</Text>
                 </View>
@@ -360,51 +370,51 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 20, paddingTop: 32, paddingBottom: 48 },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
 
-    headingArea: { alignItems: "center", gap: 10, marginBottom: 28 },
+    // Header
+    headingArea: { alignItems: "center", gap: 8, marginBottom: 20 },
     iconBadge: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       backgroundColor: colors.accent,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 4,
+      marginBottom: 2,
       borderWidth: 1,
       borderColor: colors.primary + "30",
     },
     title: {
-      fontSize: 26,
+      fontSize: 22,
       fontWeight: "800" as const,
       color: colors.foreground,
       textAlign: "center",
-      lineHeight: 34,
     },
     subtitle: {
-      fontSize: 14,
+      fontSize: 13,
       color: colors.mutedForeground,
       textAlign: "center",
-      lineHeight: 22,
-      maxWidth: 300,
+      lineHeight: 20,
     },
 
-    toggleContainer: {
+    // Toggle
+    toggleWrapper: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
-      marginBottom: 24,
+      gap: 8,
+      marginBottom: 16,
     },
     toggleTrack: {
       flexDirection: "row",
       backgroundColor: colors.secondary,
-      borderRadius: 24,
+      borderRadius: 20,
       padding: 3,
       position: "relative",
       borderWidth: 1,
       borderColor: colors.border,
-      width: 200,
+      width: 180,
     },
     toggleThumb: {
       position: "absolute",
@@ -412,213 +422,228 @@ function createStyles(colors: ThemeColors) {
       bottom: 3,
       width: "50%",
       backgroundColor: colors.card,
-      borderRadius: 20,
+      borderRadius: 16,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.08,
-      shadowRadius: 3,
+      shadowRadius: 2,
       elevation: 2,
     },
     toggleOption: {
       flex: 1,
       alignItems: "center",
-      paddingVertical: 8,
+      paddingVertical: 6,
       zIndex: 1,
     },
     toggleLabel: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "600" as const,
       color: colors.mutedForeground,
     },
     toggleLabelActive: {
       color: colors.foreground,
+      fontWeight: "700" as const,
     },
     saveBadge: {
       backgroundColor: "#DCFCE7",
-      borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       borderWidth: 1,
       borderColor: "#86EFAC",
     },
     saveBadgeText: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "800" as const,
       color: "#166534",
-      letterSpacing: 0.3,
+      letterSpacing: 0.2,
     },
 
-    tiers: { gap: 14, marginBottom: 24 },
+    // Cards
+    tiers: { gap: 10, marginBottom: 20 },
     tierCard: {
-      borderRadius: 22,
+      borderRadius: 18,
       borderWidth: 1.5,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 20,
-      paddingTop: 22,
+      padding: 16,
       position: "relative",
-      overflow: "hidden",
+      overflow: "visible",
     },
     tierCardPopular: {
       borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderWidth: 2,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    tierCardActive: {
-      borderColor: colors.primary,
-      opacity: 0.85,
-    },
-    tierCardPressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
-    tierCardDimmed: { opacity: 0.55 },
+    tierCardPressed: { opacity: 0.9, transform: [{ scale: 0.988 }] },
+    tierCardDimmed: { opacity: 0.5 },
 
-    tierTag: {
+    // Popular badge (inline top-right)
+    popularBadge: {
       position: "absolute",
-      top: -1,
-      right: 18,
-      backgroundColor: colors.secondary,
-      borderBottomLeftRadius: 10,
-      borderBottomRightRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderWidth: 1,
-      borderTopWidth: 0,
-      borderColor: colors.border,
+      top: -11,
+      right: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
     },
-    tierTagActive: {
-      backgroundColor: colors.primaryForeground + "30",
-      borderColor: colors.primaryForeground + "40",
-    },
-    tierTagText: {
-      fontSize: 10,
+    popularBadgeText: {
+      fontSize: 9,
       fontWeight: "800" as const,
-      color: colors.mutedForeground,
-      letterSpacing: 0.4,
-    },
-    tierTagTextActive: {
-      color: colors.primaryForeground,
+      color: "#fff",
+      letterSpacing: 0.3,
     },
 
+    // Header
     tierHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      marginBottom: 16,
+      marginBottom: 12,
     },
-    tierInfo: { gap: 3 },
+    tierInfo: { gap: 2 },
     tierLabel: {
-      fontSize: 20,
+      fontSize: 17,
       fontWeight: "800" as const,
       color: colors.foreground,
     },
-    tierLabelPopular: { color: colors.primaryForeground },
+    tierLabelPopular: { color: colors.primary },
     tierRange: {
-      fontSize: 12,
-      color: colors.mutedForeground,
-      fontWeight: "500" as const,
-    },
-    tierPricing: { alignItems: "flex-end", gap: 2 },
-    tierPrice: {
-      fontSize: 18,
-      fontWeight: "800" as const,
-      color: colors.foreground,
-    },
-    tierPricePopular: { color: colors.primaryForeground },
-    tierPriceSub: {
       fontSize: 11,
       color: colors.mutedForeground,
       fontWeight: "500" as const,
     },
 
-    tierDivider: {
-      height: 1,
-      backgroundColor: colors.border + "60",
-      marginBottom: 14,
+    tierPricing: { alignItems: "flex-end", gap: 1 },
+    tierPriceRow: { flexDirection: "row", alignItems: "baseline", gap: 1 },
+    tierPrice: {
+      fontSize: 20,
+      fontWeight: "800" as const,
+      color: colors.foreground,
     },
+    tierPricePopular: { color: colors.primary },
+    tierPeriod: {
+      fontSize: 12,
+      fontWeight: "600" as const,
+      color: colors.mutedForeground,
+    },
+    tierPeriodPopular: { color: colors.primary + "bb" },
+    tierPriceSub: {
+      fontSize: 10,
+      color: colors.mutedForeground,
+      fontWeight: "500" as const,
+    },
+    tierPriceSubPopular: { color: colors.mutedForeground },
 
-    tierFeatures: { gap: 8, marginBottom: 18 },
-    tierFeatureRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    // Features
+    tierFeatures: { gap: 6, marginBottom: 14 },
+    tierFeatureRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     tierCheckIcon: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
+      width: 17,
+      height: 17,
+      borderRadius: 9,
       backgroundColor: colors.accent,
       alignItems: "center",
       justifyContent: "center",
+      flexShrink: 0,
     },
     tierCheckIconPopular: {
-      backgroundColor: colors.primaryForeground + "25",
+      backgroundColor: colors.primary,
     },
     tierFeatureText: {
-      fontSize: 13,
+      fontSize: 12,
       color: colors.mutedForeground,
       flex: 1,
     },
+    tierFeatureTextPopular: {
+      color: colors.foreground,
+      fontWeight: "500" as const,
+    },
 
-    tierCta: { alignItems: "center" },
+    // CTA
+    tierCta: { gap: 6 },
     tierCtaBtn: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 14,
+      justifyContent: "center",
+      gap: 4,
+      paddingVertical: 10,
+      borderRadius: 12,
       backgroundColor: colors.accent,
       borderWidth: 1.5,
       borderColor: colors.primary + "50",
     },
     tierCtaBtnPopular: {
-      backgroundColor: colors.primaryForeground,
+      backgroundColor: colors.primary,
       borderColor: "transparent",
     },
     tierCtaText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "700" as const,
       color: colors.primary,
     },
     tierCtaTextPopular: {
-      color: colors.primary,
+      color: "#fff",
+    },
+    trialNote: {
+      fontSize: 10,
+      color: colors.mutedForeground,
+      textAlign: "center",
+    },
+    trialNotePopular: {
+      color: colors.mutedForeground,
     },
 
+    // Included in all
     allIncluded: {
       backgroundColor: colors.card,
-      borderRadius: 20,
-      padding: 18,
-      gap: 14,
-      marginBottom: 20,
+      borderRadius: 16,
+      padding: 14,
+      gap: 10,
+      marginBottom: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
     allIncludedTitle: {
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: "700" as const,
       color: colors.mutedForeground,
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
-    allIncludedList: { gap: 10 },
-    includedRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    allIncludedList: { gap: 8 },
+    includedRow: { flexDirection: "row", alignItems: "center", gap: 10 },
     includedIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       backgroundColor: colors.accent,
       alignItems: "center",
       justifyContent: "center",
     },
     includedLabel: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "500" as const,
       color: colors.foreground,
       flex: 1,
     },
 
-    restoreBtn: { alignItems: "center", paddingVertical: 12, marginBottom: 4 },
-    restoreText: { fontSize: 13, color: colors.mutedForeground },
+    restoreBtn: { alignItems: "center", paddingVertical: 10, marginBottom: 2 },
+    restoreText: { fontSize: 12, color: colors.mutedForeground },
     disclaimer: {
-      fontSize: 11,
+      fontSize: 10,
       color: colors.mutedForeground,
       textAlign: "center",
       fontStyle: "italic",
-      lineHeight: 17,
+      lineHeight: 16,
       paddingHorizontal: 8,
     },
   });
