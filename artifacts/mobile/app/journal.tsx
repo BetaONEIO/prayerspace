@@ -65,36 +65,7 @@ function isoOffset(days: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const MOCK_ENTRIES: JournalEntry[] = [
-  {
-    id: "j1",
-    title: "Peace in the Storm",
-    body: "Today I felt a profound sense of peace during my morning prayer. Even though the project at work is stressful, I'm choosing to trust...",
-    tag: "reflection",
-    timestamp: Date.now() - 1000 * 60 * 60 * 3,
-    isFavorite: true,
-    isAnswered: false,
-  },
-  {
-    id: "j2",
-    title: "Prayer for Financial Wisdom",
-    body: "Lord, help us manage our resources better this month. Give us clarity on the upcoming investment decisions...",
-    tag: "petition",
-    timestamp: Date.now() - 1000 * 60 * 60 * 27,
-    isFavorite: false,
-    isAnswered: false,
-    eventDate: isoOffset(1),
-  },
-  {
-    id: "j3",
-    title: "Morning Gratefulness",
-    body: "Thankful for the sunrise and the coffee. A fresh start to a beautiful week.",
-    tag: "gratitude",
-    timestamp: Date.now() - 1000 * 60 * 60 * 29,
-    isFavorite: false,
-    isAnswered: false,
-  },
-];
+const MOCK_ENTRIES: JournalEntry[] = [];
 
 function formatDateGroup(timestamp: number): string {
   const date = new Date(timestamp);

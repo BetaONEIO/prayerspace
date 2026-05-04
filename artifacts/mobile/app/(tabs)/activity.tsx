@@ -314,56 +314,7 @@ interface Profile {
   avatar_url: string | null;
 }
 
-const SAMPLE_CONVERSATIONS: ConversationListItem[] = [
-  {
-    conversation_id: "sample-1",
-    is_muted: false,
-    last_read_at: null,
-    other_user_id: "sample-anna",
-    other_user_name: "Anna Rivera",
-    other_user_avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80",
-    last_message: "Thank you for praying for my interview today 🤍",
-    last_message_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    last_sender_id: "sample-anna",
-    unread_count: 2,
-  },
-  {
-    conversation_id: "sample-2",
-    is_muted: false,
-    last_read_at: null,
-    other_user_id: "sample-marcus",
-    other_user_name: "Marcus Webb",
-    other_user_avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    last_message: "I'm feeling hopeful again. Your prayer helped a lot.",
-    last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    last_sender_id: "sample-marcus",
-    unread_count: 0,
-  },
-  {
-    conversation_id: "sample-3",
-    is_muted: true,
-    last_read_at: null,
-    other_user_id: "sample-naomi",
-    other_user_name: "Naomi Okafor",
-    other_user_avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-    last_message: "Can we pray again tomorrow morning?",
-    last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-    last_sender_id: "sample-naomi",
-    unread_count: 1,
-  },
-  {
-    conversation_id: "sample-4",
-    is_muted: false,
-    last_read_at: null,
-    other_user_id: "sample-david",
-    other_user_name: "David Chen",
-    other_user_avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
-    last_message: "Just shared the update with my family — thank you.",
-    last_message_at: new Date(Date.now() - 1000 * 60 * 60 * 52).toISOString(),
-    last_sender_id: "sample-david",
-    unread_count: 0,
-  },
-];
+const SAMPLE_CONVERSATIONS: ConversationListItem[] = [];
 
 export default function MessagesScreen() {
   const router = useRouter();
