@@ -417,6 +417,7 @@ type GroupSubTab = "My Groups" | "Community";
 export default function CommunityScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
+  const { profile, session } = useAuth();
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
@@ -621,8 +622,8 @@ export default function CommunityScreen() {
       id: `status_${Date.now()}`,
       communityId: activeCommunity.id,
       authorId: isAnonymous ? "anonymous" : currentUserId,
-      authorName: isAnonymous ? "Anonymous" : "Sarah",
-      authorAvatar: isAnonymous ? "" : "https://randomuser.me/api/portraits/women/68.jpg",
+      authorName: isAnonymous ? "Anonymous" : (profile?.full_name ?? "Me"),
+      authorAvatar: isAnonymous ? "" : (profile?.avatar_url ?? ""),
       category: tags.length > 0 ? tags[0].replace(/_/g, ' ').toUpperCase() : "UPDATE",
       tags: tags,
       timeLabel: "JUST NOW",
@@ -639,7 +640,7 @@ export default function CommunityScreen() {
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
     console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "eventDate:", eventDate);
-  }, [activeCommunity.id]);
+  }, [activeCommunity.id, profile, currentUserId]);
 
   const handleSubmitRepost = useCallback((originalPost: FeedPost, updateText: string, updateTag?: UpdateTag) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -736,8 +737,8 @@ export default function CommunityScreen() {
   const handleAddComment = useCallback((postId: string, text: string) => {
     const newComment: Comment = {
       id: `c_${Date.now()}`,
-      authorName: "Sarah",
-      authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
+      authorName: profile?.full_name ?? "Me",
+      authorAvatar: profile?.avatar_url ?? "",
       text,
       time: "Just now",
     };
@@ -756,7 +757,7 @@ export default function CommunityScreen() {
     );
   }, []);
 
-  const currentUserId = "user-1";
+  const currentUserId = session?.user?.id ?? "user-1";
   const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const posts = activeTab === "Feed"
