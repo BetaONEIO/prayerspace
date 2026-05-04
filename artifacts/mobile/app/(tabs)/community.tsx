@@ -1616,9 +1616,9 @@ function CommunityEmptyState({ communityName }: CommunityEmptyStateProps) {
       <View style={styles.emptyIconWrap}>
         <HandHeart size={32} color={colors.primary} />
       </View>
-      <Text style={styles.emptyTitle}>No posts in {communityName} yet</Text>
+      <Text style={styles.emptyTitle}>No posts yet</Text>
       <Text style={styles.emptySubtitle}>
-        Be the first to share a prayer request with {communityName}.
+        Be the first to share a prayer request here.
       </Text>
     </View>
   );
