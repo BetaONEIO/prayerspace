@@ -421,26 +421,11 @@ export default function HomeScreen() {
                 ...favourites
                   .filter((f) => !frequentlyPrayedFor.find((fp) => fp.id === f.id))
                   .slice(0, Math.max(0, 8 - frequentlyPrayedFor.length)),
-                { id: "add", name: "Add", avatar: "" },
               ]}
               horizontal
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) =>
-                item.id === "add" ? (
-                  <Pressable
-                    style={styles.frequentItem}
-                    onPress={() => router.push("/top-hearts")}
-                  >
-                    <View style={styles.addCircle}>
-                      <Plus size={28} color={colors.secondaryForeground} />
-                    </View>
-                    <Text style={styles.frequentNameMuted}>Add</Text>
-                  </Pressable>
-                ) : (
-                  renderFrequentContact({ item })
-                )
-              }
+              renderItem={({ item }) => renderFrequentContact({ item })}
               contentContainerStyle={styles.frequentList}
             />
           )}
