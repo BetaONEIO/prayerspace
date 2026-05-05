@@ -45,12 +45,12 @@ function NotificationIcon({ type, colors }: { type: Notification["type"]; colors
     case "testimony": return <View style={[iconStyle, { backgroundColor: colors.accent }]}><Trophy size={22} color={colors.primary} /></View>;
     case "streak": return <View style={[iconStyle, { backgroundColor: colors.secondary }]}><Flame size={22} color={colors.mutedForeground} /></View>;
     case "request": return <View style={[iconStyle, { backgroundColor: colors.primary + "18" }]}><HandHeart size={22} color={colors.primary} /></View>;
-    case "comment": return <View style={[iconStyle, { backgroundColor: "#E8F5E9" }]}><MessageSquare size={22} color="#2E7D32" /></View>;
+    case "comment": return <View style={[iconStyle, { backgroundColor: "#2E7D3220" }]}><MessageSquare size={22} color="#2E7D32" /></View>;
     case "reaction": return <View style={[iconStyle, { backgroundColor: colors.accent }]}><SmilePlus size={22} color={colors.primary} /></View>;
-    case "reply": return <View style={[iconStyle, { backgroundColor: "#E3F2FD" }]}><CornerDownRight size={22} color="#1565C0" /></View>;
-    case "member_joined": return <View style={[iconStyle, { backgroundColor: "#E0F7FA" }]}><UserPlus size={22} color="#00838F" /></View>;
-    case "event": return <View style={[iconStyle, { backgroundColor: "#FFF3E0" }]}><Calendar size={22} color="#E65100" /></View>;
-    case "mention": return <View style={[iconStyle, { backgroundColor: "#F3E5F5" }]}><AtSign size={22} color="#6A1B9A" /></View>;
+    case "reply": return <View style={[iconStyle, { backgroundColor: "#1565C020" }]}><CornerDownRight size={22} color="#1565C0" /></View>;
+    case "member_joined": return <View style={[iconStyle, { backgroundColor: "#00838F20" }]}><UserPlus size={22} color="#00838F" /></View>;
+    case "event": return <View style={[iconStyle, { backgroundColor: colors.accent }]}><Calendar size={22} color={colors.primary} /></View>;
+    case "mention": return <View style={[iconStyle, { backgroundColor: "#6A1B9A20" }]}><AtSign size={22} color="#6A1B9A" /></View>;
     default: return null;
   }
 }
