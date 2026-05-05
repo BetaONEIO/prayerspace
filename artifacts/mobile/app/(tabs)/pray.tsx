@@ -112,7 +112,7 @@ export default function PrayScreen() {
                 <Text style={styles.cardBgEmoji}>🙏</Text>
               </View>
               <View style={styles.cardContent}>
-                <Text style={styles.cardTitleWhite}>🙏 Start a Prayer</Text>
+                <Text style={styles.cardTitleWhite}>Start a Prayer</Text>
                 <Text style={styles.cardSubtitleWhite}>
                   Pray privately, send to someone, or share with others
                 </Text>
@@ -131,7 +131,7 @@ export default function PrayScreen() {
                 <Text style={styles.cardBgEmoji}>🕊️</Text>
               </View>
               <View style={styles.cardContent}>
-                <Text style={styles.cardTitleDark}>🕊️ Prayer Space</Text>
+                <Text style={styles.cardTitleDark}>Prayer Space</Text>
                 <Text style={styles.cardSubtitleMuted}>Pause, reflect, and spend time with God</Text>
               </View>
             </Pressable>
