@@ -81,6 +81,7 @@ export default function MeditativePrayerSessionScreen() {
   const [audioDuration, setAudioDuration] = useState<number>(1);
 
   const soundRef = useRef<Audio.Sound | null>(null);
+  const loadGenRef = useRef(0);
   const modalSlide = useRef(new Animated.Value(300)).current;
   const modalOverlay = useRef(new Animated.Value(0)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -148,7 +149,7 @@ export default function MeditativePrayerSessionScreen() {
   }, []);
 
   const loadAndPlayTrack = useCallback(async (trackIndex: number, shouldPlay: boolean = true) => {
-    console.log("[MeditativeSession] Loading track index:", trackIndex);
+    const myGen = ++loadGenRef.current;
     setAudioError(false);
     setAudioPosition(0);
 
@@ -164,11 +165,11 @@ export default function MeditativePrayerSessionScreen() {
 
     const track = TRACKS[trackIndex];
     if (!track.url) {
-      console.log("[MeditativeSession] Silence mode selected");
-      setIsLoadingAudio(false);
+      if (myGen === loadGenRef.current) setIsLoadingAudio(false);
       return;
     }
 
+    if (myGen !== loadGenRef.current) return;
     setIsLoadingAudio(true);
     try {
       const { sound } = await Audio.Sound.createAsync(
@@ -176,13 +177,17 @@ export default function MeditativePrayerSessionScreen() {
         { shouldPlay, isLooping: true, progressUpdateIntervalMillis: 500 },
         onPlaybackStatusUpdate
       );
+      if (myGen !== loadGenRef.current) {
+        sound.unloadAsync().catch(() => {});
+        return;
+      }
       soundRef.current = sound;
-      console.log("[MeditativeSession] Track loaded:", track.name);
     } catch (error) {
+      if (myGen !== loadGenRef.current) return;
       console.log("[MeditativeSession] Audio load error:", error);
       setAudioError(true);
     } finally {
-      setIsLoadingAudio(false);
+      if (myGen === loadGenRef.current) setIsLoadingAudio(false);
     }
   }, [onPlaybackStatusUpdate]);
 
@@ -442,23 +447,22 @@ export default function MeditativePrayerSessionScreen() {
                 ]}
               />
             </View>
-            {!isSilence && (
-              <View style={styles.progressTimes}>
-                <Text style={styles.progressTimeText}>
-                  {formatTime(Math.floor(audioPosition / 1000))}
-                </Text>
-                <Text style={styles.progressTimeText}>
-                  {formatTime(Math.floor(audioDuration / 1000))}
-                </Text>
-              </View>
-            )}
+            <View style={[styles.progressTimes, isSilence && { opacity: 0 }]}>
+              <Text style={styles.progressTimeText}>
+                {formatTime(Math.floor(audioPosition / 1000))}
+              </Text>
+              <Text style={styles.progressTimeText}>
+                {formatTime(Math.floor(audioDuration / 1000))}
+              </Text>
+            </View>
           </View>
 
-          {!isSilence && currentTrack.attribution ? (
-            <Text style={styles.attributionText} numberOfLines={1}>
-              {currentTrack.attribution}
-            </Text>
-          ) : null}
+          <Text
+            style={[styles.attributionText, (!currentTrack.attribution || isSilence) && { opacity: 0 }]}
+            numberOfLines={1}
+          >
+            {currentTrack.attribution || " "}
+          </Text>
         </View>
 
         <Pressable style={styles.finishBtn} onPress={handleFinish}>
@@ -605,13 +609,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: 3,
   },
   playerCard: {
-    backgroundColor: "rgba(255,255,255,0.5)",
+    backgroundColor: colors.card,
     borderRadius: 40,
     marginHorizontal: 20,
     marginBottom: 12,
     padding: 24,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.9)",
+    borderColor: colors.border,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
