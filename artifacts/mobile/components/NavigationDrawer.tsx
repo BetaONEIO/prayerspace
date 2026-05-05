@@ -312,11 +312,6 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
             </View>
           </View>
 
-          {/* Pray CTA */}
-          <Pressable style={styles.prayBtn} onPress={() => handleNavPress("/(tabs)/pray")}>
-            <Text style={styles.prayBtnText}>Pray</Text>
-          </Pressable>
-
           {/* Scrollable nav links */}
           <ScrollView
             style={styles.navSection}
@@ -373,8 +368,12 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
             })}
           </ScrollView>
 
-          {/* Sticky footer: Plus card + Sign Out — respects bottom safe area */}
+          {/* Footer actions */}
           <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+            <Pressable style={styles.prayBtn} onPress={() => handleNavPress("/(tabs)/pray")}>
+              <Text style={styles.prayBtnText}>Pray</Text>
+            </Pressable>
+
             {!isPremiumCommunity && (
               <Pressable
                 style={styles.proBtn}
@@ -593,6 +592,7 @@ function createStyles(colors: ThemeColors) {
 
     // Sticky footer
     footer: {
+      marginTop: "auto",
       paddingHorizontal: 16,
       paddingTop: 14,
       borderTopWidth: 1,
