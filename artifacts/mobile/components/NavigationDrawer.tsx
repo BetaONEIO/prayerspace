@@ -61,8 +61,8 @@ const navGroups: NavGroup[] = [
     label: "Explore",
     items: [
       { label: "Home", route: "/(tabs)/(home)", icon: Home },
-      { label: "My Communities", route: "/(tabs)/community", icon: Users },
-      { label: "Groups", route: "/(tabs)/community", icon: MessageSquare },
+      { label: "My Communities", route: "/(tabs)/community?tab=Community", icon: Users },
+      { label: "Groups", route: "/(tabs)/community?tab=Groups", icon: MessageSquare },
     ],
   },
   {
