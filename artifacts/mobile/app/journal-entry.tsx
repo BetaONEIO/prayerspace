@@ -11,6 +11,7 @@ import {
   Animated,
   Modal,
   Alert,
+  ActivityIndicator,
   NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
   TextStyle,
@@ -27,8 +28,6 @@ import {
   Mic,
   Type,
   Square,
-  Pause,
-  Play,
   CheckCircle,
   Edit3,
   X,
@@ -41,11 +40,14 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
+import { useMutation } from "@tanstack/react-query";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import FormattedText from "@/components/FormattedText";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
+import { useAudioRecording } from "@/hooks/useAudioRecording";
+import { transcribeAudio } from "@/lib/transcribe";
 
 type Mode = "text" | "voice";
 type Tag = "gratitude" | "petition" | "reflection";
@@ -57,9 +59,6 @@ const TAGS: { id: Tag; label: string; Icon: typeof Heart }[] = [
   { id: "petition", label: "Petition", Icon: HandHeart },
   { id: "reflection", label: "Reflection", Icon: BookOpen },
 ];
-
-const MOCK_TRANSCRIPT =
-  "Lord, I come before You today with a grateful heart. Thank You for the peace You've placed within me, even in the midst of uncertainty. I lift up every challenge I'm facing and trust that You are working all things together for good. Guide my steps, strengthen my faith, and help me to be a light to those around me. Amen.";
 
 export default function JournalEntryScreen() {
   const router = useRouter();
@@ -98,13 +97,22 @@ export default function JournalEntryScreen() {
   const [isBodyFocused, setIsBodyFocused] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
 
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [seconds, setSeconds] = useState(0);
+  const { isRecording, duration, startRecording, stopRecording, error: recordingError } = useAudioRecording();
   const [hasRecorded, setHasRecorded] = useState(false);
 
+  const transcribeMutation = useMutation({
+    mutationFn: async (audioUri: string) => transcribeAudio(audioUri),
+    onSuccess: (text) => {
+      setTranscriptText(text);
+    },
+    onError: (err) => {
+      Alert.alert("Transcription Error", (err as Error).message || "Could not transcribe audio. Please try again.");
+      setShowTranscriptModal(false);
+    },
+  });
+
   const [showTranscriptModal, setShowTranscriptModal] = useState(false);
-  const [transcriptText, setTranscriptText] = useState(MOCK_TRANSCRIPT);
+  const [transcriptText, setTranscriptText] = useState("");
   const [editingTranscript, setEditingTranscript] = useState(false);
   const [pendingSeconds, setPendingSeconds] = useState(0);
 
@@ -121,7 +129,7 @@ export default function JournalEntryScreen() {
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
-    if (isRecording && !isPaused) {
+    if (isRecording) {
       pulseLoop.current = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.2, duration: 800, useNativeDriver: true }),
@@ -140,13 +148,7 @@ export default function JournalEntryScreen() {
       pulseLoop.current?.stop();
       Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     }
-  }, [isRecording, isPaused, pulseAnim, rippleAnim]);
-
-  useEffect(() => {
-    if (!isRecording || isPaused) return;
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(interval);
-  }, [isRecording, isPaused]);
+  }, [isRecording, pulseAnim, rippleAnim]);
 
   const triggerSavedToast = useCallback((goBack = false) => {
     setShowSavedToast(true);
@@ -187,36 +189,31 @@ export default function JournalEntryScreen() {
     return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
   };
 
-  const handleStartRecording = useCallback(() => {
+  const handleStartRecording = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setIsRecording(true);
-    setIsPaused(false);
-    setSeconds(0);
     setHasRecorded(false);
-  }, []);
+    setTranscriptText("");
+    await startRecording();
+  }, [startRecording]);
 
-  const handlePauseRecording = useCallback(() => {
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsPaused((p) => !p);
-  }, []);
-
-  const handleStopRecording = useCallback(() => {
+  const handleStopRecording = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setIsRecording(false);
-    setIsPaused(false);
-    setPendingSeconds(seconds);
+    const uri = await stopRecording();
+    setPendingSeconds(duration);
     setEditingTranscript(false);
     setShowTranscriptModal(true);
-    console.log("[JournalEntry] Voice recording stopped, showing transcript modal at", seconds, "seconds");
-  }, [seconds]);
+    console.log("[JournalEntry] Voice recording stopped at", duration, "seconds, URI:", uri);
+    if (uri) {
+      transcribeMutation.mutate(uri);
+    }
+  }, [duration, stopRecording, transcribeMutation]);
 
   const handleConfirmTranscript = useCallback(() => {
     setShowTranscriptModal(false);
     setHasRecorded(true);
-    setSeconds(pendingSeconds);
     setBody(transcriptText);
     console.log("[JournalEntry] Transcript confirmed");
-  }, [pendingSeconds, transcriptText]);
+  }, [transcriptText]);
 
   const handleSave = useCallback(() => {
     if (isEditing && editId) {
@@ -241,21 +238,21 @@ export default function JournalEntryScreen() {
       console.log("[JournalEntry] Saving text entry:", { title: entryTitle, tag: activeTag });
       addJournalEntry({ title: entryTitle, body: body.trim(), tag: activeTag });
     } else {
-      if (!hasRecorded && seconds === 0) {
+      if (!hasRecorded) {
         Alert.alert("No Recording", "Please record your prayer before saving.");
         return;
       }
       const entryTitle = title.trim() || "Voice Prayer";
       const voiceBody = transcriptText.trim()
         ? transcriptText.trim()
-        : `Voice prayer recorded — ${formatTime(seconds)} duration.${body.trim() ? "\n\n" + body.trim() : ""}`;
-      console.log("[JournalEntry] Saving voice entry:", { title: entryTitle, duration: seconds });
+        : `Voice prayer recorded — ${formatTime(pendingSeconds)} duration.${body.trim() ? "\n\n" + body.trim() : ""}`;
+      console.log("[JournalEntry] Saving voice entry:", { title: entryTitle, duration: pendingSeconds });
       addJournalEntry({ title: entryTitle, body: voiceBody, tag: activeTag });
     }
 
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     triggerSavedToast(false);
-  }, [isEditing, editId, mode, title, body, activeTag, hasRecorded, seconds, transcriptText, addJournalEntry, updateJournalEntry, triggerSavedToast]);
+  }, [isEditing, editId, mode, title, body, activeTag, hasRecorded, pendingSeconds, transcriptText, addJournalEntry, updateJournalEntry, triggerSavedToast]);
 
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -338,7 +335,7 @@ export default function JournalEntryScreen() {
   );
 
   const canSave =
-    mode === "text" ? body.trim().length > 0 : hasRecorded || (isRecording && seconds > 0);
+    mode === "text" ? body.trim().length > 0 : hasRecorded;
 
   const rippleScale = rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] });
   const rippleOpacity = rippleAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0] });
@@ -512,20 +509,14 @@ export default function JournalEntryScreen() {
 
             <View style={styles.voiceCenter}>
               <View style={styles.timerWrap}>
-                <Text style={styles.timerText}>{formatTime(seconds)}</Text>
+                <Text style={styles.timerText}>{formatTime(isRecording ? duration : pendingSeconds)}</Text>
                 <Text style={styles.timerLabel}>
-                  {isRecording && !isPaused
-                    ? "RECORDING"
-                    : isPaused
-                    ? "PAUSED"
-                    : hasRecorded
-                    ? "COMPLETED"
-                    : "READY"}
+                  {isRecording ? "RECORDING" : hasRecorded ? "COMPLETED" : "READY"}
                 </Text>
               </View>
 
               <View style={styles.micOuter}>
-                {isRecording && !isPaused && (
+                {isRecording && (
                   <Animated.View
                     style={[
                       styles.ripple,
@@ -558,16 +549,9 @@ export default function JournalEntryScreen() {
 
               {isRecording && (
                 <View style={styles.recordingControls}>
-                  <Pressable style={styles.ctrlBtn} onPress={handlePauseRecording}>
-                    {isPaused ? (
-                      <Play size={22} color={colors.secondaryForeground} />
-                    ) : (
-                      <Pause size={22} color={colors.secondaryForeground} />
-                    )}
-                  </Pressable>
                   <Pressable style={styles.stopBtn} onPress={handleStopRecording}>
                     <Square size={22} color={colors.primaryForeground} fill={colors.primaryForeground} />
-                    <Text style={styles.stopBtnText}>Stop & Save</Text>
+                    <Text style={styles.stopBtnText}>Stop & Transcribe</Text>
                   </Pressable>
                 </View>
               )}
@@ -576,7 +560,7 @@ export default function JournalEntryScreen() {
                 <View style={styles.recordedBanner}>
                   <View style={styles.recordedDot} />
                   <Text style={styles.recordedText}>
-                    Recording complete · {formatTime(seconds)}
+                    Recording complete · {formatTime(pendingSeconds)}
                   </Text>
                   <Pressable onPress={handleStartRecording}>
                     <Text style={styles.reRecordText}>Re-record</Text>
@@ -645,10 +629,16 @@ export default function JournalEntryScreen() {
 
             <View style={styles.transcriptHeader}>
               <View style={styles.transcriptIconWrap}>
-                <Mic size={22} color={colors.primaryForeground} />
+                {transcribeMutation.isPending ? (
+                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                ) : (
+                  <Mic size={22} color={colors.primaryForeground} />
+                )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.transcriptTitle}>Voice Prayer Transcribed</Text>
+                <Text style={styles.transcriptTitle}>
+                  {transcribeMutation.isPending ? "Transcribing…" : "Voice Prayer Transcribed"}
+                </Text>
                 <Text style={styles.transcriptSubtitle}>{formatTime(pendingSeconds)} · Review before saving</Text>
               </View>
               <Pressable style={styles.transcriptCloseBtn} onPress={() => setShowTranscriptModal(false)}>
@@ -658,35 +648,47 @@ export default function JournalEntryScreen() {
 
             <View style={styles.transcriptDivider} />
 
-            <ScrollView style={styles.transcriptScrollArea} showsVerticalScrollIndicator={false}>
-              <View style={styles.transcriptBodyCard}>
-                <View style={styles.quoteBar} />
-                {editingTranscript ? (
-                  <TextInput
-                    style={[styles.bodyInput, { minHeight: 140, fontSize: 15 }]}
-                    multiline
-                    value={transcriptText}
-                    onChangeText={setTranscriptText}
-                    textAlignVertical="top"
-                    autoFocus
-                  />
-                ) : (
-                  <Text style={styles.transcriptBody}>{transcriptText}</Text>
-                )}
+            {transcribeMutation.isPending ? (
+              <View style={styles.transcriptLoadingWrap}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.transcriptLoadingText}>Converting your prayer to text…</Text>
               </View>
-            </ScrollView>
+            ) : (
+              <ScrollView style={styles.transcriptScrollArea} showsVerticalScrollIndicator={false}>
+                <View style={styles.transcriptBodyCard}>
+                  <View style={styles.quoteBar} />
+                  {editingTranscript ? (
+                    <TextInput
+                      style={[styles.bodyInput, { minHeight: 140, fontSize: 15 }]}
+                      multiline
+                      value={transcriptText}
+                      onChangeText={setTranscriptText}
+                      textAlignVertical="top"
+                      autoFocus
+                    />
+                  ) : (
+                    <Text style={styles.transcriptBody}>{transcriptText}</Text>
+                  )}
+                </View>
+              </ScrollView>
+            )}
 
             <View style={styles.transcriptActions}>
               <Pressable
-                style={styles.transcriptEditBtn}
+                style={[styles.transcriptEditBtn, transcribeMutation.isPending && { opacity: 0.4 }]}
                 onPress={() => setEditingTranscript((v) => !v)}
+                disabled={transcribeMutation.isPending}
               >
                 <Edit3 size={18} color={colors.accentForeground} />
                 <Text style={styles.transcriptEditBtnText}>
                   {editingTranscript ? "Done Editing" : "Edit"}
                 </Text>
               </Pressable>
-              <Pressable style={styles.transcriptConfirmBtn} onPress={handleConfirmTranscript}>
+              <Pressable
+                style={[styles.transcriptConfirmBtn, transcribeMutation.isPending && { opacity: 0.4 }]}
+                onPress={handleConfirmTranscript}
+                disabled={transcribeMutation.isPending}
+              >
                 <CheckCircle size={18} color={colors.primaryForeground} />
                 <Text style={styles.transcriptConfirmBtnText}>Confirm</Text>
               </Pressable>
@@ -1213,6 +1215,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: 18,
     opacity: 0.6,
+  },
+  transcriptLoadingWrap: {
+    flex: 1,
+    minHeight: 200,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 16,
+    marginBottom: 20,
+  },
+  transcriptLoadingText: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+    color: colors.mutedForeground,
+    textAlign: "center" as const,
   },
   transcriptScrollArea: {
     flex: 1,
