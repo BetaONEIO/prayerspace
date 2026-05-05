@@ -91,16 +91,39 @@ export async function uploadPostImage(userId: string, uri: string): Promise<{ pa
 export async function uploadVoiceNote(userId: string, uri: string): Promise<string> {
   console.log('[Storage] Uploading voice note for user:', userId);
 
-  const fileExt = uri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? 'm4a';
-  const safeExt = ['m4a', 'mp4', 'caf', '3gp', 'wav', 'aac'].includes(fileExt) ? fileExt : 'm4a';
+  // For blob: URIs (web recordings), detect content type from the blob itself
+  // since blob URLs have no file extension.
+  let detectedContentType: string | undefined;
+  if (uri.startsWith('blob:')) {
+    try {
+      const blobRes = await fetch(uri);
+      const blob = await blobRes.blob();
+      detectedContentType = blob.type || undefined;
+    } catch {}
+  }
+
+  const rawExt = uri.split('.').pop()?.split('?')[0]?.toLowerCase() ?? '';
+  const extFromMime: Record<string, string> = {
+    'audio/webm': 'webm',
+    'audio/webm;codecs=opus': 'webm',
+    'audio/ogg': 'ogg',
+    'audio/wav': 'wav',
+    'audio/mp4': 'mp4',
+    'audio/m4a': 'm4a',
+    'audio/aac': 'aac',
+  };
+  const safeExtFromMime = detectedContentType ? (extFromMime[detectedContentType] ?? 'webm') : undefined;
+  const safeExt = safeExtFromMime ?? (['m4a', 'mp4', 'caf', '3gp', 'wav', 'aac', 'webm'].includes(rawExt) ? rawExt : 'm4a');
   const contentTypeMap: Record<string, string> = {
     caf: 'audio/x-caf',
     '3gp': 'audio/3gpp',
     wav: 'audio/wav',
     aac: 'audio/aac',
     mp4: 'audio/mp4',
+    webm: 'audio/webm',
+    ogg: 'audio/ogg',
   };
-  const contentType = contentTypeMap[safeExt] ?? 'audio/m4a';
+  const contentType = detectedContentType ?? contentTypeMap[safeExt] ?? 'audio/m4a';
   const path = `${VOICE_NOTE_PREFIX}/${userId}/${Date.now()}.${safeExt}`;
 
   const uploadData = await uriToUploadable(uri, contentType);

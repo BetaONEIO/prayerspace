@@ -2978,11 +2978,11 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
         <VoiceNotePlayer
           audioUrl={post.audioUrl}
           audioDuration={post.audioDuration}
-          audioTranscription={undefined}
+          audioTranscription={post.includeTranscription !== false ? post.audioTranscription : undefined}
         />
       )}
 
-      {post.audioTranscription && post.includeTranscription !== false && (
+      {!post.audioUrl && post.audioTranscription && post.includeTranscription !== false && (
         <View style={styles.voiceTranscriptionBlock}>
           <Text style={styles.voiceTranscriptionText}>{post.audioTranscription}</Text>
         </View>
