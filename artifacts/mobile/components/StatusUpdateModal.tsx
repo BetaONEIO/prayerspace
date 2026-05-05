@@ -80,6 +80,11 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
   useEffect(() => {
     if (visible) {
+      if (communityName) {
+        setSelectedAudience({ key: "active-community", label: communityName, sublabel: "Community members", type: "community" });
+      } else {
+        setSelectedAudience(AUDIENCE_OPTIONS[0]);
+      }
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -107,7 +112,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
         }),
       ]).start();
     }
-  }, [visible, fadeAnim, slideAnim]);
+  }, [visible, communityName, fadeAnim, slideAnim]);
 
   useEffect(() => {
     Animated.timing(dateAnim, {
@@ -124,7 +129,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setSelectedTags([]);
       setTagsExpanded(false);
       setAudienceOpen(false);
-      setSelectedAudience(AUDIENCE_OPTIONS[0]);
+      setSelectedAudience(communityName ? { key: "active-community", label: communityName, sublabel: "Community members", type: "community" } : AUDIENCE_OPTIONS[0]);
       setIsAnonymous(false);
       setIsTimeSensitive(false);
       setStatusImageUri(null);
@@ -250,9 +255,6 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                     <ChevronDown size={10} color={colors.mutedForeground} />
                   </Pressable>
                 </View>
-                {communityName && (
-                  <Text style={styles.communityHint}>Posting to {communityName}</Text>
-                )}
               </View>
 
               {audienceOpen && (

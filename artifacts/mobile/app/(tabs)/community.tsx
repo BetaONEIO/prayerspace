@@ -1096,6 +1096,7 @@ export default function CommunityScreen() {
         visible={statusModalVisible}
         onClose={() => setStatusModalVisible(false)}
         onSubmit={handleStatusSubmit}
+        communityName={activeTab === "Community" ? activeCommunity.name : undefined}
       />
 
       <CreateCommunityPaywallModal
@@ -1323,7 +1324,7 @@ function ComposerPrompt({ communityName, accentColor, isCommunityTab, onPress }:
           {isCommunityTab ? `Posting to ${communityName}` : "Share a prayer update"}
         </Text>
         <Text style={styles.promptText}>
-          {isCommunityTab ? `How can ${communityName} pray for you?` : "What's on your heart today?"}
+          {"What's on your heart today?"}
         </Text>
       </View>
       <View style={[styles.promptIcon, { borderColor: accentColor }]}>
