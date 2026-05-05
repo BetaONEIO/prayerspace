@@ -1250,10 +1250,11 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
     >
       <Animated.View
         style={[
-          styles.selectorBannerWrap,
+          styles.selectorShadowWrap,
           { shadowColor: activeCommunity.accentColor, transform: [{ scale: scaleAnim }] },
         ]}
       >
+        <View style={styles.selectorBannerWrap}>
         <LinearGradient
           colors={activeCommunity.gradientColors}
           start={{ x: 0, y: 0 }}
@@ -1288,6 +1289,7 @@ function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelector
             </View>
           </View>
         </LinearGradient>
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -5067,13 +5069,16 @@ const createCpStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 18,
   },
-  selectorBannerWrap: {
+  selectorShadowWrap: {
     borderRadius: 26,
-    overflow: "hidden" as const,
     shadowOpacity: 0.18,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
+  },
+  selectorBannerWrap: {
+    borderRadius: 26,
+    overflow: "hidden" as const,
   },
   selectorBanner: {
     padding: 16,
