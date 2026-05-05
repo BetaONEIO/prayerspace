@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router";
 import {
   ChevronLeft,
@@ -63,15 +63,36 @@ const MOCK_TRANSCRIPT =
 
 export default function JournalEntryScreen() {
   const router = useRouter();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
   const themeColors = useThemeColors();
   const colors = themeColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { addJournalEntry } = usePrayer();
+  const { addJournalEntry, updateJournalEntry, journal } = usePrayer();
+
+  const isEditing = !!editId;
+  const existingEntry = useMemo(
+    () => (editId ? journal.find((e) => e.id === editId) : undefined),
+    [editId, journal]
+  );
 
   const [mode, setMode] = useState<Mode>("text");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [activeTag, setActiveTag] = useState<Tag>("reflection");
+  const [title, setTitle] = useState(existingEntry?.title ?? "");
+  const [body, setBody] = useState(existingEntry?.body ?? "");
+  const [activeTag, setActiveTag] = useState<Tag>(
+    existingEntry?.tag && existingEntry.tag !== "praying_for"
+      ? (existingEntry.tag as Tag)
+      : "reflection"
+  );
+
+  useEffect(() => {
+    if (!existingEntry) return;
+    setTitle(existingEntry.title);
+    setBody(existingEntry.body);
+    if (existingEntry.tag !== "praying_for") {
+      setActiveTag(existingEntry.tag as Tag);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingEntry?.id]);
 
   const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const [isBodyFocused, setIsBodyFocused] = useState(false);
@@ -127,7 +148,7 @@ export default function JournalEntryScreen() {
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
 
-  const triggerSavedToast = useCallback(() => {
+  const triggerSavedToast = useCallback((goBack = false) => {
     setShowSavedToast(true);
     Animated.parallel([
       Animated.spring(toastScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 10 }),
@@ -140,7 +161,11 @@ export default function JournalEntryScreen() {
         Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start(() => {
         setShowSavedToast(false);
-        router.push("/journal");
+        if (goBack) {
+          router.back();
+        } else {
+          router.push("/journal");
+        }
       });
     }, 2000);
   }, [toastOpacity, toastScale, router]);
@@ -194,6 +219,19 @@ export default function JournalEntryScreen() {
   }, [pendingSeconds, transcriptText]);
 
   const handleSave = useCallback(() => {
+    if (isEditing && editId) {
+      if (!body.trim()) {
+        Alert.alert("Empty Entry", "Please write something before saving.");
+        return;
+      }
+      const entryTitle = title.trim() || "Prayer Entry";
+      console.log("[JournalEntry] Updating entry:", { editId, title: entryTitle, tag: activeTag });
+      updateJournalEntry(editId, { title: entryTitle, body: body.trim(), tag: activeTag });
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      triggerSavedToast(true);
+      return;
+    }
+
     if (mode === "text") {
       if (!body.trim()) {
         Alert.alert("Empty Entry", "Please write something before saving.");
@@ -216,8 +254,8 @@ export default function JournalEntryScreen() {
     }
 
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    triggerSavedToast();
-  }, [mode, title, body, activeTag, hasRecorded, seconds, transcriptText, addJournalEntry, triggerSavedToast]);
+    triggerSavedToast(false);
+  }, [isEditing, editId, mode, title, body, activeTag, hasRecorded, seconds, transcriptText, addJournalEntry, updateJournalEntry, triggerSavedToast]);
 
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -590,7 +628,7 @@ export default function JournalEntryScreen() {
           disabled={!canSave}
         >
           <BookOpen size={18} color={colors.primaryForeground} />
-          <Text style={styles.journalBtnText}>Save to Prayer Journal</Text>
+          <Text style={styles.journalBtnText}>{isEditing ? "Save Changes" : "Save to Prayer Journal"}</Text>
         </Pressable>
       </KeyboardAvoidingView>
 

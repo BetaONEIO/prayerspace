@@ -64,6 +64,13 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
        - Use the Brevo SMTP password from secrets
        Supabase's built-in mailer is rate-limited to a few emails per hour and is meant for development.
        If no email arrives and no Brevo log appears, the signup email is still being handled by Supabase's default mailer or the template is not set to OTP mode.
+  - **Prayer Journal interactivity (journal.tsx, journal-detail/[id].tsx, journal-entry.tsx):**
+    - `PrayerProvider` gains `deleteJournalEntry(id)` and `updateJournalEntry(id, patch)`.
+    - `PrayerReminder` interface gains `notificationIds?: string[]` to track scheduled OS notifications.
+    - `lib/journalNotifications.ts` — utility for `scheduleJournalReminder()` (everyday / weekdays / weekends / once via expo-notifications CalendarTrigger) and `cancelJournalReminder()`. Fully guarded for web.
+    - **journal.tsx list**: "Save/Saved" footer tag in accordion is now always-visible tappable heart that toggles `isFavorite`. Long-pressing any accordion entry shows an Alert action sheet (Edit Entry → `/journal-entry?editId=<id>`, Delete Entry with confirmation).
+    - **journal-detail/[id].tsx**: "⋯" button opens native Alert menu (Edit Entry, Delete Entry with confirmation, Mark as Answered, Share). Edit Entry and footer "Edit Entry" button both pass `editId` param. Reminder save/remove are now async and schedule/cancel real OS notifications. Share message includes PrayerSpace URL.
+    - **journal-entry.tsx**: Accepts optional `editId` route param. Pre-populates title/body/tag from existing entry via `useEffect`. Save calls `updateJournalEntry` (edit mode) or `addJournalEntry` (create mode). Save button reads "Save Changes" vs "Save to Prayer Journal". Toast navigates `router.back()` in edit mode.
   - **Smart app rating prompt system:**
     - `lib/ratingStore.ts` — module-level event bus (same pattern as feedStore). Any component calls `ratingStore.trigger(event)` to request a prompt check.
     - `hooks/useReviewPrompt.ts` — tracks `hasRated`, `lastPromptDate`, engagement counters in AsyncStorage. Checks eligibility: not rated + 7+ days since last prompt + qualifying engagement.

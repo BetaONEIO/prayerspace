@@ -11,6 +11,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1220,7 +1221,7 @@ export default function JournalScreen() {
   const [recentlyPrayedId, setRecentlyPrayedId] = useState<string | null>(null);
   const repeatPulse = useRef(new Animated.Value(1)).current;
 
-  const { journal, yourPeople, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed } = usePrayer();
+  const { journal, yourPeople, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, deleteJournalEntry } = usePrayer();
 
   const today = new Date().toISOString().split("T")[0];
   const prayedCount = yourPeople.filter((p) => p.lastPrayedDate === today).length;
@@ -1780,6 +1781,41 @@ export default function JournalScreen() {
                         if (entry.id === highlightedId) dismissHighlight(entry.id);
                         router.push(`/journal-detail/${entry.id}`);
                       }}
+                      onLongPress={() => {
+                        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        Alert.alert(
+                          entry.title,
+                          undefined,
+                          [
+                            {
+                              text: "Edit Entry",
+                              onPress: () => router.push(`/journal-entry?editId=${entry.id}` as never),
+                            },
+                            {
+                              text: "Delete Entry",
+                              style: "destructive",
+                              onPress: () => {
+                                Alert.alert(
+                                  "Delete Entry",
+                                  "This will permanently delete this prayer entry.",
+                                  [
+                                    { text: "Cancel", style: "cancel" },
+                                    {
+                                      text: "Delete",
+                                      style: "destructive",
+                                      onPress: () => {
+                                        if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                                        deleteJournalEntry(entry.id);
+                                      },
+                                    },
+                                  ]
+                                );
+                              },
+                            },
+                            { text: "Cancel", style: "cancel" },
+                          ]
+                        );
+                      }}
                     >
                       <View style={styles.accordionRowLeft}>
                         <Text style={styles.accordionTitle} numberOfLines={isExpanded ? undefined : 1}>
@@ -1820,12 +1856,24 @@ export default function JournalScreen() {
                         <View style={styles.accordionFooter}>
                           <Text style={styles.entryTime}>{formatTime(entry.timestamp)}</Text>
                           <View style={styles.accordionFooterTags}>
-                            {entry.isFavorite && (
-                              <View style={styles.footerTag}>
-                                <Heart size={11} color={colors.primary} />
-                                <Text style={styles.footerTagText}>Saved</Text>
-                              </View>
-                            )}
+                            <Pressable
+                              style={styles.footerTag}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                if (Platform.OS !== "web") void Haptics.selectionAsync();
+                                toggleJournalFavorite(entry.id);
+                              }}
+                              hitSlop={8}
+                            >
+                              <Heart
+                                size={11}
+                                color={entry.isFavorite ? colors.primary : colors.mutedForeground}
+                                fill={entry.isFavorite ? colors.primary : "transparent"}
+                              />
+                              <Text style={[styles.footerTagText, !entry.isFavorite && { color: colors.mutedForeground }]}>
+                                {entry.isFavorite ? "Saved" : "Save"}
+                              </Text>
+                            </Pressable>
                             {entry.isAnswered && (
                               <View style={styles.footerTag}>
                                 <CheckCircle size={11} color="#D4782F" />

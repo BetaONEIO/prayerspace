@@ -68,6 +68,7 @@ export interface PrayerReminder {
   minute: number;
   frequency: 'everyday' | 'weekdays' | 'weekends' | 'once';
   enabled: boolean;
+  notificationIds?: string[];
 }
 
 export interface PrayerStats {
@@ -446,6 +447,20 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     saveJournalMutation.mutate(updated);
   }, [journal, saveJournalMutation]);
 
+  const deleteJournalEntry = useCallback((id: string) => {
+    const updated = journal.filter((e) => e.id !== id);
+    setJournal(updated);
+    saveJournalMutation.mutate(updated);
+    console.log("[PrayerProvider] Journal entry deleted:", id);
+  }, [journal, saveJournalMutation]);
+
+  const updateJournalEntry = useCallback((id: string, patch: Partial<Omit<JournalEntry, "id">>) => {
+    const updated = journal.map((e) => e.id === id ? { ...e, ...patch } : e);
+    setJournal(updated);
+    saveJournalMutation.mutate(updated);
+    console.log("[PrayerProvider] Journal entry updated:", id);
+  }, [journal, saveJournalMutation]);
+
   const updateSetting = useCallback((key: keyof AppSettings, value: boolean) => {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
@@ -479,11 +494,13 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     markPersonPrayed,
     toggleJournalFavorite,
     markJournalAnswered,
+    deleteJournalEntry,
+    updateJournalEntry,
     updateSetting,
     setReminder,
     removeReminder,
     getReminderForEntry,
-  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, isLoading, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, updateSetting, setReminder, removeReminder, getReminderForEntry]);
+  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, isLoading, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, deleteJournalEntry, updateJournalEntry, updateSetting, setReminder, removeReminder, getReminderForEntry]);
 });
 
 export function useFilteredJournal(filter: string) {

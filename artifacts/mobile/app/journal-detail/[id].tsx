@@ -10,6 +10,8 @@ import {
   Modal,
   Animated,
   Dimensions,
+  Alert,
+  TouchableOpacity,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
@@ -38,6 +40,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, PrayerReminder } from "@/providers/PrayerProvider";
+import { scheduleJournalReminder, cancelJournalReminder } from "@/lib/journalNotifications";
 import FormattedText from "@/components/FormattedText";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { shouldShowReminderBadge } from "@/lib/prayerReminders";
@@ -144,7 +147,7 @@ export default function JournalDetailScreen() {
   const TAG_CONFIG = useMemo(() => getTagConfig(colors), [colors]);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { journal, toggleJournalFavorite, markJournalAnswered, setReminder, removeReminder, getReminderForEntry } = usePrayer();
+  const { journal, toggleJournalFavorite, markJournalAnswered, deleteJournalEntry, setReminder, removeReminder, getReminderForEntry } = usePrayer();
 
   const allEntries = useMemo(() => [...journal, ...MOCK_ENTRIES], [journal]);
   const entry = useMemo(() => allEntries.find((e) => e.id === id), [allEntries, id]);
@@ -214,27 +217,38 @@ export default function JournalDetailScreen() {
     });
   }, [modalAnim, scaleAnim]);
 
-  const handleSaveReminder = useCallback(() => {
-    if (!id) return;
+  const handleSaveReminder = useCallback(async () => {
+    if (!id || !entry) return;
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const notifIds = await scheduleJournalReminder({
+      entryTitle: entry.title,
+      hour: selectedHour,
+      minute: selectedMinute,
+      frequency: selectedFrequency,
+      existingNotificationIds: existingReminder?.notificationIds,
+    });
     setReminder({
       entryId: id,
       hour: selectedHour,
       minute: selectedMinute,
       frequency: selectedFrequency,
       enabled: true,
+      notificationIds: notifIds,
     });
-    console.log("[JournalDetail] Saved reminder:", { id, selectedHour, selectedMinute, selectedFrequency });
+    console.log("[JournalDetail] Saved reminder:", { id, selectedHour, selectedMinute, selectedFrequency, notifIds });
     closeReminderModal();
-  }, [id, selectedHour, selectedMinute, selectedFrequency, setReminder, closeReminderModal]);
+  }, [id, entry, selectedHour, selectedMinute, selectedFrequency, existingReminder, setReminder, closeReminderModal]);
 
-  const handleRemoveReminder = useCallback(() => {
+  const handleRemoveReminder = useCallback(async () => {
     if (!id) return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (existingReminder?.notificationIds?.length) {
+      await cancelJournalReminder(existingReminder.notificationIds);
+    }
     removeReminder(id);
     console.log("[JournalDetail] Removed reminder for:", id);
     closeReminderModal();
-  }, [id, removeReminder, closeReminderModal]);
+  }, [id, existingReminder, removeReminder, closeReminderModal]);
 
   const incrementHour = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -265,11 +279,58 @@ export default function JournalDetailScreen() {
     if (!entry) return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await Share.share({ message: `${entry.title}\n\n${entry.body}` });
+      await Share.share({
+        message: `${entry.title}\n\n${entry.body}\n\nRead more on PrayerSpace:\nhttps://prayerspace.app`,
+      });
     } catch (e) {
       console.log("Share error:", e);
     }
   };
+
+  const showEntryMenu = useCallback(() => {
+    if (!entry) return;
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const buttons: Array<{ text: string; style?: "cancel" | "destructive" | "default"; onPress?: () => void }> = [
+      {
+        text: "Edit Entry",
+        onPress: () => router.push(`/journal-entry?editId=${entry.id}` as never),
+      },
+      {
+        text: "Delete Entry",
+        style: "destructive",
+        onPress: () => {
+          Alert.alert(
+            "Delete Entry",
+            "This will permanently delete this prayer entry.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete",
+                style: "destructive",
+                onPress: () => {
+                  if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  deleteJournalEntry(entry.id);
+                  router.back();
+                },
+              },
+            ]
+          );
+        },
+      },
+    ];
+    if (!entry.isAnswered) {
+      buttons.push({
+        text: "Mark as Answered",
+        onPress: () => {
+          markJournalAnswered(entry.id);
+          if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        },
+      });
+    }
+    buttons.push({ text: "Share", onPress: () => void handleShare() });
+    buttons.push({ text: "Cancel", style: "cancel" });
+    Alert.alert(entry.title, undefined, buttons);
+  }, [entry, router, deleteJournalEntry, markJournalAnswered]);
 
   const handleFavorite = () => {
     if (!entry) return;
@@ -304,7 +365,7 @@ export default function JournalDetailScreen() {
         <View style={[styles.tagPill, { backgroundColor: tagCfg.bg }]}>
           <Text style={[styles.tagPillText, { color: tagCfg.color }]}>{tagCfg.label}</Text>
         </View>
-        <Pressable style={styles.iconBtn}>
+        <Pressable style={styles.iconBtn} onPress={showEntryMenu}>
           <MoreHorizontal size={20} color={colors.secondaryForeground} />
         </Pressable>
       </View>
@@ -430,7 +491,7 @@ export default function JournalDetailScreen() {
         <View style={styles.footer}>
           <Pressable
             style={styles.editBtn}
-            onPress={() => router.push("/journal-entry")}
+            onPress={() => router.push(`/journal-entry?editId=${entry.id}` as never)}
           >
             <PenLine size={20} color={colors.primaryForeground} />
             <Text style={styles.editBtnText}>Edit Entry</Text>

@@ -1,0 +1,145 @@
+Fix Prayer Journal interactions and add missing functionality.
+
+## Goal
+
+Make all interactive elements functional, intuitive, and consistent across the Prayer Journal experience.
+
+---
+
+## 1. Journal list screen (My Prayers)
+
+### Fix “Saved” state
+
+Current issue:
+
+* “Saved” label does nothing
+
+Update behaviour:
+
+* tapping “Saved” should toggle saved state (on/off)
+* visually update:
+
+  * filled heart icon when saved
+  * outline when not saved
+
+Optional:
+
+* saved items can be filtered later
+
+---
+
+### Add long press action
+
+When user long-presses a prayer entry:
+
+Show action sheet:
+
+* Delete entry
+* Edit entry
+* Cancel
+
+Delete:
+
+* show confirmation:
+  “Delete this prayer entry? This cannot be undone.”
+
+---
+
+## 2. Reflection page (detail view)
+
+### Fix inactive buttons
+
+#### Heart icon
+
+* either:
+  OPTION A (recommended): remove it
+  OR
+  OPTION B: use it as “Save / Favourite”
+
+---
+
+#### Share icon
+
+Make functional:
+
+* open native share sheet
+* share formatted content:
+
+[Prayer title]
+[Prayer content]
+
+Read more on PrayerSpace:
+https://prayerspace.app
+
+---
+
+#### Top right “...” menu
+
+Add action sheet with:
+
+* Edit entry
+* Delete entry
+* Share
+* Mark as answered (optional future)
+* Cancel
+
+---
+
+## 3. Reminder settings (IMPORTANT)
+
+Current issue:
+
+* UI exists but no real notification logic
+
+---
+
+### Add real notification behaviour
+
+When user sets reminder:
+
+* schedule local push notification
+* store:
+
+  * time
+  * frequency (e.g. daily)
+  * entryId
+
+---
+
+### Notification content
+
+Title:
+“Time to pray”
+
+Body:
+“Praying for: [entry title]”
+
+---
+
+### Toggle behaviour
+
+* enable → schedule notification
+* disable → cancel notification
+
+---
+
+## 4. Edit entry button
+
+Ensure:
+
+* opens editable version of entry
+* saves updates correctly
+
+---
+
+## 5. General UX rules
+
+* every visible button must have a function
+* remove any UI elements that are not implemented
+* keep actions consistent across list + detail view
+
+---
+
+## Goal outcome
+
+The Prayer Journal feels fully interactive and reliable, with working actions, sharing, deletion, and real reminder notifications.
