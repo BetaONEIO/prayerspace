@@ -23,6 +23,7 @@ import {
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import VoiceNotePlayer from '@/components/VoiceNotePlayer';
+import { uploadVoiceNote } from '@/lib/storage';
 import { Image, ImageSource } from "expo-image";
 const ANON_AVATAR = require("../../assets/images/anon_user.png") as ImageSource;
 import { LinearGradient } from "expo-linear-gradient";
@@ -628,8 +629,23 @@ export default function CommunityScreen() {
     setRepostTarget(post);
   }, []);
 
-  const handleStatusSubmit = useCallback((text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => {
+  const handleStatusSubmit = useCallback(async (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Upload voice note to cloud storage if it's a local file URI
+    let resolvedAudioUrl: string | null | undefined = audioUri;
+    if (audioUri && (audioUri.startsWith('file://') || audioUri.startsWith('blob:'))) {
+      try {
+        const uploadedUrl = await uploadVoiceNote(currentUserId, audioUri);
+        resolvedAudioUrl = uploadedUrl;
+        console.log("[Community] Voice note uploaded:", uploadedUrl);
+      } catch (uploadErr) {
+        console.error("[Community] Voice note upload failed, using local URI:", uploadErr);
+        // Fall back to local URI so post still appears this session
+        resolvedAudioUrl = audioUri;
+      }
+    }
+
     const newPost: FeedPost = {
       id: `status_${Date.now()}`,
       communityId: activeCommunity.id,
@@ -648,14 +664,14 @@ export default function CommunityScreen() {
       prayedByAvatars: [],
       comments: [],
       imageUrl: imageUri ?? undefined,
-      audioUrl: audioUri ?? undefined,
+      audioUrl: resolvedAudioUrl ?? undefined,
       audioDuration: audioDurationMs,
       audioTranscription: audioTranscription,
     };
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
     setLastAddedPostId(newPost.id);
-    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "hasVoice:", !!audioUri, "eventDate:", eventDate);
+    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "hasVoice:", !!resolvedAudioUrl, "eventDate:", eventDate);
   }, [activeCommunity.id, profile, currentUserId]);
 
   const handleSubmitRepost = useCallback((originalPost: FeedPost, updateText: string, updateTag?: UpdateTag) => {

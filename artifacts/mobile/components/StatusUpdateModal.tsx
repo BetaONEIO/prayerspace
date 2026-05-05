@@ -48,7 +48,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   communityName?: string | null;
-  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => void;
+  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => Promise<void> | void;
 }
 
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
@@ -138,15 +138,17 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
   const [isPosting, setIsPosting] = useState(false);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if ((!text.trim() && !voiceNoteUri) || selectedTags.length === 0) return;
     setIsPosting(true);
     console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate, hasVoice: !!voiceNoteUri });
-    setTimeout(() => {
-      onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription);
-      setIsPosting(false);
+    try {
+      await onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription);
       handleClose();
-    }, 320);
+    } catch (err) {
+      console.error("[StatusUpdateModal] Submit error:", err);
+      setIsPosting(false);
+    }
   }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate, voiceNoteUri, voiceNoteDuration, voiceNoteTranscription]);
 
   const handleTagPress = useCallback((id: string) => {
@@ -499,7 +501,11 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   onPress={handleSubmit}
                   disabled={!canSubmit || isPosting}
                 >
-                  <Text style={styles.submitText}>{isPosting ? "Posting…" : "Update Status"}</Text>
+                  <Text style={styles.submitText}>
+                    {isPosting
+                      ? (hasVoice ? "Uploading…" : "Posting…")
+                      : (hasVoice && !hasText ? "Post Voice Prayer" : "Update Status")}
+                  </Text>
                 </Pressable>
               </View>
             </ScrollView>

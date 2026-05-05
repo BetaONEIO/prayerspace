@@ -1,0 +1,91 @@
+Fix voice prayer posts so users can send playable audio recordings to the feed.
+
+## Current issue
+
+The Voice tab still behaves like transcription-first. Users can record audio, but the feed/status post does not clearly show a playable voice note.
+
+## Goal
+
+A user should be able to create a prayer post as:
+
+* text only
+* voice note only
+* voice note with optional transcription
+
+## 1. Voice recording storage
+
+Accept Replit’s task:
+
+“Save voice notes to cloud storage so they persist after the app restarts”
+
+Voice notes must be uploaded to cloud storage and saved with a public or signed audio URL.
+
+Store on the post:
+
+* type: "voice"
+* audioUrl
+* audioDuration
+* transcription optional
+* includeTranscription boolean
+
+## 2. Voice composer flow
+
+When user records audio:
+
+* show preview before posting
+* include play/pause button
+* show duration
+* allow delete / re-record
+
+Add toggle:
+“Include transcription”
+
+Default:
+OFF
+
+If OFF:
+
+* post only the voice note
+
+If ON:
+
+* generate/show transcription and include it under the audio player
+
+## 3. Post button behaviour
+
+In Voice mode:
+
+* do not require typed text
+* require a recorded audio file
+* button should say “Post voice prayer” or “Share voice prayer”
+
+## 4. Feed display
+
+For voice posts, show an audio player on the feed card:
+
+* play/pause button
+* waveform or progress bar
+* duration
+* optional transcription below if enabled
+
+Do not replace the audio with transcription.
+
+## 5. Transcription
+
+Accept Replit’s second task only if we want speech-to-text now.
+
+If implemented:
+
+* transcription is optional
+* never make transcription the main content when a voice note exists
+* audio should always remain playable
+
+## 6. UI rules
+
+* voice posts should look like normal prayer posts but with an audio player area
+* keep “Praying”, “View”, and “Update” actions
+* support light and dark mode
+
+## Goal outcome
+
+Users can record and post a real voice prayer note, and others can play it directly from the feed/status card.
