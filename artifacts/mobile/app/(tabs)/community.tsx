@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
+import VoiceNotePlayer from '@/components/VoiceNotePlayer';
 import { Image, ImageSource } from "expo-image";
 const ANON_AVATAR = require("../../assets/images/anon_user.png") as ImageSource;
 import { LinearGradient } from "expo-linear-gradient";
@@ -131,6 +132,9 @@ interface FeedPost {
   updateTag?: UpdateTag;
   isArchived?: boolean;
   imageUrl?: string;
+  audioUrl?: string;
+  audioDuration?: number;
+  audioTranscription?: string;
 }
 
 const COMMUNITIES: Community[] = [
@@ -624,7 +628,7 @@ export default function CommunityScreen() {
     setRepostTarget(post);
   }, []);
 
-  const handleStatusSubmit = useCallback((text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null) => {
+  const handleStatusSubmit = useCallback((text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const newPost: FeedPost = {
       id: `status_${Date.now()}`,
@@ -644,11 +648,14 @@ export default function CommunityScreen() {
       prayedByAvatars: [],
       comments: [],
       imageUrl: imageUri ?? undefined,
+      audioUrl: audioUri ?? undefined,
+      audioDuration: audioDurationMs,
+      audioTranscription: audioTranscription,
     };
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
     setLastAddedPostId(newPost.id);
-    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "eventDate:", eventDate);
+    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "hasVoice:", !!audioUri, "eventDate:", eventDate);
   }, [activeCommunity.id, profile, currentUserId]);
 
   const handleSubmitRepost = useCallback((originalPost: FeedPost, updateText: string, updateTag?: UpdateTag) => {
@@ -2934,9 +2941,19 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
         </View>
       )}
 
-      <Text style={[styles.cardContent, post.content.startsWith('"') && styles.cardContentItalic]}>
-        {post.content}
-      </Text>
+      {post.content.trim().length > 0 && (
+        <Text style={[styles.cardContent, post.content.startsWith('"') && styles.cardContentItalic]}>
+          {post.content}
+        </Text>
+      )}
+
+      {post.audioUrl && (
+        <VoiceNotePlayer
+          audioUrl={post.audioUrl}
+          audioDuration={post.audioDuration}
+          audioTranscription={post.audioTranscription}
+        />
+      )}
 
       {post.imageUrl && (
         <PostImage uri={post.imageUrl} />

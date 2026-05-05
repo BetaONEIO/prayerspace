@@ -2,6 +2,8 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
+import VoiceNoteRecorder from "@/components/VoiceNoteRecorder";
+import VoiceNotePlayer from "@/components/VoiceNotePlayer";
 import {
   View,
   Text,
@@ -29,6 +31,7 @@ import {
   Zap,
   Tag,
   CalendarDays,
+  Mic,
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -46,7 +49,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   communityName?: string | null;
-  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null) => void;
+  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => void;
 }
 
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
@@ -64,6 +67,10 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const [isTimeSensitive, setIsTimeSensitive] = useState<boolean>(false);
   const [dateExpanded, setDateExpanded] = useState<boolean>(false);
   const [eventDate, setEventDate] = useState<string | null>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState<boolean>(false);
+  const [voiceNoteUri, setVoiceNoteUri] = useState<string | null>(null);
+  const [voiceNoteDuration, setVoiceNoteDuration] = useState<number>(0);
+  const [voiceNoteTranscription, setVoiceNoteTranscription] = useState<string | undefined>(undefined);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const tagRotate = useRef(new Animated.Value(0)).current;
@@ -122,6 +129,10 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setStatusImageUri(null);
       setDateExpanded(false);
       setEventDate(null);
+      setShowVoiceRecorder(false);
+      setVoiceNoteUri(null);
+      setVoiceNoteDuration(0);
+      setVoiceNoteTranscription(undefined);
       Animated.timing(tagRotate, { toValue: 0, duration: 0, useNativeDriver: true }).start();
     }, 300);
   }, [onClose, tagRotate]);
@@ -129,15 +140,15 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const [isPosting, setIsPosting] = useState(false);
 
   const handleSubmit = useCallback(() => {
-    if (!text.trim() || selectedTags.length === 0) return;
+    if ((!text.trim() && !voiceNoteUri) || selectedTags.length === 0) return;
     setIsPosting(true);
-    console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate });
+    console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate, hasVoice: !!voiceNoteUri });
     setTimeout(() => {
-      onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate);
+      onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription);
       setIsPosting(false);
       handleClose();
     }, 320);
-  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate]);
+  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate, voiceNoteUri, voiceNoteDuration, voiceNoteTranscription]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -173,8 +184,9 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const remaining = MAX_CHARS - text.length;
   const isOverLimit = remaining < 0;
   const hasText = text.trim().length > 0;
-  const canSubmit = hasText && selectedTags.length > 0 && !isOverLimit;
-  const needsFocus = hasText && selectedTags.length === 0;
+  const hasVoice = !!voiceNoteUri;
+  const canSubmit = (hasText || hasVoice) && selectedTags.length > 0 && !isOverLimit;
+  const needsFocus = (hasText || hasVoice) && selectedTags.length === 0;
 
   const chevronRotation = tagRotate.interpolate({
     inputRange: [0, 1],
@@ -344,6 +356,14 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   onRemove={() => {}}
                 />
                 <Pressable
+                  style={[styles.addVoiceBtn, hasVoice && styles.addVoiceBtnActive]}
+                  onPress={() => {
+                    if (!hasVoice) setShowVoiceRecorder((v) => !v);
+                  }}
+                >
+                  <Mic size={20} color={hasVoice ? colors.primary : colors.primary} />
+                </Pressable>
+                <Pressable
                   style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
                   onPress={() => setIsTimeSensitive((v) => !v)}
                 >
@@ -363,6 +383,43 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   </Text>
                 </Pressable>
               </View>
+
+              {/* Voice note section */}
+              {hasVoice ? (
+                <View style={styles.voiceAttachedSection}>
+                  <View style={styles.voiceAttachedHeader}>
+                    <Mic size={13} color={colors.primary} />
+                    <Text style={styles.voiceAttachedLabel}>Voice note attached</Text>
+                    <Pressable
+                      onPress={() => {
+                        setVoiceNoteUri(null);
+                        setVoiceNoteDuration(0);
+                        setVoiceNoteTranscription(undefined);
+                      }}
+                      hitSlop={8}
+                    >
+                      <X size={14} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                  <VoiceNotePlayer
+                    audioUrl={voiceNoteUri!}
+                    audioDuration={voiceNoteDuration}
+                    audioTranscription={voiceNoteTranscription}
+                  />
+                </View>
+              ) : showVoiceRecorder ? (
+                <View style={styles.voiceRecorderSection}>
+                  <VoiceNoteRecorder
+                    onAttach={(uri, dur, transcription) => {
+                      setVoiceNoteUri(uri);
+                      setVoiceNoteDuration(dur);
+                      setVoiceNoteTranscription(transcription);
+                      setShowVoiceRecorder(false);
+                    }}
+                    onDiscard={() => setShowVoiceRecorder(false)}
+                  />
+                </View>
+              ) : null}
 
               <View style={styles.tagsSection}>
                 <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
@@ -860,5 +917,49 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.primaryForeground,
     textTransform: "uppercase",
     letterSpacing: 1.5,
+  },
+  addVoiceBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 1.5,
+    borderColor: colors.primary + "25",
+    borderStyle: "dashed" as const,
+  },
+  addVoiceBtnActive: {
+    backgroundColor: colors.primary + "15",
+    borderColor: colors.primary + "60",
+    borderStyle: "solid" as const,
+  },
+  voiceRecorderSection: {
+    backgroundColor: colors.accent,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  voiceAttachedSection: {
+    backgroundColor: colors.accent,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.primary + "30",
+    padding: 14,
+    gap: 10,
+  },
+  voiceAttachedHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+  },
+  voiceAttachedLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: colors.primary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
   },
 });
