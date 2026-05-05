@@ -312,7 +312,12 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
             </View>
           </View>
 
-          {/* Scrollable nav links */}
+          {/* Pray CTA — fixed below profile header */}
+          <Pressable style={styles.prayBtn} onPress={() => handleNavPress("/(tabs)/pray")}>
+            <Text style={styles.prayBtnText}>Pray</Text>
+          </Pressable>
+
+          {/* Scrollable nav links + bottom actions */}
           <ScrollView
             style={styles.navSection}
             contentContainerStyle={styles.navContent}
@@ -366,38 +371,34 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                 </Pressable>
               );
             })}
-          </ScrollView>
 
-          {/* Footer actions */}
-          <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-            <Pressable style={styles.prayBtn} onPress={() => handleNavPress("/(tabs)/pray")}>
-              <Text style={styles.prayBtnText}>Pray</Text>
-            </Pressable>
+            {/* Bottom actions — scroll into view naturally */}
+            <View style={[styles.scrollFooter, { paddingBottom: insets.bottom + 16 }]}>
+              {!isPremiumCommunity && (
+                <Pressable
+                  style={styles.proBtn}
+                  onPress={() => handleNavPress("/prayer-space-pro")}
+                  testID="drawer-pro-btn"
+                >
+                  <View style={styles.proIconWrap}>
+                    <Sparkles size={20} color={colors.primary} strokeWidth={1.8} />
+                  </View>
+                  <View style={styles.proTextWrap}>
+                    <Text style={styles.proTitle}>Prayer Space Plus+</Text>
+                    <Text style={styles.proSubtitle}>Deepen your time in prayer</Text>
+                  </View>
+                  <View style={styles.proBadge}>
+                    <Text style={styles.proBadgeText}>PRO</Text>
+                  </View>
+                </Pressable>
+              )}
 
-            {!isPremiumCommunity && (
-              <Pressable
-                style={styles.proBtn}
-                onPress={() => handleNavPress("/prayer-space-pro")}
-                testID="drawer-pro-btn"
-              >
-                <View style={styles.proIconWrap}>
-                  <Sparkles size={20} color={colors.primary} strokeWidth={1.8} />
-                </View>
-                <View style={styles.proTextWrap}>
-                  <Text style={styles.proTitle}>Prayer Space Plus+</Text>
-                  <Text style={styles.proSubtitle}>Deepen your time in prayer</Text>
-                </View>
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
+              <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+                <LogOut size={22} color={colors.destructive} strokeWidth={1.5} />
+                <Text style={styles.logoutText}>Sign Out</Text>
               </Pressable>
-            )}
-
-            <Pressable style={styles.logoutBtn} onPress={handleLogout}>
-              <LogOut size={22} color={colors.destructive} strokeWidth={1.5} />
-              <Text style={styles.logoutText}>Sign Out</Text>
-            </Pressable>
-          </View>
+            </View>
+          </ScrollView>
         </Animated.View>
       </View>
 
@@ -590,13 +591,13 @@ function createStyles(colors: ThemeColors) {
       paddingBottom: 4,
     },
 
-    // Sticky footer
-    footer: {
-      marginTop: "auto",
-      paddingHorizontal: 16,
+    // Scrollable footer section (inside ScrollView)
+    scrollFooter: {
+      paddingHorizontal: 0,
       paddingTop: 14,
       borderTopWidth: 1,
       borderTopColor: colors.border + "60",
+      marginTop: 8,
       gap: 10,
     },
     logoutBtn: {
