@@ -11,9 +11,10 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { Mic, AlignLeft, Square, Play, Pause, RotateCcw, Trash2, Check } from "lucide-react-native";
+import { Mic, Square, Play, Pause, RotateCcw, Trash2, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import ThemedSwitch from "@/components/ThemedSwitch";
 
 type RecorderState = "idle" | "recording" | "preview";
 
@@ -48,7 +49,6 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   const [playbackMs, setPlaybackMs] = useState(0);
 
   const [includeAudio, setIncludeAudio] = useState(true);
-  const [includeTranscription, setIncludeTranscription] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState("");
 
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -188,7 +188,6 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setRecordedUri(null);
     setRecordedDuration(0);
     setIncludeAudio(true);
-    setIncludeTranscription(false);
     setTranscriptionText("");
     setState("idle");
   }, []);
@@ -204,13 +203,12 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setRecordedUri(null);
     setDurationMs(0);
     setIncludeAudio(true);
-    setIncludeTranscription(false);
     setTranscriptionText("");
     onDiscard();
   }, [onDiscard]);
 
-  const canAttach = includeAudio || includeTranscription;
-  const transcriptionValid = !includeTranscription || transcriptionText.trim().length > 0;
+  const hasTranscription = transcriptionText.trim().length > 0;
+  const canAttach = includeAudio || hasTranscription;
 
   const handleAttach = useCallback(() => {
     if (!recordedUri || !canAttach) return;
@@ -219,10 +217,10 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       recordedUri,
       recordedDuration,
       includeAudio,
-      includeTranscription,
-      includeTranscription && transcriptionText.trim() ? transcriptionText.trim() : undefined
+      hasTranscription,
+      hasTranscription ? transcriptionText.trim() : undefined
     );
-  }, [recordedUri, recordedDuration, includeAudio, includeTranscription, transcriptionText, canAttach, onAttach]);
+  }, [recordedUri, recordedDuration, includeAudio, hasTranscription, transcriptionText, canAttach, onAttach]);
 
   const progressFraction = recordedDuration > 0 ? Math.min(playbackMs / recordedDuration, 1) : 0;
 
@@ -277,54 +275,36 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
         </View>
       </View>
 
-      {/* Include options */}
+      {/* Include original audio toggle */}
       <View style={styles.optionsSection}>
-        <Text style={styles.optionsLabel}>INCLUDE IN POST</Text>
-
-        <Pressable
-          style={styles.optionRow}
-          onPress={() => setIncludeAudio((v) => !v)}
-        >
-          <View style={[styles.toggleBox, includeAudio && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-            {includeAudio && <Check size={11} color="#fff" strokeWidth={3} />}
+        <View style={styles.audioToggleRow}>
+          <View style={styles.audioToggleLeft}>
+            <Mic size={16} color={includeAudio ? colors.primary : colors.mutedForeground} />
+            <View style={styles.audioToggleTextWrap}>
+              <Text style={[styles.optionText, includeAudio && { color: colors.foreground, fontWeight: "600" as const }]}>
+                Include original audio
+              </Text>
+              <Text style={styles.optionSubtext}>Share the audio clip with your post</Text>
+            </View>
           </View>
-          <Mic size={15} color={includeAudio ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.optionText, includeAudio && { color: colors.foreground, fontWeight: "600" as const }]}>
-            Audio recording
-          </Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.optionRow}
-          onPress={() => setIncludeTranscription((v) => !v)}
-        >
-          <View style={[styles.toggleBox, includeTranscription && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-            {includeTranscription && <Check size={11} color="#fff" strokeWidth={3} />}
-          </View>
-          <AlignLeft size={15} color={includeTranscription ? colors.primary : colors.mutedForeground} />
-          <Text style={[styles.optionText, includeTranscription && { color: colors.foreground, fontWeight: "600" as const }]}>
-            Transcription
-          </Text>
-        </Pressable>
-
+          <ThemedSwitch value={includeAudio} onValueChange={setIncludeAudio} />
+        </View>
         {!canAttach && (
-          <Text style={styles.validationHint}>Select at least one option to post</Text>
+          <Text style={styles.validationHint}>Add a caption or turn on audio to post</Text>
         )}
       </View>
 
-      {/* Transcription input */}
-      {includeTranscription && (
-        <TextInput
-          style={styles.transcriptionInput}
-          placeholder="Type what you said…"
-          placeholderTextColor={colors.mutedForeground + "80"}
-          multiline
-          value={transcriptionText}
-          onChangeText={setTranscriptionText}
-          maxLength={500}
-          textAlignVertical="top"
-        />
-      )}
+      {/* Optional caption / transcription */}
+      <TextInput
+        style={styles.transcriptionInput}
+        placeholder="Add a caption or transcription (optional)…"
+        placeholderTextColor={colors.mutedForeground + "80"}
+        multiline
+        value={transcriptionText}
+        onChangeText={setTranscriptionText}
+        maxLength={500}
+        textAlignVertical="top"
+      />
 
       <View style={styles.previewActions}>
         <Pressable style={styles.reRecordBtn} onPress={handleReRecord}>
@@ -336,9 +316,9 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
           <Text style={styles.discardText}>Discard</Text>
         </Pressable>
         <Pressable
-          style={[styles.attachBtn, { backgroundColor: canAttach && transcriptionValid ? colors.primary : colors.border }]}
+          style={[styles.attachBtn, { backgroundColor: canAttach ? colors.primary : colors.border }]}
           onPress={handleAttach}
-          disabled={!canAttach || !transcriptionValid}
+          disabled={!canAttach}
         >
           <Check size={14} color="#fff" strokeWidth={2.5} />
           <Text style={styles.attachText}>Use recording</Text>
@@ -492,6 +472,25 @@ function createStyles(colors: ThemeColors) {
     optionText: {
       fontSize: 14,
       color: colors.mutedForeground,
+    },
+    optionSubtext: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      marginTop: 1,
+    },
+    audioToggleRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+    },
+    audioToggleLeft: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 10,
+      flex: 1,
+    },
+    audioToggleTextWrap: {
+      flex: 1,
     },
     validationHint: {
       fontSize: 11,
