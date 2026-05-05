@@ -25,6 +25,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Mic,
+  AlignLeft,
   Check,
   ArrowLeft,
   PenLine,
@@ -99,6 +100,8 @@ export default function PrayerModeScreen() {
   const insets = useSafeAreaInsets();
   const [isPaused, setIsPaused] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(!!incomingTranscript);
+  const [includeAudio, setIncludeAudio] = useState(true);
+  const [includeTranscription, setIncludeTranscription] = useState(!!incomingTranscript);
 
   const hasUnsavedWork = textPrayer.trim().length > 0 || attachedPhotos.length > 0 || hasRecorded || isRecording || !!incomingTranscript;
   const { DiscardModal } = useUnsavedChangesWarning(hasUnsavedWork);
@@ -146,6 +149,8 @@ export default function PrayerModeScreen() {
     setIsPaused(false);
     setHasRecorded(false);
     setVoiceTranscript("");
+    setIncludeAudio(true);
+    setIncludeTranscription(false);
     await startAudioRecording();
   }, [startAudioRecording]);
 
@@ -243,7 +248,8 @@ export default function PrayerModeScreen() {
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    const text = activeTab === "voice" ? voiceTranscript : textPrayer;
+    const transcriptText = activeTab === "voice" && includeTranscription ? voiceTranscript : "";
+    const text = activeTab === "voice" ? transcriptText : textPrayer;
     setDraftPrayerText(text);
     setFeedPostMeta({
       isAnonymous,
@@ -261,9 +267,11 @@ export default function PrayerModeScreen() {
         isAnonymous: String(isAnonymous),
         eventDate: String(eventDate ?? ""),
         photoUrls: JSON.stringify(attachedPhotos),
+        includeAudio: String(activeTab === "voice" ? includeAudio : false),
+        includeTranscription: String(activeTab === "voice" ? includeTranscription : false),
       },
     });
-  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, router, setDraftPrayerText, setFeedPostMeta]);
+  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, includeAudio, includeTranscription, router, setDraftPrayerText, setFeedPostMeta]);
 
   const handleRemoveRecipient = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -291,7 +299,8 @@ export default function PrayerModeScreen() {
   const rippleOpacity = rippleAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0] });
 
   const hasSelected = selectedIds.length > 0;
-  const canConfirm = hasSelected || sendToFeed;
+  const voiceSelectionValid = activeTab !== "voice" || !hasRecorded || includeAudio || includeTranscription;
+  const canConfirm = (hasSelected || sendToFeed) && voiceSelectionValid;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -397,6 +406,37 @@ export default function PrayerModeScreen() {
                     <Text style={styles.reRecordText}>Re-record</Text>
                   </Pressable>
                 </View>
+
+                <View style={styles.includeOptionsSection}>
+                  <Text style={styles.includeOptionsLabel}>INCLUDE IN POST</Text>
+                  <Pressable
+                    style={styles.includeOptionRow}
+                    onPress={() => setIncludeAudio((v) => !v)}
+                  >
+                    <View style={[styles.includeToggleBox, includeAudio && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                      {includeAudio && <Check size={11} color="#fff" strokeWidth={3} />}
+                    </View>
+                    <Mic size={15} color={includeAudio ? colors.primary : colors.mutedForeground} />
+                    <Text style={[styles.includeOptionText, includeAudio && styles.includeOptionTextActive]}>
+                      Audio recording
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.includeOptionRow}
+                    onPress={() => setIncludeTranscription((v) => !v)}
+                  >
+                    <View style={[styles.includeToggleBox, includeTranscription && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                      {includeTranscription && <Check size={11} color="#fff" strokeWidth={3} />}
+                    </View>
+                    <AlignLeft size={15} color={includeTranscription ? colors.primary : colors.mutedForeground} />
+                    <Text style={[styles.includeOptionText, includeTranscription && styles.includeOptionTextActive]}>
+                      Transcription
+                    </Text>
+                  </Pressable>
+                  {!includeAudio && !includeTranscription && (
+                    <Text style={styles.includeValidationHint}>Select at least one option</Text>
+                  )}
+                </View>
               </>
             ) : (
               <>
@@ -462,15 +502,35 @@ export default function PrayerModeScreen() {
                 )}
 
                 {hasRecorded && (
-                  <View style={styles.recordedBanner}>
-                    <View style={styles.recordedDot} />
-                    <Text style={styles.recordedText}>
-                      Recording complete · {formatTime(duration)}
-                    </Text>
-                    <Pressable onPress={handleStartRecording}>
-                      <Text style={styles.reRecordText}>Re-record</Text>
-                    </Pressable>
-                  </View>
+                  <>
+                    <View style={styles.recordedBanner}>
+                      <View style={styles.recordedDot} />
+                      <Text style={styles.recordedText}>
+                        Recording complete · {formatTime(duration)}
+                      </Text>
+                      <Pressable onPress={handleStartRecording}>
+                        <Text style={styles.reRecordText}>Re-record</Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.includeOptionsSection}>
+                      <Text style={styles.includeOptionsLabel}>INCLUDE IN POST</Text>
+                      <Pressable
+                        style={styles.includeOptionRow}
+                        onPress={() => setIncludeAudio((v) => !v)}
+                      >
+                        <View style={[styles.includeToggleBox, includeAudio && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                          {includeAudio && <Check size={11} color="#fff" strokeWidth={3} />}
+                        </View>
+                        <Mic size={15} color={includeAudio ? colors.primary : colors.mutedForeground} />
+                        <Text style={[styles.includeOptionText, includeAudio && styles.includeOptionTextActive]}>
+                          Audio recording
+                        </Text>
+                      </Pressable>
+                      {!includeAudio && (
+                        <Text style={styles.includeValidationHint}>Select at least one option</Text>
+                      )}
+                    </View>
+                  </>
                 )}
               </>
             )}
@@ -923,6 +983,50 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: 3,
+  },
+  includeOptionsSection: {
+    width: "100%" as const,
+    backgroundColor: colors.secondary + "60",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border + "80",
+    padding: 14,
+    gap: 10,
+    marginTop: 4,
+  },
+  includeOptionsLabel: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: colors.mutedForeground,
+    letterSpacing: 1,
+  },
+  includeOptionRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+  },
+  includeToggleBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  includeOptionText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+  },
+  includeOptionTextActive: {
+    color: colors.foreground,
+    fontWeight: "600" as const,
+  },
+  includeValidationHint: {
+    fontSize: 11,
+    color: "#ef4444",
+    marginTop: 2,
   },
   fullScreenOverlay: {
     position: "absolute" as const,
