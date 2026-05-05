@@ -42,6 +42,7 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
   const [transcriptionExpanded, setTranscriptionExpanded] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
+  const hasFinishedRef = useRef(false);
 
   // Cleanup on unmount only — audio is loaded lazily on first play
   useEffect(() => {
@@ -68,14 +69,12 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
         const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: false });
         sound.setOnPlaybackStatusUpdate((status) => {
           if (!status.isLoaded) return;
-          const pos = status.positionMillis;
-          const dur = status.durationMillis ?? audioDuration;
-          setPositionMs(pos);
-          setDurationMs(dur);
+          setPositionMs(status.positionMillis);
+          setDurationMs(status.durationMillis ?? audioDuration);
           if (status.didJustFinish) {
             setIsPlaying(false);
             setPositionMs(0);
-            void sound.setPositionAsync(0);
+            hasFinishedRef.current = true;
           }
         });
         soundRef.current = sound;
@@ -88,6 +87,10 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
     }
 
     if (Platform.OS !== "web") void Haptics.selectionAsync();
+    if (hasFinishedRef.current) {
+      await soundRef.current.setPositionAsync(0);
+      hasFinishedRef.current = false;
+    }
     await soundRef.current.playAsync();
     setIsPlaying(true);
   }, [isPlaying, audioUrl, audioDuration]);

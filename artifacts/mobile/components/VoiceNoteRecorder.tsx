@@ -54,6 +54,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasFinishedRef = useRef(false);
 
   // Pulse animation for recording dot
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -145,6 +146,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       await soundRef.current.unloadAsync();
       soundRef.current = null;
     }
+    hasFinishedRef.current = false;
     const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false });
     sound.setOnPlaybackStatusUpdate((status) => {
       if (!status.isLoaded) return;
@@ -152,6 +154,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       if (status.didJustFinish) {
         setIsPlaying(false);
         setPlaybackMs(0);
+        hasFinishedRef.current = true;
       }
     });
     soundRef.current = sound;
@@ -176,6 +179,10 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       setIsPlaying(false);
     } else {
       if (Platform.OS !== "web") void Haptics.selectionAsync();
+      if (hasFinishedRef.current) {
+        await soundRef.current.setPositionAsync(0);
+        hasFinishedRef.current = false;
+      }
       await soundRef.current.playAsync();
       setIsPlaying(true);
     }
@@ -275,6 +282,24 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
         </View>
       </View>
 
+      {/* Transcription / caption card */}
+      <View style={styles.transcriptionCard}>
+        <View style={styles.transcriptionCardHeader}>
+          <Text style={styles.transcriptionCardLabel}>TRANSCRIPTION</Text>
+          <Mic size={14} color={colors.primary} />
+        </View>
+        <TextInput
+          style={styles.transcriptionCardInput}
+          placeholder="Add a caption or transcription (optional)…"
+          placeholderTextColor={colors.mutedForeground + "80"}
+          multiline
+          value={transcriptionText}
+          onChangeText={setTranscriptionText}
+          maxLength={500}
+          textAlignVertical="top"
+        />
+      </View>
+
       {/* Include original audio toggle */}
       <View style={styles.optionsSection}>
         <View style={styles.audioToggleRow}>
@@ -284,7 +309,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
               <Text style={[styles.optionText, includeAudio && { color: colors.foreground, fontWeight: "600" as const }]}>
                 Include original audio
               </Text>
-              <Text style={styles.optionSubtext}>Share the audio clip with your post</Text>
+              <Text style={styles.optionSubtext}>Share audio + transcript with your post</Text>
             </View>
           </View>
           <ThemedSwitch value={includeAudio} onValueChange={setIncludeAudio} />
@@ -293,18 +318,6 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
           <Text style={styles.validationHint}>Add a caption or turn on audio to post</Text>
         )}
       </View>
-
-      {/* Optional caption / transcription */}
-      <TextInput
-        style={styles.transcriptionInput}
-        placeholder="Add a caption or transcription (optional)…"
-        placeholderTextColor={colors.mutedForeground + "80"}
-        multiline
-        value={transcriptionText}
-        onChangeText={setTranscriptionText}
-        maxLength={500}
-        textAlignVertical="top"
-      />
 
       <View style={styles.previewActions}>
         <Pressable style={styles.reRecordBtn} onPress={handleReRecord}>
@@ -498,15 +511,31 @@ function createStyles(colors: ThemeColors) {
       marginTop: 2,
     },
 
-    transcriptionInput: {
+    transcriptionCard: {
+      backgroundColor: colors.accent,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 12,
       padding: 12,
+      gap: 6,
+    },
+    transcriptionCardHeader: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+    },
+    transcriptionCardLabel: {
+      fontSize: 10,
+      fontWeight: "700" as const,
+      letterSpacing: 1.5,
+      color: colors.mutedForeground,
+    },
+    transcriptionCardInput: {
       fontSize: 14,
       color: colors.foreground,
-      backgroundColor: colors.background,
-      minHeight: 72,
+      minHeight: 52,
+      fontStyle: "italic" as const,
+      padding: 0,
     },
 
     previewActions: {
