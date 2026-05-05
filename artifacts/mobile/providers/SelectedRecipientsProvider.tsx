@@ -75,6 +75,11 @@ export type FeedPostMeta = {
   tags: string[];
   eventDate: string | null;
   photoUrls: string[];
+  audioUri?: string;
+  audioDurationMs?: number;
+  includeAudio?: boolean;
+  includeTranscription?: boolean;
+  audioTranscription?: string;
 };
 
 export const [SelectedRecipientsProvider, useSelectedRecipients] = createContextHook(() => {

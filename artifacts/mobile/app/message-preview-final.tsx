@@ -18,8 +18,9 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { useSelectedRecipients } from "@/providers/SelectedRecipientsProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import { Image } from "expo-image";
-import { feedStore, FEED_COMMUNITIES } from "@/lib/feedStore";
+import { feedStore } from "@/lib/feedStore";
 import { supabase } from "@/lib/supabase";
+import { uploadVoiceNote } from "@/lib/storage";
 import { getOrCreateDMConversation, isUUID } from "@/lib/chat";
 
 type DeliveryChannel = "app" | "whatsapp" | "sms";
@@ -366,10 +367,21 @@ export default function MessagePreviewFinalScreen() {
         user?.email?.split("@")[0] ??
         "You"
       );
-      const defaultCommunity = FEED_COMMUNITIES[0];
+
+      const shouldIncludeAudio = feedPostMeta?.includeAudio === true;
+      const rawAudioUri = feedPostMeta?.audioUri;
+      let resolvedAudioUrl: string | undefined;
+      if (shouldIncludeAudio && rawAudioUri) {
+        try {
+          resolvedAudioUrl = await uploadVoiceNote(user?.id ?? "anon", rawAudioUri);
+        } catch {
+          resolvedAudioUrl = rawAudioUri;
+        }
+      }
+
       feedStore.addPost({
         id: `prayer_${Date.now()}`,
-        communityId: defaultCommunity.id,
+        communityId: "",
         authorId: isAnon ? "anonymous" : (user?.id ?? "current_user"),
         authorName,
         authorAvatar: isAnon ? "" : (profile?.avatar_url ?? ""),
@@ -385,8 +397,14 @@ export default function MessagePreviewFinalScreen() {
         commentCount: 0,
         prayedByAvatars: [],
         comments: [],
+        postType: shouldIncludeAudio ? "voice" : undefined,
+        audioUrl: resolvedAudioUrl,
+        audioDuration: shouldIncludeAudio ? feedPostMeta?.audioDurationMs : undefined,
+        audioTranscription: feedPostMeta?.includeTranscription ? feedPostMeta.audioTranscription : undefined,
+        includeAudio: shouldIncludeAudio || undefined,
+        includeTranscription: feedPostMeta?.includeTranscription || undefined,
       });
-      console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags);
+      console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags, "includeAudio:", shouldIncludeAudio);
     }
     router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
   }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);

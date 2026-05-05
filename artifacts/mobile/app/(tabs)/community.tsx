@@ -457,6 +457,7 @@ export default function CommunityScreen() {
   const [shareTarget, setShareTarget] = useState<FeedPost | null>(null);
   const [hasNewUpdates, setHasNewUpdates] = useState<boolean>(true);
   const newUpdateAnim = useRef(new Animated.Value(0)).current;
+  const activeCommunityRef = useRef<Community>(COMMUNITIES[0]);
   const [prayingForPrompt, setPrayingForPrompt] = useState<{ post: FeedPost } | null>(null);
   const prayingForPromptAnim = useRef(new Animated.Value(0)).current;
   const promptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -491,9 +492,14 @@ export default function CommunityScreen() {
   }, []);
 
   useEffect(() => {
+    activeCommunityRef.current = activeCommunity;
+  }, [activeCommunity]);
+
+  useEffect(() => {
     feedStore.register((post) => {
-      setAllFeedPosts((prev) => [post as FeedPost, ...prev]);
-      setAllCommunityPosts((prev) => [post as FeedPost, ...prev]);
+      const withCommunity = { ...post, communityId: activeCommunityRef.current.id };
+      setAllFeedPosts((prev) => [withCommunity as FeedPost, ...prev]);
+      setAllCommunityPosts((prev) => [withCommunity as FeedPost, ...prev]);
     });
     return () => feedStore.unregister();
   }, []);

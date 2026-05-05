@@ -76,8 +76,10 @@ export default function PrayerModeScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const params = useLocalSearchParams<{ transcript?: string }>();
+  const params = useLocalSearchParams<{ transcript?: string; audioUri?: string; duration?: string }>();
   const incomingTranscript = params.transcript ?? "";
+  const incomingAudioUri = params.audioUri ?? "";
+  const incomingDurationMs = parseInt(params.duration ?? "0", 10) * 1000;
 
   const [activeTab, setActiveTab] = useState<PrayTab>(incomingTranscript ? "voice" : "text");
   const [textPrayer, setTextPrayer] = useState("");
@@ -248,11 +250,17 @@ export default function PrayerModeScreen() {
     const transcriptText = activeTab === "voice" ? voiceTranscript : "";
     const text = activeTab === "voice" ? transcriptText : textPrayer;
     setDraftPrayerText(text);
+    const isVoice = activeTab === "voice";
     setFeedPostMeta({
       isAnonymous,
       tags: selectedTags,
       eventDate: eventDate ?? null,
       photoUrls: attachedPhotos,
+      audioUri: isVoice && includeAudio ? incomingAudioUri : undefined,
+      audioDurationMs: isVoice && includeAudio ? incomingDurationMs : undefined,
+      includeAudio: isVoice && includeAudio,
+      includeTranscription: isVoice && !!voiceTranscript,
+      audioTranscription: isVoice ? voiceTranscript : undefined,
     });
     router.push({
       pathname: "/delivery-explanation" as never,
@@ -264,11 +272,11 @@ export default function PrayerModeScreen() {
         isAnonymous: String(isAnonymous),
         eventDate: String(eventDate ?? ""),
         photoUrls: JSON.stringify(attachedPhotos),
-        includeAudio: String(activeTab === "voice" ? includeAudio : false),
-        includeTranscription: String(activeTab === "voice" && !!voiceTranscript),
+        includeAudio: String(isVoice ? includeAudio : false),
+        includeTranscription: String(isVoice && !!voiceTranscript),
       },
     });
-  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, includeAudio, router, setDraftPrayerText, setFeedPostMeta]);
+  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, includeAudio, router, setDraftPrayerText, setFeedPostMeta, incomingAudioUri, incomingDurationMs]);
 
   const handleRemoveRecipient = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();

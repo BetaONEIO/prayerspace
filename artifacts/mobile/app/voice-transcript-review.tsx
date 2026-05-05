@@ -53,7 +53,7 @@ export default function VoiceTranscriptReviewScreen() {
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.replace({ pathname: "/prayer-mode" as never, params: { transcript: editedText } });
+    router.replace({ pathname: "/prayer-mode" as never, params: { transcript: editedText, audioUri, duration: String(durationSeconds) } });
   }, [router, editedText]);
 
   const parts = editedText ? [{ text: editedText, highlight: false }] : [];
