@@ -48,7 +48,7 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   communityName?: string | null;
-  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => Promise<void> | void;
+  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => Promise<void> | void;
 }
 
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
@@ -69,6 +69,8 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const [showVoiceRecorder, setShowVoiceRecorder] = useState<boolean>(false);
   const [voiceNoteUri, setVoiceNoteUri] = useState<string | null>(null);
   const [voiceNoteDuration, setVoiceNoteDuration] = useState<number>(0);
+  const [voiceNoteIncludeAudio, setVoiceNoteIncludeAudio] = useState<boolean>(true);
+  const [voiceNoteIncludeTranscription, setVoiceNoteIncludeTranscription] = useState<boolean>(false);
   const [voiceNoteTranscription, setVoiceNoteTranscription] = useState<string | undefined>(undefined);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -131,6 +133,8 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setShowVoiceRecorder(false);
       setVoiceNoteUri(null);
       setVoiceNoteDuration(0);
+      setVoiceNoteIncludeAudio(true);
+      setVoiceNoteIncludeTranscription(false);
       setVoiceNoteTranscription(undefined);
       Animated.timing(tagRotate, { toValue: 0, duration: 0, useNativeDriver: true }).start();
     }, 300);
@@ -143,13 +147,13 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
     setIsPosting(true);
     console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate, hasVoice: !!voiceNoteUri });
     try {
-      await onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription);
+      await onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription, voiceNoteIncludeAudio, voiceNoteIncludeTranscription);
       handleClose();
     } catch (err) {
       console.error("[StatusUpdateModal] Submit error:", err);
       setIsPosting(false);
     }
-  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate, voiceNoteUri, voiceNoteDuration, voiceNoteTranscription]);
+  }, [text, selectedTags, onSubmit, handleClose, selectedAudience, isAnonymous, isTimeSensitive, eventDate, voiceNoteUri, voiceNoteDuration, voiceNoteTranscription, voiceNoteIncludeAudio, voiceNoteIncludeTranscription]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -390,14 +394,18 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 <View style={styles.voiceAttachedSection}>
                   <Mic size={13} color={colors.primary} />
                   <Text style={styles.voiceAttachedLabel}>
-                    Voice note · {voiceNoteDuration > 0
-                      ? `${Math.floor(voiceNoteDuration / 60000)}:${String(Math.floor((voiceNoteDuration % 60000) / 1000)).padStart(2, "0")}`
-                      : "recorded"}
+                    {voiceNoteIncludeAudio && voiceNoteIncludeTranscription
+                      ? "Voice · Audio + Text"
+                      : voiceNoteIncludeAudio
+                        ? `Voice · ${voiceNoteDuration > 0 ? `${Math.floor(voiceNoteDuration / 60000)}:${String(Math.floor((voiceNoteDuration % 60000) / 1000)).padStart(2, "0")}` : "Audio"}`
+                        : "Voice · Text only"}
                   </Text>
                   <Pressable
                     onPress={() => {
                       setVoiceNoteUri(null);
                       setVoiceNoteDuration(0);
+                      setVoiceNoteIncludeAudio(true);
+                      setVoiceNoteIncludeTranscription(false);
                       setVoiceNoteTranscription(undefined);
                     }}
                     hitSlop={10}
@@ -409,9 +417,11 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               ) : showVoiceRecorder ? (
                 <View style={styles.voiceRecorderSection}>
                   <VoiceNoteRecorder
-                    onAttach={(uri, dur, transcription) => {
+                    onAttach={(uri, dur, inclAudio, inclTranscription, transcription) => {
                       setVoiceNoteUri(uri);
                       setVoiceNoteDuration(dur);
+                      setVoiceNoteIncludeAudio(inclAudio);
+                      setVoiceNoteIncludeTranscription(inclTranscription);
                       setVoiceNoteTranscription(transcription);
                       setShowVoiceRecorder(false);
                     }}
@@ -504,7 +514,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   <Text style={styles.submitText}>
                     {isPosting
                       ? (hasVoice ? "Uploading…" : "Posting…")
-                      : (hasVoice && !hasText ? "Post Voice Prayer" : "Update Status")}
+                      : (hasVoice ? "Send Voice Prayer" : "Update Status")}
                   </Text>
                 </Pressable>
               </View>

@@ -133,9 +133,12 @@ interface FeedPost {
   updateTag?: UpdateTag;
   isArchived?: boolean;
   imageUrl?: string;
+  postType?: "voice" | "prayer";
   audioUrl?: string;
   audioDuration?: number;
   audioTranscription?: string;
+  includeAudio?: boolean;
+  includeTranscription?: boolean;
 }
 
 const COMMUNITIES: Community[] = [
@@ -629,21 +632,26 @@ export default function CommunityScreen() {
     setRepostTarget(post);
   }, []);
 
-  const handleStatusSubmit = useCallback(async (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string) => {
+  const handleStatusSubmit = useCallback(async (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    // Upload voice note to cloud storage if it's a local file URI
-    let resolvedAudioUrl: string | null | undefined = audioUri;
-    if (audioUri && (audioUri.startsWith('file://') || audioUri.startsWith('blob:'))) {
+    const isVoicePost = !!(audioUri);
+    const shouldIncludeAudio = includeAudio !== false;
+    const shouldIncludeTranscription = includeTranscription === true;
+
+    // Upload voice note to cloud storage only when audio is included
+    let resolvedAudioUrl: string | null | undefined = null;
+    if (shouldIncludeAudio && audioUri && (audioUri.startsWith('file://') || audioUri.startsWith('blob:'))) {
       try {
         const uploadedUrl = await uploadVoiceNote(currentUserId, audioUri);
         resolvedAudioUrl = uploadedUrl;
         console.log("[Community] Voice note uploaded:", uploadedUrl);
       } catch (uploadErr) {
         console.error("[Community] Voice note upload failed, using local URI:", uploadErr);
-        // Fall back to local URI so post still appears this session
         resolvedAudioUrl = audioUri;
       }
+    } else if (shouldIncludeAudio && audioUri) {
+      resolvedAudioUrl = audioUri;
     }
 
     const newPost: FeedPost = {
@@ -664,14 +672,17 @@ export default function CommunityScreen() {
       prayedByAvatars: [],
       comments: [],
       imageUrl: imageUri ?? undefined,
+      postType: isVoicePost ? "voice" : undefined,
       audioUrl: resolvedAudioUrl ?? undefined,
-      audioDuration: audioDurationMs,
-      audioTranscription: audioTranscription,
+      audioDuration: shouldIncludeAudio ? audioDurationMs : undefined,
+      audioTranscription: shouldIncludeTranscription ? audioTranscription : undefined,
+      includeAudio: isVoicePost ? shouldIncludeAudio : undefined,
+      includeTranscription: isVoicePost ? shouldIncludeTranscription : undefined,
     };
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
     setLastAddedPostId(newPost.id);
-    console.log("[Community] Status update posted:", newPost.id, "timeSensitive:", isTimeSensitive, "anonymous:", isAnonymous, "hasImage:", !!imageUri, "hasVoice:", !!resolvedAudioUrl, "eventDate:", eventDate);
+    console.log("[Community] Status update posted:", newPost.id, "type:", newPost.postType, "includeAudio:", shouldIncludeAudio, "includeTranscription:", shouldIncludeTranscription);
   }, [activeCommunity.id, profile, currentUserId]);
 
   const handleSubmitRepost = useCallback((originalPost: FeedPost, updateText: string, updateTag?: UpdateTag) => {
@@ -2963,12 +2974,18 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
         </Text>
       )}
 
-      {post.audioUrl && (
+      {post.audioUrl && post.includeAudio !== false && (
         <VoiceNotePlayer
           audioUrl={post.audioUrl}
           audioDuration={post.audioDuration}
-          audioTranscription={post.audioTranscription}
+          audioTranscription={undefined}
         />
+      )}
+
+      {post.audioTranscription && post.includeTranscription !== false && (
+        <View style={styles.voiceTranscriptionBlock}>
+          <Text style={styles.voiceTranscriptionText}>{post.audioTranscription}</Text>
+        </View>
       )}
 
       {post.imageUrl && (
@@ -5696,6 +5713,20 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 22,
   },
   cardContentItalic: {
+    fontStyle: "italic" as const,
+  },
+  voiceTranscriptionBlock: {
+    backgroundColor: colors.accent,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  voiceTranscriptionText: {
+    fontSize: 13,
+    color: colors.foreground,
+    lineHeight: 20,
     fontStyle: "italic" as const,
   },
   tagsRow: {

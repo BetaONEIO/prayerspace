@@ -11,14 +11,20 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
-import { Mic, Square, Play, Pause, RotateCcw, Trash2, Check } from "lucide-react-native";
+import { Mic, AlignLeft, Square, Play, Pause, RotateCcw, Trash2, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
 type RecorderState = "idle" | "recording" | "preview";
 
 interface Props {
-  onAttach: (uri: string, durationMs: number, transcription?: string) => void;
+  onAttach: (
+    uri: string,
+    durationMs: number,
+    includeAudio: boolean,
+    includeTranscription: boolean,
+    transcription?: string
+  ) => void;
   onDiscard: () => void;
 }
 
@@ -41,6 +47,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackMs, setPlaybackMs] = useState(0);
 
+  const [includeAudio, setIncludeAudio] = useState(true);
   const [includeTranscription, setIncludeTranscription] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState("");
 
@@ -52,7 +59,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
-  // Guaranteed cleanup on unmount — stops any active recording, timer, and sound
+  // Guaranteed cleanup on unmount
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -90,7 +97,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) {
-        Alert.alert("Microphone Access", "Please allow microphone access to record a voice note.");
+        Alert.alert("Microphone Access", "Please allow microphone access to record a voice prayer.");
         return;
       }
       await Audio.setAudioModeAsync({
@@ -180,6 +187,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setPlaybackMs(0);
     setRecordedUri(null);
     setRecordedDuration(0);
+    setIncludeAudio(true);
     setIncludeTranscription(false);
     setTranscriptionText("");
     setState("idle");
@@ -195,20 +203,26 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setState("idle");
     setRecordedUri(null);
     setDurationMs(0);
+    setIncludeAudio(true);
     setIncludeTranscription(false);
     setTranscriptionText("");
     onDiscard();
   }, [onDiscard]);
 
+  const canAttach = includeAudio || includeTranscription;
+  const transcriptionValid = !includeTranscription || transcriptionText.trim().length > 0;
+
   const handleAttach = useCallback(() => {
-    if (!recordedUri) return;
+    if (!recordedUri || !canAttach) return;
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onAttach(
       recordedUri,
       recordedDuration,
+      includeAudio,
+      includeTranscription,
       includeTranscription && transcriptionText.trim() ? transcriptionText.trim() : undefined
     );
-  }, [recordedUri, recordedDuration, includeTranscription, transcriptionText, onAttach]);
+  }, [recordedUri, recordedDuration, includeAudio, includeTranscription, transcriptionText, canAttach, onAttach]);
 
   const progressFraction = recordedDuration > 0 ? Math.min(playbackMs / recordedDuration, 1) : 0;
 
@@ -218,7 +232,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
         <Pressable style={styles.micBtn} onPress={startRecording}>
           <Mic size={20} color={colors.primary} />
         </Pressable>
-        <Text style={styles.idleHint}>Tap mic to record a voice prayer</Text>
+        <Text style={styles.idleHint}>Tap to record a voice prayer</Text>
         <Pressable style={styles.discardLinkBtn} onPress={handleDiscard}>
           <Text style={styles.discardLinkText}>Cancel</Text>
         </Pressable>
@@ -244,6 +258,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
 
   return (
     <View style={styles.previewContainer}>
+      {/* Audio player preview */}
       <View style={styles.playerRow}>
         <Pressable style={styles.playBtn} onPress={togglePlayback}>
           {isPlaying
@@ -262,16 +277,42 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
         </View>
       </View>
 
-      <Pressable
-        style={styles.transcriptionToggleRow}
-        onPress={() => setIncludeTranscription((v) => !v)}
-      >
-        <View style={[styles.toggleBox, includeTranscription && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-          {includeTranscription && <Check size={11} color="#fff" strokeWidth={3} />}
-        </View>
-        <Text style={styles.transcriptionToggleText}>Include transcription</Text>
-      </Pressable>
+      {/* Include options */}
+      <View style={styles.optionsSection}>
+        <Text style={styles.optionsLabel}>INCLUDE IN POST</Text>
 
+        <Pressable
+          style={styles.optionRow}
+          onPress={() => setIncludeAudio((v) => !v)}
+        >
+          <View style={[styles.toggleBox, includeAudio && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+            {includeAudio && <Check size={11} color="#fff" strokeWidth={3} />}
+          </View>
+          <Mic size={15} color={includeAudio ? colors.primary : colors.mutedForeground} />
+          <Text style={[styles.optionText, includeAudio && { color: colors.foreground, fontWeight: "600" as const }]}>
+            Audio recording
+          </Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.optionRow}
+          onPress={() => setIncludeTranscription((v) => !v)}
+        >
+          <View style={[styles.toggleBox, includeTranscription && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+            {includeTranscription && <Check size={11} color="#fff" strokeWidth={3} />}
+          </View>
+          <AlignLeft size={15} color={includeTranscription ? colors.primary : colors.mutedForeground} />
+          <Text style={[styles.optionText, includeTranscription && { color: colors.foreground, fontWeight: "600" as const }]}>
+            Transcription
+          </Text>
+        </Pressable>
+
+        {!canAttach && (
+          <Text style={styles.validationHint}>Select at least one option to post</Text>
+        )}
+      </View>
+
+      {/* Transcription input */}
       {includeTranscription && (
         <TextInput
           style={styles.transcriptionInput}
@@ -294,7 +335,11 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
           <Trash2 size={14} color="#dc2626" />
           <Text style={styles.discardText}>Discard</Text>
         </Pressable>
-        <Pressable style={[styles.attachBtn, { backgroundColor: colors.primary }]} onPress={handleAttach}>
+        <Pressable
+          style={[styles.attachBtn, { backgroundColor: canAttach && transcriptionValid ? colors.primary : colors.border }]}
+          onPress={handleAttach}
+          disabled={!canAttach || !transcriptionValid}
+        >
           <Check size={14} color="#fff" strokeWidth={2.5} />
           <Text style={styles.attachText}>Use recording</Text>
         </Pressable>
@@ -415,7 +460,21 @@ function createStyles(colors: ThemeColors) {
       fontVariant: ["tabular-nums"] as const,
     },
 
-    transcriptionToggleRow: {
+    optionsSection: {
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 10,
+    },
+    optionsLabel: {
+      fontSize: 10,
+      fontWeight: "700" as const,
+      color: colors.mutedForeground,
+      letterSpacing: 1,
+    },
+    optionRow: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       gap: 10,
@@ -430,10 +489,16 @@ function createStyles(colors: ThemeColors) {
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
-    transcriptionToggleText: {
-      fontSize: 13,
-      color: colors.foreground,
+    optionText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
     },
+    validationHint: {
+      fontSize: 11,
+      color: "#ef4444",
+      marginTop: 2,
+    },
+
     transcriptionInput: {
       borderWidth: 1,
       borderColor: colors.border,
