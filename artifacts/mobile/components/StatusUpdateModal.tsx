@@ -199,7 +199,6 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   });
 
   return (
-    <>
     <Modal
       visible={visible}
       transparent
@@ -519,43 +518,46 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
         visible={!!viewingStatusImage}
         onClose={() => setViewingStatusImage(null)}
       />
-    </Modal>
 
-    <Modal
-      visible={showVoiceRecorder}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowVoiceRecorder(false)}
-      statusBarTranslucent
-    >
-      <View style={styles.voiceModalOverlay}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowVoiceRecorder(false)} />
-        <View style={[styles.voiceModalSheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={styles.voiceModalHandle} />
-          <View style={styles.voiceModalHeader}>
-            <Text style={styles.voiceModalTitle}>Voice Prayer</Text>
-            <Pressable style={styles.voiceModalClose} onPress={() => setShowVoiceRecorder(false)}>
-              <X size={18} color={colors.mutedForeground} />
-            </Pressable>
-          </View>
-          <Text style={styles.voiceModalSubtitle}>
-            Record your prayer, then choose what to share
-          </Text>
-          <VoiceNoteRecorder
-            onAttach={(uri, dur, inclAudio, inclTranscription, transcription) => {
-              setVoiceNoteUri(uri);
-              setVoiceNoteDuration(dur);
-              setVoiceNoteIncludeAudio(inclAudio);
-              setVoiceNoteIncludeTranscription(inclTranscription);
-              setVoiceNoteTranscription(transcription);
-              setShowVoiceRecorder(false);
-            }}
-            onDiscard={() => setShowVoiceRecorder(false)}
+      {/* Voice recorder overlay — inside same Modal to avoid sibling-Modal restore bugs */}
+      {showVoiceRecorder && (
+        <View style={[StyleSheet.absoluteFill, styles.voiceModalOverlay]} pointerEvents="box-none">
+          <Pressable
+            style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(0,0,0,0.55)" }]}
+            onPress={() => setShowVoiceRecorder(false)}
           />
+          <View style={[styles.voiceModalSheet, { paddingBottom: insets.bottom + 24 }]}>
+            <View style={styles.voiceModalHandle} />
+            <View style={styles.voiceModalHeader}>
+              <Text style={styles.voiceModalTitle}>Voice Prayer</Text>
+              <Pressable style={styles.voiceModalClose} onPress={() => setShowVoiceRecorder(false)}>
+                <X size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+            <Text style={styles.voiceModalSubtitle}>
+              Record your prayer, then choose what to share
+            </Text>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <VoiceNoteRecorder
+                onAttach={(uri, dur, inclAudio, inclTranscription, transcription) => {
+                  setVoiceNoteUri(uri);
+                  setVoiceNoteDuration(dur);
+                  setVoiceNoteIncludeAudio(inclAudio);
+                  setVoiceNoteIncludeTranscription(inclTranscription);
+                  setVoiceNoteTranscription(transcription);
+                  setShowVoiceRecorder(false);
+                }}
+                onDiscard={() => setShowVoiceRecorder(false)}
+              />
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      )}
     </Modal>
-    </>
   );
 }
 
@@ -805,9 +807,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "700" as const,
   },
   voiceModalOverlay: {
-    flex: 1,
     justifyContent: "flex-end" as const,
-    backgroundColor: "rgba(0,0,0,0.55)",
   },
   voiceModalSheet: {
     backgroundColor: colors.card,
