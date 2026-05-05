@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import {
@@ -47,8 +47,13 @@ import {
   Settings,
   LogOut,
   UserPlus,
+  Play,
+  Pause,
+  Square,
+  X,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { Audio } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useGroupState, GroupMember as StoreGroupMember } from "@/lib/groupStore";
@@ -99,6 +104,8 @@ interface ChatMessage {
   time: string;
   isOwn: boolean;
   isVoice?: boolean;
+  audioUri?: string;
+  audioDurationMs?: number;
   sharedPrayer?: SharedPrayerCard;
   imageUrl?: string;
   reactions?: MessageReaction[];
@@ -380,6 +387,7 @@ export default function GroupDetailScreen() {
 
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(CHAT_MESSAGES);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [memberSearch, setMemberSearch] = useState<string>("");
   const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
   const [viewingGroupImage, setViewingGroupImage] = useState<string | null>(null);
@@ -530,6 +538,25 @@ export default function GroupDetailScreen() {
     setReplyingTo(null);
     setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, [chatInput, groupImageUri, replyingTo]);
+
+  const handleSendVoiceMessage = useCallback((uri: string, durationMs: number) => {
+    setShowVoiceRecorder(false);
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newMsg: ChatMessage = {
+      id: `vm_${Date.now()}`,
+      senderId: "me",
+      senderName: "Me",
+      senderAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
+      text: "",
+      time: "Just now",
+      isOwn: true,
+      isVoice: true,
+      audioUri: uri,
+      audioDurationMs: durationMs,
+    };
+    setChatMessages((prev) => [...prev, newMsg]);
+    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, []);
 
   const filteredMembers = groupState.members.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
@@ -713,7 +740,10 @@ export default function GroupDetailScreen() {
             </View>
             <Pressable
               style={[styles.chatSendBtn, (chatInput.trim().length > 0 || !!groupImageUri) && styles.chatSendBtnActive]}
-              onPress={handleSendMessage}
+              onPress={chatInput.trim().length > 0 || !!groupImageUri ? handleSendMessage : () => {
+                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowVoiceRecorder(true);
+              }}
             >
               {(chatInput.trim().length > 0 || !!groupImageUri) ? (
                 <Send size={18} color={colors.primaryForeground} />
@@ -728,6 +758,12 @@ export default function GroupDetailScreen() {
             uri={viewingGroupImage}
             visible={!!viewingGroupImage}
             onClose={() => setViewingGroupImage(null)}
+          />
+
+          <ChatVoiceRecorder
+            visible={showVoiceRecorder}
+            onSend={handleSendVoiceMessage}
+            onCancel={() => setShowVoiceRecorder(false)}
           />
         </KeyboardAvoidingView>
       )}
@@ -937,6 +973,327 @@ export default function GroupDetailScreen() {
         </Modal>
       )}
     </View>
+  );
+}
+
+function formatVoiceDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+const WAVEFORM_HEIGHTS = [5, 10, 16, 12, 7, 14, 20, 13, 8, 16, 22, 14, 7, 12, 18, 10, 5, 14, 20, 11, 8, 16, 13, 9, 15, 20, 13, 5, 10, 16];
+
+function InlineVoicePlayer({ uri, durationMs, isOwn }: { uri?: string; durationMs: number; isOwn: boolean }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [positionMs, setPositionMs] = useState(0);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const hasFinishedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) { soundRef.current.unloadAsync().catch(() => {}); soundRef.current = null; }
+    };
+  }, []);
+
+  const togglePlay = useCallback(async () => {
+    if (!uri) return;
+    if (isPlaying) {
+      await soundRef.current?.pauseAsync();
+      setIsPlaying(false);
+    } else {
+      hasFinishedRef.current = false;
+      if (soundRef.current) {
+        await soundRef.current.setPositionAsync(0);
+        await soundRef.current.playAsync();
+      } else {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true },
+          (status) => {
+            if (status.isLoaded) {
+              setPositionMs(status.positionMillis ?? 0);
+              if (status.didJustFinish && !hasFinishedRef.current) {
+                hasFinishedRef.current = true;
+                setIsPlaying(false);
+                setPositionMs(0);
+              }
+            }
+          }
+        );
+        soundRef.current = sound;
+      }
+      setIsPlaying(true);
+    }
+  }, [uri, isPlaying]);
+
+  const totalDuration = durationMs || 1;
+  const progress = Math.min(positionMs / totalDuration, 1);
+  const displayMs = isPlaying ? positionMs : durationMs;
+  const accentColor = isOwn ? colors.primaryForeground : colors.primary;
+  const trackColor = isOwn ? "rgba(255,255,255,0.25)" : (colors.secondary);
+
+  return (
+    <View style={styles.inlineVoiceRow}>
+      <Pressable onPress={togglePlay} style={[styles.inlineVoicePlayBtn, isOwn && styles.inlineVoicePlayBtnOwn]}>
+        {isPlaying
+          ? <Pause size={14} color={isOwn ? colors.primary : colors.primaryForeground} />
+          : <Play size={14} color={isOwn ? colors.primary : colors.primaryForeground} />
+        }
+      </Pressable>
+      <View style={styles.inlineWaveformWrap}>
+        {WAVEFORM_HEIGHTS.map((h, i) => {
+          const barProgress = i / WAVEFORM_HEIGHTS.length;
+          const filled = barProgress <= progress;
+          return (
+            <View
+              key={i}
+              style={[
+                styles.inlineWaveBar,
+                { height: h, backgroundColor: filled ? accentColor : trackColor },
+              ]}
+            />
+          );
+        })}
+      </View>
+      <Text style={[styles.inlineVoiceDuration, isOwn && styles.inlineVoiceDurationOwn]}>
+        {formatVoiceDuration(displayMs)}
+      </Text>
+    </View>
+  );
+}
+
+function ChatVoiceRecorder({ visible, onSend, onCancel }: {
+  visible: boolean;
+  onSend: (uri: string, durationMs: number) => void;
+  onCancel: () => void;
+}) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [recState, setRecState] = useState<"idle" | "recording" | "preview">("idle");
+  const [durationMs, setDurationMs] = useState(0);
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
+  const [recordedDuration, setRecordedDuration] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackMs, setPlaybackMs] = useState(0);
+
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasFinishedRef = useRef(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const stopAll = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    pulseLoopRef.current?.stop();
+    pulseAnim.setValue(1);
+    if (recordingRef.current) { recordingRef.current.stopAndUnloadAsync().catch(() => {}); recordingRef.current = null; }
+    if (soundRef.current) { soundRef.current.unloadAsync().catch(() => {}); soundRef.current = null; }
+    Audio.setAudioModeAsync({ allowsRecordingIOS: false }).catch(() => {});
+  }, [pulseAnim]);
+
+  useEffect(() => {
+    if (!visible) {
+      stopAll();
+      setRecState("idle");
+      setDurationMs(0);
+      setRecordedUri(null);
+      setRecordedDuration(0);
+      setIsPlaying(false);
+      setPlaybackMs(0);
+    }
+  }, [visible, stopAll]);
+
+  useEffect(() => () => stopAll(), [stopAll]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) {
+        Alert.alert("Permission needed", "Microphone access is required to record a voice message.");
+        return;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
+      setRecState("recording");
+      setDurationMs(0);
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      timerRef.current = setInterval(() => setDurationMs((d) => d + 100), 100);
+      pulseLoopRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.4, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      );
+      pulseLoopRef.current.start();
+    } catch {
+      Alert.alert("Error", "Could not start recording. Please try again.");
+    }
+  }, [pulseAnim]);
+
+  const stopRecording = useCallback(async () => {
+    if (!recordingRef.current) return;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    pulseLoopRef.current?.stop();
+    pulseAnim.setValue(1);
+    const captured = durationMs;
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+      if (uri && captured > 400) {
+        setRecordedUri(uri);
+        setRecordedDuration(captured);
+        setRecState("preview");
+        if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        setRecState("idle");
+        setDurationMs(0);
+      }
+    } catch {
+      setRecState("idle");
+      setDurationMs(0);
+    }
+  }, [durationMs, pulseAnim]);
+
+  const togglePreviewPlay = useCallback(async () => {
+    if (!recordedUri) return;
+    if (isPlaying) {
+      await soundRef.current?.pauseAsync();
+      setIsPlaying(false);
+    } else {
+      hasFinishedRef.current = false;
+      if (soundRef.current) {
+        await soundRef.current.setPositionAsync(0);
+        await soundRef.current.playAsync();
+      } else {
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: recordedUri },
+          { shouldPlay: true },
+          (status) => {
+            if (status.isLoaded) {
+              setPlaybackMs(status.positionMillis ?? 0);
+              if (status.didJustFinish && !hasFinishedRef.current) {
+                hasFinishedRef.current = true;
+                setIsPlaying(false);
+                setPlaybackMs(0);
+              }
+            }
+          }
+        );
+        soundRef.current = sound;
+      }
+      setIsPlaying(true);
+    }
+  }, [isPlaying, recordedUri]);
+
+  const handleSend = useCallback(() => {
+    if (!recordedUri) return;
+    if (soundRef.current) { soundRef.current.unloadAsync().catch(() => {}); soundRef.current = null; }
+    onSend(recordedUri, recordedDuration);
+  }, [recordedUri, recordedDuration, onSend]);
+
+  const handleDiscard = useCallback(() => {
+    stopAll();
+    setRecState("idle");
+    setDurationMs(0);
+    setRecordedUri(null);
+    setRecordedDuration(0);
+    setIsPlaying(false);
+    setPlaybackMs(0);
+    onCancel();
+  }, [stopAll, onCancel]);
+
+  const handleReRecord = useCallback(() => {
+    stopAll();
+    setRecState("idle");
+    setDurationMs(0);
+    setRecordedUri(null);
+    setRecordedDuration(0);
+    setIsPlaying(false);
+    setPlaybackMs(0);
+  }, [stopAll]);
+
+  if (!visible) return null;
+
+  const progress = recState === "preview" && recordedDuration > 0
+    ? Math.min(playbackMs / recordedDuration, 1)
+    : 0;
+
+  return (
+    <Modal visible transparent animationType="slide" onRequestClose={handleDiscard}>
+      <View style={styles.vrBackdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={recState === "idle" ? handleDiscard : undefined} />
+        <View style={styles.vrSheet}>
+          <View style={styles.vrHandle} />
+          <View style={styles.vrHeader}>
+            <Text style={styles.vrTitle}>Voice Message</Text>
+            <Pressable onPress={handleDiscard} hitSlop={12} style={styles.vrCloseBtn}>
+              <X size={20} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+
+          {recState === "idle" && (
+            <View style={styles.vrIdleBody}>
+              <Text style={styles.vrHint}>Tap to start recording</Text>
+              <Pressable onPress={startRecording} style={styles.vrBigMicBtn}>
+                <Mic size={36} color={colors.primaryForeground} />
+              </Pressable>
+            </View>
+          )}
+
+          {recState === "recording" && (
+            <View style={styles.vrRecordingBody}>
+              <Animated.View style={[styles.vrPulseRing, { transform: [{ scale: pulseAnim }] }]} />
+              <View style={styles.vrRecordingCenter}>
+                <View style={styles.vrRedDot} />
+                <Text style={styles.vrRecordingDuration}>{formatVoiceDuration(durationMs)}</Text>
+              </View>
+              <Text style={styles.vrRecordingHint}>Recording… tap to stop</Text>
+              <Pressable onPress={stopRecording} style={styles.vrStopBtn}>
+                <Square size={22} color={colors.primaryForeground} fill={colors.primaryForeground} />
+              </Pressable>
+            </View>
+          )}
+
+          {recState === "preview" && (
+            <View style={styles.vrPreviewBody}>
+              <View style={styles.vrPreviewPlayer}>
+                <Pressable onPress={togglePreviewPlay} style={styles.vrPreviewPlayBtn}>
+                  {isPlaying
+                    ? <Pause size={22} color={colors.primaryForeground} />
+                    : <Play size={22} color={colors.primaryForeground} />
+                  }
+                </Pressable>
+                <View style={styles.vrPreviewTrackWrap}>
+                  <View style={styles.vrPreviewTrack}>
+                    <View style={[styles.vrPreviewFill, { width: `${Math.round(progress * 100)}%` }]} />
+                  </View>
+                  <Text style={styles.vrPreviewDuration}>{formatVoiceDuration(isPlaying ? playbackMs : recordedDuration)}</Text>
+                </View>
+              </View>
+              <View style={styles.vrPreviewActions}>
+                <Pressable onPress={handleReRecord} style={styles.vrDiscardBtn}>
+                  <Text style={styles.vrDiscardText}>Re-record</Text>
+                </Pressable>
+                <Pressable onPress={handleSend} style={styles.vrSendBtn}>
+                  <Send size={16} color={colors.primaryForeground} />
+                  <Text style={styles.vrSendText}>Send</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1193,7 +1550,11 @@ function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMes
             onPress={() => onScrollToMessage?.(message.replyTo!.id)}
           />
         )}
-        {message.sharedPrayer ? (
+        {message.isVoice ? (
+          <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={300} style={[styles.voiceBubble, styles.voiceBubbleOwn]}>
+            <InlineVoicePlayer uri={message.audioUri} durationMs={message.audioDurationMs ?? 0} isOwn />
+          </Pressable>
+        ) : message.sharedPrayer ? (
           <Pressable
             onLongPress={() => onLongPress?.(message)}
             delayLongPress={300}
@@ -1257,13 +1618,7 @@ function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToM
           )}
           {message.isVoice ? (
             <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={300} style={styles.voiceBubble}>
-              <Pressable style={styles.voicePlayBtn}>
-                <Text style={{ fontSize: 14 }}>▶</Text>
-              </Pressable>
-              <View style={styles.voiceWave}>
-                <View style={styles.voiceBar} />
-              </View>
-              <Text style={styles.voiceDuration}>0:12</Text>
+              <InlineVoicePlayer uri={message.audioUri} durationMs={message.audioDurationMs ?? 12000} isOwn={false} />
             </Pressable>
           ) : message.imageUrl ? (
             <Pressable
@@ -2715,5 +3070,251 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   menuActionItemActive: {
     backgroundColor: colors.primary + "15",
     borderColor: colors.primary + "40",
+  },
+
+  voiceBubbleOwn: {
+    backgroundColor: colors.primary,
+    borderColor: "transparent",
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 6,
+  },
+  inlineVoiceRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+  },
+  inlineVoicePlayBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  inlineVoicePlayBtnOwn: {
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+  inlineWaveformWrap: {
+    flex: 1,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 2,
+    height: 24,
+  },
+  inlineWaveBar: {
+    width: 3,
+    borderRadius: 2,
+  },
+  inlineVoiceDuration: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: colors.mutedForeground,
+    minWidth: 28,
+    textAlign: "right" as const,
+  },
+  inlineVoiceDurationOwn: {
+    color: "rgba(255,255,255,0.8)",
+  },
+
+  vrBackdrop: {
+    flex: 1,
+    justifyContent: "flex-end" as const,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  vrSheet: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 12,
+    minHeight: 260,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  vrHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: "center" as const,
+    marginBottom: 18,
+  },
+  vrHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    marginBottom: 32,
+  },
+  vrTitle: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: colors.foreground,
+  },
+  vrCloseBtn: {
+    padding: 4,
+  },
+  vrIdleBody: {
+    alignItems: "center" as const,
+    gap: 20,
+    paddingBottom: 8,
+  },
+  vrHint: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontWeight: "500" as const,
+  },
+  vrBigMicBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  vrRecordingBody: {
+    alignItems: "center" as const,
+    gap: 16,
+    paddingBottom: 8,
+  },
+  vrPulseRing: {
+    position: "absolute" as const,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primary + "25",
+  },
+  vrRecordingCenter: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    marginTop: 16,
+  },
+  vrRedDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#E84040",
+  },
+  vrRecordingDuration: {
+    fontSize: 28,
+    fontWeight: "700" as const,
+    color: colors.foreground,
+    letterSpacing: 1,
+    fontVariant: ["tabular-nums"] as const,
+  },
+  vrRecordingHint: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    fontWeight: "500" as const,
+  },
+  vrStopBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+    marginTop: 8,
+  },
+  vrPreviewBody: {
+    gap: 28,
+    paddingBottom: 8,
+  },
+  vrPreviewPlayer: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  vrPreviewPlayBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.primary,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  vrPreviewTrackWrap: {
+    flex: 1,
+    gap: 8,
+  },
+  vrPreviewTrack: {
+    height: 6,
+    backgroundColor: colors.secondary,
+    borderRadius: 3,
+    overflow: "hidden" as const,
+  },
+  vrPreviewFill: {
+    height: "100%",
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  vrPreviewDuration: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: colors.mutedForeground,
+  },
+  vrPreviewActions: {
+    flexDirection: "row" as const,
+    gap: 12,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+  },
+  vrDiscardBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center" as const,
+  },
+  vrDiscardText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: colors.mutedForeground,
+  },
+  vrSendBtn: {
+    flex: 2,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  vrSendText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: colors.primaryForeground,
   },
 });
