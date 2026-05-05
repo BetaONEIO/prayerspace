@@ -143,104 +143,19 @@ interface FeedPost {
   includeTranscription?: boolean;
 }
 
-const COMMUNITIES: Community[] = [
-  {
-    id: "castle-church",
-    name: "Castle Church",
-    memberCount: 247,
-    accentColor: "#C4521A",
-    iconLetter: "C",
-    gradientColors: ["#9E3A0E", "#C4521A", "#D96E27"],
-    bannerImage: "https://images.unsplash.com/photo-1548625149-720754507716?w=400&q=80",
-    description: "A vibrant community rooted in faith, prayer, and serving one another.",
-  },
-  {
-    id: "hope-church",
-    name: "Hope Church",
-    memberCount: 134,
-    accentColor: "#2E6DB5",
-    iconLetter: "H",
-    gradientColors: ["#1A4A8A", "#2E6DB5", "#4A8FD9"],
-    bannerImage: "https://images.unsplash.com/photo-1476231682828-37e571bc172f?w=400&q=80",
-    description: "Where faith meets hope. Join us in lifting each other through prayer.",
-  },
-  {
-    id: "city-light",
-    name: "City Light Church",
-    memberCount: 312,
-    accentColor: "#B5820A",
-    iconLetter: "L",
-    gradientColors: ["#7A5400", "#B5820A", "#D4A017"],
-    bannerImage: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80",
-    description: "A lighthouse community praying for our city and beyond.",
-  },
-  {
-    id: "young-adults",
-    name: "Young Adults",
-    memberCount: 58,
-    accentColor: "#6B3FA0",
-    iconLetter: "Y",
-    gradientColors: ["#4A2578", "#6B3FA0", "#9B59B6"],
-    bannerImage: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
-    isPrivate: true,
-    password: "YOUTH2024",
-    description: "A private space for our young adults family. For members only.",
-  },
-  {
-    id: "prayer-partners",
-    name: "Prayer Partners",
-    memberCount: 12,
-    accentColor: "#1A7A52",
-    iconLetter: "P",
-    gradientColors: ["#0F5238", "#1A7A52", "#27A06E"],
-    bannerImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    isPrivate: true,
-    password: "PRAY123",
-    description: "A close-knit group of intercessors. By invitation only.",
-  },
-  {
-    id: "pray-for-israel",
-    name: "Pray for Israel",
-    memberCount: 3847,
-    accentColor: "#0055AA",
-    iconLetter: "I",
-    gradientColors: ["#003F80", "#0055AA", "#1A7ACC"] as [string, string, string],
-    bannerImage: "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=800&q=80",
-    description: "United in prayer for the peace of Jerusalem and the people of Israel. Pray for the peace of Jerusalem. \u2014 Psalm 122:6",
-    isOfficial: true,
-  },
-  {
-    id: "worldwide-prayer",
-    name: "Worldwide Prayer",
-    memberCount: 12841,
-    accentColor: "#1A7A52",
-    iconLetter: "W",
-    gradientColors: ["#0F5238", "#1A7A52", "#27A06E"] as [string, string, string],
-    bannerImage: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=800&q=80",
-    description: "A global community united in intercession for the nations. Praying together across every border and language.",
-    isOfficial: true,
-  },
-];
-
-const AVATAR_NAME_MAP: Record<string, string> = {
-  "https://randomuser.me/api/portraits/men/32.jpg": "Michael Chen",
-  "https://randomuser.me/api/portraits/women/44.jpg": "Emma Thompson",
-  "https://randomuser.me/api/portraits/men/85.jpg": "David Wilson",
-  "https://randomuser.me/api/portraits/women/62.jpg": "Alice Browne",
-  "https://randomuser.me/api/portraits/men/75.jpg": "Pastor John",
-  "https://randomuser.me/api/portraits/women/24.jpg": "Chloe Martin",
-  "https://randomuser.me/api/portraits/men/55.jpg": "James Foster",
-  "https://randomuser.me/api/portraits/women/55.jpg": "Rachel Kim",
-  "https://randomuser.me/api/portraits/men/14.jpg": "Tom Adeyemi",
-  "https://randomuser.me/api/portraits/women/33.jpg": "Diana Prince",
-  "https://randomuser.me/api/portraits/men/22.jpg": "Nathan Brooks",
-  "https://randomuser.me/api/portraits/women/38.jpg": "Sophie Lane",
-  "https://randomuser.me/api/portraits/men/63.jpg": "Carlos Rivera",
-  "https://randomuser.me/api/portraits/men/12.jpg": "Owen Clarke",
-  "https://randomuser.me/api/portraits/women/68.jpg": "Emma Wilson",
-  "https://randomuser.me/api/portraits/men/42.jpg": "Bob Jenkins",
-  "https://randomuser.me/api/portraits/women/47.jpg": "Naomi Okafor",
+const DEFAULT_COMMUNITY: Community = {
+  id: "default",
+  name: "Prayer Space",
+  memberCount: 0,
+  accentColor: "#E86F24",
+  iconLetter: "P",
+  gradientColors: ["#9E3A0E", "#E86F24", "#D96E27"],
+  bannerImage: "",
 };
+
+const COMMUNITIES: Community[] = [];
+
+const AVATAR_NAME_MAP: Record<string, string> = {};
 
 const ALL_FEED_POSTS: FeedPost[] = [];
 
@@ -256,46 +171,9 @@ interface MyGroup {
   isAdmin?: boolean;
 }
 
-const NOTIFICATION_GROUP_MAP: Record<string, MyGroup> = {
-  "g1": {
-    id: "notif_g1",
-    name: "Morning Grace Circle",
-    memberCount: 18,
-    lastActivity: "Just now",
-    avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
-    activeRequests: 2,
-  },
-};
+const NOTIFICATION_GROUP_MAP: Record<string, MyGroup> = {};
 
-const INITIAL_MY_GROUPS: MyGroup[] = [
-  {
-    id: "g1",
-    name: "Grace Community",
-    memberCount: 24,
-    lastActivity: "2 hours ago",
-    avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
-    activeRequests: 3,
-    isAdmin: true,
-  },
-  {
-    id: "g2",
-    name: "Morning Prayer Circle",
-    memberCount: 11,
-    lastActivity: "Yesterday",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    activeRequests: 1,
-    isAdmin: true,
-  },
-  {
-    id: "g3",
-    name: "Family First",
-    memberCount: 6,
-    lastActivity: "3 days ago",
-    avatar: "https://images.unsplash.com/photo-1511895426328-dc8714191011?w=400&q=80",
-    activeRequests: 0,
-    isAdmin: false,
-  },
-];
+const INITIAL_MY_GROUPS: MyGroup[] = [];
 
 interface JoinableGroup {
   password: string;
@@ -305,29 +183,7 @@ interface JoinableGroup {
   description: string;
 }
 
-const JOINABLE_GROUPS: Record<string, JoinableGroup> = {
-  "FAITH2024": {
-    password: "FAITH2024",
-    name: "Faith Warriors",
-    avatar: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=400&q=80",
-    memberCount: 42,
-    description: "A group dedicated to strengthening faith through daily prayer and scripture.",
-  },
-  "HOPE123": {
-    password: "HOPE123",
-    name: "Hope Collective",
-    avatar: "https://images.unsplash.com/photo-1476231682828-37e571bc172f?w=400&q=80",
-    memberCount: 19,
-    description: "Supporting each other through prayer, encouragement, and community.",
-  },
-  "GRACE99": {
-    password: "GRACE99",
-    name: "Grace Fellowship",
-    avatar: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&q=80",
-    memberCount: 67,
-    description: "A welcoming space for prayer, worship, and growing together in grace.",
-  },
-};
+const JOINABLE_GROUPS: Record<string, JoinableGroup> = {};
 
 interface CommunityGroup {
   id: string;
@@ -340,87 +196,6 @@ interface CommunityGroup {
 }
 
 const COMMUNITY_GROUPS: CommunityGroup[] = [
-  {
-    id: "cg1",
-    communityId: "castle-church",
-    name: "Men's Prayer Circle",
-    memberCount: 14,
-    lastActivity: "1 hour ago",
-    avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
-    activeRequests: 2,
-  },
-  {
-    id: "cg2",
-    communityId: "castle-church",
-    name: "Women of Faith",
-    memberCount: 22,
-    lastActivity: "3 hours ago",
-    avatar: "https://images.unsplash.com/photo-1511895426328-dc8714191011?w=400&q=80",
-    activeRequests: 1,
-  },
-  {
-    id: "cg3",
-    communityId: "castle-church",
-    name: "Intercessors Team",
-    memberCount: 8,
-    lastActivity: "Yesterday",
-    avatar: "https://images.unsplash.com/photo-1548625149-720754507716?w=400&q=80",
-    activeRequests: 0,
-  },
-  {
-    id: "cg4",
-    communityId: "hope-church",
-    name: "Youth Prayer Group",
-    memberCount: 31,
-    lastActivity: "2 hours ago",
-    avatar: "https://images.unsplash.com/photo-1476231682828-37e571bc172f?w=400&q=80",
-    activeRequests: 3,
-  },
-  {
-    id: "cg5",
-    communityId: "hope-church",
-    name: "Home Groups",
-    memberCount: 16,
-    lastActivity: "Yesterday",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    activeRequests: 0,
-  },
-  {
-    id: "cg6",
-    communityId: "city-light",
-    name: "Bible Study",
-    memberCount: 12,
-    lastActivity: "Today",
-    avatar: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=400&q=80",
-    activeRequests: 1,
-  },
-  {
-    id: "cg7",
-    communityId: "city-light",
-    name: "Outreach Team",
-    memberCount: 19,
-    lastActivity: "3 days ago",
-    avatar: "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400&q=80",
-    activeRequests: 0,
-  },
-  {
-    id: "cg8",
-    communityId: "young-adults",
-    name: "Early Risers",
-    memberCount: 9,
-    lastActivity: "This morning",
-    avatar: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=400&q=80",
-    activeRequests: 2,
-  },
-  {
-    id: "cg9",
-    communityId: "prayer-partners",
-    name: "Intercessory Core",
-    memberCount: 6,
-    lastActivity: "2 days ago",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    activeRequests: 0,
-  },
 ];
 
 type GroupSubTab = "My Groups" | "Community";
@@ -452,14 +227,14 @@ export default function CommunityScreen() {
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [switcherVisible, setSwitcherVisible] = useState<boolean>(false);
   const [joinedCommunities, setJoinedCommunities] = useState<Community[]>([]);
-  const [activeCommunity, setActiveCommunity] = useState<Community>(COMMUNITIES[0]);
+  const [activeCommunity, setActiveCommunity] = useState<Community>(DEFAULT_COMMUNITY);
   const [browseCommunitiesVisible, setBrowseCommunitiesVisible] = useState<boolean>(false);
   const [stopPrayingPost, setStopPrayingPost] = useState<{ id: string; post: FeedPost } | null>(null);
   const [prayingUsersPost, setPrayingUsersPost] = useState<FeedPost | null>(null);
   const [shareTarget, setShareTarget] = useState<FeedPost | null>(null);
   const [hasNewUpdates, setHasNewUpdates] = useState<boolean>(true);
   const newUpdateAnim = useRef(new Animated.Value(0)).current;
-  const activeCommunityRef = useRef<Community>(COMMUNITIES[0]);
+  const activeCommunityRef = useRef<Community>(DEFAULT_COMMUNITY);
   const [prayingForPrompt, setPrayingForPrompt] = useState<{ post: FeedPost } | null>(null);
   const prayingForPromptAnim = useRef(new Animated.Value(0)).current;
   const promptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

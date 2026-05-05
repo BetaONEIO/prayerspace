@@ -60,60 +60,7 @@ interface MyPost {
   originalPostedAt?: string;
 }
 
-const INITIAL_MY_POSTS: MyPost[] = [
-  {
-    id: "f1",
-    category: "SURGERY",
-    timeLabel: "TODAY",
-    postedAt: "Today at 9:14 AM",
-    isTimeSensitive: true,
-    content:
-      '"My grandmother is going into surgery tomorrow morning for her hip. Please pray for the doctors and for her peace of mind during the procedure."',
-    prayerCount: 12,
-    commentCount: 5,
-    prayedByAvatars: [
-      "https://randomuser.me/api/portraits/men/32.jpg",
-      "https://randomuser.me/api/portraits/women/44.jpg",
-      "https://randomuser.me/api/portraits/men/85.jpg",
-    ],
-    isAnswered: false,
-  },
-  {
-    id: "f3",
-    category: "HEALING",
-    timeLabel: "YESTERDAY",
-    postedAt: "Yesterday at 7:45 AM",
-    isTimeSensitive: true,
-    content:
-      '"Please keep my mum in prayer — she was rushed to hospital this morning. Doctors are still running tests. We trust in the Lord completely."',
-    prayerCount: 34,
-    commentCount: 11,
-    prayedByAvatars: [
-      "https://randomuser.me/api/portraits/men/32.jpg",
-      "https://randomuser.me/api/portraits/women/24.jpg",
-      "https://randomuser.me/api/portraits/men/55.jpg",
-    ],
-    isAnswered: false,
-  },
-  {
-    id: "update_1",
-    category: "UPDATE",
-    timeLabel: "3 DAYS AGO",
-    postedAt: "Apr 18 at 11:30 AM",
-    content: "God has been so faithful. My sister passed her exams and we are so grateful. Thank you all for praying.",
-    prayerCount: 7,
-    commentCount: 3,
-    prayedByAvatars: [
-      "https://randomuser.me/api/portraits/women/33.jpg",
-      "https://randomuser.me/api/portraits/men/75.jpg",
-    ],
-    updateTag: "answered",
-    isAnswered: true,
-    originalPostId: "old_f5",
-    originalContent: "Please pray for my sister who is sitting her final exams this week. She's been really anxious.",
-    originalPostedAt: "Apr 15 at 8:00 AM",
-  },
-];
+const INITIAL_MY_POSTS: MyPost[] = [];
 
 const ANSWERED_GREEN = "#4A8C6A";
 const ANSWERED_GREEN_BG = "#EEF6F1";
@@ -184,11 +131,7 @@ export default function MyPostsScreen() {
             updateTag: row.status === "answered" ? "answered" : undefined,
           };
         });
-        setPosts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const newOnes = realPosts.filter((p) => !existingIds.has(p.id));
-          return [...newOnes, ...prev];
-        });
+        setPosts(realPosts);
       });
   }, [user?.id]);
   const [filter, setFilter] = useState<FilterTab>("All");

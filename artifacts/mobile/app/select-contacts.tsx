@@ -13,7 +13,7 @@ export default function SelectContactsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Contact[]>([allContacts[0], allContacts[1]]);
+  const [selected, setSelected] = useState<Contact[]>([]);
 
   const filtered = allContacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
   const toggleContact = useCallback((contact: Contact) => {
