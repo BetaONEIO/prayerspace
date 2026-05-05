@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Pressable,
   Animated,
+  Easing,
   Dimensions,
   Modal,
   ScrollView,
@@ -195,14 +196,52 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
     }
   }, [visible, slideAnim, backdropAnim, swipeX]);
 
+  // Animate the drawer out smoothly, then call onClose once off-screen
+  const handleAnimatedClose = useCallback(() => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -DRAWER_WIDTH,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropAnim, {
+        toValue: 0,
+        duration: 280,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      swipeX.setValue(0);
+      onClose();
+    });
+  }, [slideAnim, backdropAnim, swipeX, onClose]);
+
   const handleNavPress = useCallback(
     (route: string) => {
-      onClose();
-      setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -DRAWER_WIDTH,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 0,
+          duration: 240,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        swipeX.setValue(0);
+        onClose();
         router.push(route as any);
-      }, 240);
+      });
     },
-    [onClose, router]
+    [slideAnim, backdropAnim, swipeX, onClose, router]
   );
 
   const handleLogout = useCallback(() => {
@@ -211,26 +250,26 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
 
   const handleConfirmSignOut = useCallback(async () => {
     setShowSignOutModal(false);
-    onClose();
+    handleAnimatedClose();
     try {
       await signOut();
     } catch (error) {
       console.error("[Drawer] Sign out error:", error);
     }
-  }, [onClose, signOut]);
+  }, [handleAnimatedClose, signOut]);
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleAnimatedClose}
       statusBarTranslucent
     >
       <View style={styles.root}>
         {/* Tappable backdrop */}
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleAnimatedClose} />
         </Animated.View>
 
         {/* Drawer panel */}
@@ -245,7 +284,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
           <View style={[styles.profileSection, { paddingTop: insets.top + 12 }]}>
             {/* Top row: close button + settings */}
             <View style={styles.topRow}>
-              <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
+              <Pressable style={styles.closeBtn} onPress={handleAnimatedClose} hitSlop={8}>
                 <ChevronLeft size={20} color={colors.mutedForeground} strokeWidth={2} />
               </Pressable>
               <Pressable
