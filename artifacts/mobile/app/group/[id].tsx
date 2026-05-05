@@ -677,8 +677,10 @@ export default function GroupDetailScreen() {
             <View style={styles.dateDivider}>
               <Text style={styles.dateDividerText}>Today</Text>
             </View>
-            {chatMessages.map((msg) =>
-              msg.isOwn ? (
+            {chatMessages.map((msg, index) => {
+              const prevMsg = chatMessages[index - 1];
+              const isFirstInGroup = !prevMsg || prevMsg.senderId !== msg.senderId;
+              return msg.isOwn ? (
                 <OwnMessage
                   key={msg.id}
                   message={msg}
@@ -692,14 +694,15 @@ export default function GroupDetailScreen() {
                 <OtherMessage
                   key={msg.id}
                   message={msg}
+                  showHeader={isFirstInGroup}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
                   onReply={handleReply}
                   onScrollToMessage={handleScrollToMessage}
                   onLayout={(y) => msgPositionsRef.current.set(msg.id, y)}
                 />
-              )
-            )}
+              );
+            })}
           </ScrollView>
 
           <View style={styles.chatInputOuter}>
@@ -1644,8 +1647,9 @@ function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMes
   );
 }
 
-function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+function OtherMessage({ message, showHeader = true, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
   message: ChatMessage;
+  showHeader?: boolean;
   onImagePress?: (uri: string) => void;
   onLongPress?: (msg: ChatMessage) => void;
   onReply?: (msg: ChatMessage) => void;
@@ -1657,12 +1661,21 @@ function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToM
   return (
     <SwipeableMessage onReply={() => onReply?.(message)}>
       <View
-        style={styles.otherMessageWrap}
+        style={[styles.otherMessageWrap, !showHeader && styles.otherMessageGrouped]}
         onLayout={(e) => onLayout?.(e.nativeEvent.layout.y)}
       >
-        <Image source={{ uri: message.senderAvatar }} style={styles.otherAvatar} />
+        {showHeader ? (
+          <Image source={{ uri: message.senderAvatar }} style={styles.otherAvatar} />
+        ) : (
+          <View style={styles.otherAvatarSpacer} />
+        )}
         <View style={styles.otherContent}>
-          <Text style={styles.otherSenderName}>{message.senderName}</Text>
+          {showHeader && (
+            <View style={styles.otherSenderRow}>
+              <Text style={styles.otherSenderName}>{message.senderName}</Text>
+              <Text style={styles.otherSenderTime}>· {message.time}</Text>
+            </View>
+          )}
           {message.replyTo && (
             <QuoteView
               replyTo={message.replyTo}
@@ -1698,7 +1711,7 @@ function OtherMessage({ message, onImagePress, onLongPress, onReply, onScrollToM
           )}
           <EmojiReactions reactions={message.reactions} />
           <PrayingReactions reactions={message.reactions} />
-          <Text style={styles.otherTime}>{message.time}</Text>
+          {!showHeader && <Text style={styles.otherTime}>{message.time}</Text>}
         </View>
       </View>
     </SwipeableMessage>
@@ -2447,7 +2460,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    gap: 16,
+    gap: 10,
   },
   dateDivider: {
     alignSelf: "center" as const,
@@ -2595,25 +2608,42 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "flex-start" as const,
     alignSelf: "flex-start" as const,
-    gap: 10,
+    gap: 12,
     maxWidth: "90%",
   },
+  otherMessageGrouped: {
+    marginTop: -6,
+  },
   otherAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  otherAvatarSpacer: {
+    width: 40,
+  },
   otherContent: {
     flex: 1,
-    gap: 4,
+    gap: 2,
+  },
+  otherSenderRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    marginLeft: 2,
+    marginBottom: 2,
   },
   otherSenderName: {
-    fontSize: 10,
-    fontWeight: "800" as const,
+    fontSize: 12,
+    fontWeight: "700" as const,
     color: colors.primary,
-    marginLeft: 2,
+  },
+  otherSenderTime: {
+    fontSize: 10,
+    color: colors.mutedForeground,
+    fontWeight: "500" as const,
   },
   otherBubble: {
     backgroundColor: colors.card,
@@ -2639,6 +2669,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.mutedForeground,
     fontWeight: "500" as const,
     marginLeft: 2,
+    marginTop: 2,
   },
   voiceBubble: {
     backgroundColor: colors.card,

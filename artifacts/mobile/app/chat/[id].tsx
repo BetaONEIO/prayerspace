@@ -684,8 +684,20 @@ export default function ChatScreen() {
   );
 
   const renderMessage = useCallback(
-    ({ item }: { item: Message }) => {
+    ({ item, index }: { item: Message; index: number }) => {
       const isMine = item.sender_id === currentUserId || (!isRealUser && item.sender_id === "user-1");
+      const prevItem = index > 0 ? messages[index - 1] : null;
+      const isFirstInGroup = !prevItem || prevItem.sender_id !== item.sender_id;
+
+      const avatarEl = !isMine ? (
+        isFirstInGroup ? (
+          otherAvatar
+            ? <Image source={{ uri: otherAvatar }} style={styles.dmAvatar} />
+            : <View style={[styles.dmAvatar, styles.dmAvatarFallback]}>
+                <Text style={styles.dmAvatarInitial}>{otherName.charAt(0).toUpperCase()}</Text>
+              </View>
+        ) : <View style={styles.dmAvatarSpacer} />
+      ) : null;
 
       if (item.type === "prayer_share") {
         let cardMeta: PrayerCardMeta = {};
@@ -696,7 +708,7 @@ export default function ChatScreen() {
             cardMeta = { preview_text: item.prayer_request_content };
           }
         }
-        return (
+        const bubble = (
           <Pressable
             onLongPress={() => openContextMenu(item)}
             style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}
@@ -714,25 +726,77 @@ export default function ChatScreen() {
             {renderReactions(item)}
           </Pressable>
         );
+        if (!isMine) {
+          return (
+            <View style={[styles.dmIncomingOuter, !isFirstInGroup && styles.dmMsgGrouped]}>
+              {avatarEl}
+              {bubble}
+            </View>
+          );
+        }
+        return bubble;
       }
 
       const hasImage = !!item.image_url;
       const hasText = (item.content ?? "").trim().length > 0;
       const msgReplyTo = (item as Message & { reply_to?: { senderName: string; content: string } }).reply_to;
 
+      if (!isMine) {
+        return (
+          <View style={[styles.dmIncomingOuter, !isFirstInGroup && styles.dmMsgGrouped]}>
+            {avatarEl}
+            <Pressable
+              onLongPress={() => openContextMenu(item)}
+              style={[styles.msgRow, styles.msgRowLeft]}
+            >
+              {msgReplyTo && (
+                <View style={styles.quoteWrap}>
+                  <View style={styles.quoteBar} />
+                  <View style={styles.quoteBody}>
+                    <Text style={styles.quoteSenderName}>{msgReplyTo.senderName}</Text>
+                    <Text style={styles.quoteText} numberOfLines={2}>{msgReplyTo.content}</Text>
+                  </View>
+                </View>
+              )}
+              <View style={[styles.bubble, styles.bubbleTheirs, hasImage && styles.bubbleWithImage]}>
+                {hasImage && (
+                  <Pressable onPress={() => setViewingImage(item.image_url!)} activeOpacity={0.88}>
+                    <Image source={{ uri: item.image_url! }} style={styles.msgImage} contentFit="cover" />
+                  </Pressable>
+                )}
+                {hasText && (
+                  <Text style={[styles.bubbleText, styles.bubbleTextTheirs, hasImage && styles.bubbleTextWithImage]}>
+                    {item.content}
+                  </Text>
+                )}
+                {item.is_edited && (
+                  <Text style={[styles.editedLabel, styles.editedLabelTheirs]}>edited</Text>
+                )}
+              </View>
+              <View style={styles.timeRow}>
+                <Text style={styles.msgTime}>
+                  {isRealUser ? formatMessageTime(item.created_at) : item.created_at}
+                </Text>
+              </View>
+              {renderReactions(item)}
+            </Pressable>
+          </View>
+        );
+      }
+
       return (
         <Pressable
           onLongPress={() => openContextMenu(item)}
-          style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}
+          style={[styles.msgRow, styles.msgRowRight, !isFirstInGroup && styles.dmMsgGrouped]}
         >
           {msgReplyTo && (
-            <View style={[styles.quoteWrap, isMine && styles.quoteWrapOwn]}>
-              <View style={[styles.quoteBar, isMine && styles.quoteBarOwn]} />
+            <View style={[styles.quoteWrap, styles.quoteWrapOwn]}>
+              <View style={[styles.quoteBar, styles.quoteBarOwn]} />
               <View style={styles.quoteBody}>
-                <Text style={[styles.quoteSenderName, isMine && styles.quoteSenderNameOwn]}>
+                <Text style={[styles.quoteSenderName, styles.quoteSenderNameOwn]}>
                   {msgReplyTo.senderName}
                 </Text>
-                <Text style={[styles.quoteText, isMine && styles.quoteTextOwn]} numberOfLines={2}>
+                <Text style={[styles.quoteText, styles.quoteTextOwn]} numberOfLines={2}>
                   {msgReplyTo.content}
                 </Text>
               </View>
@@ -740,7 +804,7 @@ export default function ChatScreen() {
           )}
           <View style={[
             styles.bubble,
-            isMine ? styles.bubbleMine : styles.bubbleTheirs,
+            styles.bubbleMine,
             hasImage && styles.bubbleWithImage,
           ]}>
             {hasImage && (
@@ -751,27 +815,27 @@ export default function ChatScreen() {
             {hasText && (
               <Text style={[
                 styles.bubbleText,
-                isMine ? styles.bubbleTextMine : styles.bubbleTextTheirs,
+                styles.bubbleTextMine,
                 hasImage && styles.bubbleTextWithImage,
               ]}>
                 {item.content}
               </Text>
             )}
             {item.is_edited && (
-              <Text style={[styles.editedLabel, isMine ? styles.editedLabelMine : styles.editedLabelTheirs]}>edited</Text>
+              <Text style={[styles.editedLabel, styles.editedLabelMine]}>edited</Text>
             )}
           </View>
-          <View style={[styles.timeRow, isMine && styles.timeRowRight]}>
+          <View style={[styles.timeRow, styles.timeRowRight]}>
             <Text style={styles.msgTime}>
               {isRealUser ? formatMessageTime(item.created_at) : item.created_at}
             </Text>
-            {isMine && <CheckCheck size={12} color={colors.primary} />}
+            <CheckCheck size={12} color={colors.primary} />
           </View>
           {renderReactions(item)}
         </Pressable>
       );
     },
-    [currentUserId, isRealUser, openContextMenu, renderReactions, handleReply, colors]
+    [currentUserId, isRealUser, openContextMenu, renderReactions, handleReply, colors, messages, otherAvatar, otherName]
   );
 
   const isLoading = isRealUser && (convQuery.isLoading || messagesQuery.isLoading);
@@ -1224,7 +1288,39 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "600" as const,
     fontSize: 14,
   },
-  chatContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 16 },
+  chatContent: { paddingHorizontal: 16, paddingVertical: 20, gap: 10 },
+  dmIncomingOuter: {
+    flexDirection: "row" as const,
+    alignItems: "flex-start" as const,
+    alignSelf: "flex-start" as const,
+    gap: 8,
+    maxWidth: "85%",
+  },
+  dmMsgGrouped: {
+    marginTop: -6,
+  },
+  dmAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexShrink: 0,
+  },
+  dmAvatarFallback: {
+    backgroundColor: colors.accent,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  dmAvatarInitial: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: colors.primary,
+  },
+  dmAvatarSpacer: {
+    width: 40,
+    flexShrink: 0,
+  },
   emptyChat: {
     alignItems: "center" as const,
     paddingTop: 80,
