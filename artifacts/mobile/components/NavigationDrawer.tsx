@@ -11,6 +11,7 @@ import {
   PanResponder,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import AvatarImage from "@/components/AvatarImage";
 import { useRouter } from "expo-router";
@@ -28,6 +29,7 @@ import {
   MessageSquare,
   Sparkles,
   HandHeart,
+  ChevronLeft,
 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -90,6 +92,7 @@ const secondaryItems: NavItem[] = [
 export default function NavigationDrawer({ visible, onClose, activeRoute }: NavigationDrawerProps) {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, profile, signOut } = useAuth();
   const { isPremiumCommunity } = useChurchEntitlements();
@@ -98,10 +101,25 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
 
+  // Interpolate backdrop opacity so it fades as the user swipes left
+  const backdropOpacity = useMemo(
+    () =>
+      Animated.add(
+        backdropAnim,
+        swipeX.interpolate({
+          inputRange: [-DRAWER_WIDTH, 0],
+          outputRange: [-1, 0],
+          extrapolate: "clamp",
+        })
+      ),
+    [backdropAnim, swipeX]
+  );
+
   const panResponder = useRef(
     PanResponder.create({
+      // Only capture clearly leftward horizontal gestures — don't steal vertical scrolls
       onMoveShouldSetPanResponder: (_, { dx, dy }) => {
-        return dx < -8 && Math.abs(dx) > Math.abs(dy) * 1.5;
+        return dx < -10 && Math.abs(dx) > Math.abs(dy) * 2;
       },
       onPanResponderMove: (_, { dx }) => {
         if (dx < 0) {
@@ -116,18 +134,20 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
           Animated.parallel([
             Animated.timing(slideAnim, {
               toValue: -DRAWER_WIDTH,
-              duration: 200,
+              duration: 220,
               useNativeDriver: true,
             }),
             Animated.timing(backdropAnim, {
               toValue: 0,
-              duration: 200,
+              duration: 220,
               useNativeDriver: true,
             }),
-          ]).start(() => {
-            swipeX.setValue(0);
-            onClose();
-          });
+            Animated.timing(swipeX, {
+              toValue: 0,
+              duration: 220,
+              useNativeDriver: true,
+            }),
+          ]).start(() => onClose());
         } else {
           Animated.spring(swipeX, {
             toValue: 0,
@@ -159,6 +179,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
         }),
       ]).start();
     } else {
+      swipeX.setValue(0);
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: -DRAWER_WIDTH,
@@ -172,7 +193,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
         }),
       ]).start();
     }
-  }, [visible, slideAnim, backdropAnim]);
+  }, [visible, slideAnim, backdropAnim, swipeX]);
 
   const handleNavPress = useCallback(
     (route: string) => {
@@ -207,12 +228,12 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
       statusBarTranslucent
     >
       <View style={styles.root}>
-        <Animated.View
-          style={[styles.backdrop, { opacity: backdropAnim }]}
-        >
+        {/* Tappable backdrop */}
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
+        {/* Drawer panel */}
         <Animated.View
           style={[
             styles.drawer,
@@ -220,7 +241,23 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
           ]}
           {...panResponder.panHandlers}
         >
-          <View style={styles.profileSection}>
+          {/* Profile header — safe area top */}
+          <View style={[styles.profileSection, { paddingTop: insets.top + 12 }]}>
+            {/* Top row: close button + settings */}
+            <View style={styles.topRow}>
+              <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={8}>
+                <ChevronLeft size={20} color={colors.mutedForeground} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                style={styles.settingsBtn}
+                onPress={() => handleNavPress("/settings")}
+                hitSlop={8}
+              >
+                <Settings size={18} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+
+            {/* Avatar + name */}
             <View style={styles.profileRow}>
               <Pressable onPress={() => handleNavPress("/profile")}>
                 <AvatarImage
@@ -233,20 +270,21 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                 <Text style={styles.profileName}>{displayName}</Text>
                 <Text style={styles.profileEmail} numberOfLines={1}>{displayEmail}</Text>
               </View>
-              <Pressable
-                style={styles.settingsBtn}
-                onPress={() => handleNavPress("/settings")}
-              >
-                <Settings size={18} color={colors.mutedForeground} />
-              </Pressable>
             </View>
           </View>
 
+          {/* Pray CTA */}
           <Pressable style={styles.prayBtn} onPress={() => handleNavPress("/(tabs)/pray")}>
             <Text style={styles.prayBtnText}>Pray</Text>
           </Pressable>
 
-          <ScrollView style={styles.navSection} contentContainerStyle={styles.navContent} showsVerticalScrollIndicator={false}>
+          {/* Scrollable nav links */}
+          <ScrollView
+            style={styles.navSection}
+            contentContainerStyle={styles.navContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {navGroups.map((group, groupIndex) => (
               <View key={group.label}>
                 {groupIndex > 0 && <View style={styles.groupDivider} />}
@@ -265,12 +303,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                         color={isActive ? colors.primary : colors.mutedForeground}
                         strokeWidth={isActive ? 2.5 : 1.5}
                       />
-                      <Text
-                        style={[
-                          styles.navLabel,
-                          isActive && styles.navLabelActive,
-                        ]}
-                      >
+                      <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
                         {item.label}
                       </Text>
                       {item.badge ? (
@@ -294,18 +327,15 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                   style={styles.navItem}
                   onPress={() => handleNavPress(item.route)}
                 >
-                  <Icon
-                    size={22}
-                    color={colors.mutedForeground}
-                    strokeWidth={1.5}
-                  />
+                  <Icon size={22} color={colors.mutedForeground} strokeWidth={1.5} />
                   <Text style={styles.navLabelSecondary}>{item.label}</Text>
                 </Pressable>
               );
             })}
           </ScrollView>
 
-          <View style={styles.footer}>
+          {/* Sticky footer: Plus card + Sign Out — respects bottom safe area */}
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
             {!isPremiumCommunity && (
               <Pressable
                 style={styles.proBtn}
@@ -368,21 +398,48 @@ function createStyles(colors: ThemeColors) {
       elevation: 20,
       flexDirection: "column",
     },
+
+    // Header / profile
     profileSection: {
-      paddingTop: 60,
-      paddingBottom: 24,
+      paddingBottom: 20,
       paddingHorizontal: 20,
       backgroundColor: colors.primary + "12",
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    closeBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    settingsBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.card,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 1,
     },
     profileRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
-      marginBottom: 0,
     },
     profileAvatar: {
-      width: 60,
-      height: 60,
+      width: 56,
+      height: 56,
       borderRadius: 9999,
       borderWidth: 2,
       borderColor: colors.card,
@@ -392,7 +449,7 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
     },
     profileName: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "700" as const,
       color: colors.foreground,
     },
@@ -402,26 +459,38 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "500" as const,
       marginTop: 2,
     },
-    settingsBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.card,
+
+    // Pray button
+    prayBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 999,
+      paddingVertical: 15,
+      marginHorizontal: 20,
+      marginTop: 18,
+      marginBottom: 4,
       alignItems: "center" as const,
       justifyContent: "center" as const,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: 4,
-      elevation: 1,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 6,
     },
+    prayBtnText: {
+      color: "#FFFFFF",
+      fontSize: 16,
+      fontWeight: "700" as const,
+      letterSpacing: 0.2,
+    },
+
+    // Nav list
     navSection: {
       flex: 1,
       paddingHorizontal: 12,
-      paddingTop: 12,
+      paddingTop: 10,
     },
     navContent: {
-      paddingBottom: 8,
+      paddingBottom: 12,
     },
     navItem: {
       flexDirection: "row",
@@ -482,40 +551,28 @@ function createStyles(colors: ThemeColors) {
       paddingTop: 8,
       paddingBottom: 4,
     },
-    prayBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: 999,
-      paddingVertical: 16,
-      marginHorizontal: 20,
-      marginTop: 20,
-      marginBottom: 4,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.35,
-      shadowRadius: 20,
-      elevation: 8,
-    },
-    prayBtnText: {
-      color: "#FFFFFF",
-      fontSize: 17,
-      fontWeight: "700" as const,
-      letterSpacing: 0.2,
-    },
+
+    // Sticky footer
     footer: {
-      padding: 20,
+      paddingHorizontal: 16,
+      paddingTop: 14,
       borderTopWidth: 1,
       borderTopColor: colors.border + "60",
+      gap: 10,
     },
     logoutBtn: {
       flexDirection: "row",
       alignItems: "center" as const,
       gap: 14,
       paddingHorizontal: 16,
-      paddingVertical: 16,
+      paddingVertical: 15,
       borderRadius: 16,
       backgroundColor: colors.destructive + "0D",
+    },
+    logoutText: {
+      fontSize: 14,
+      fontWeight: "700" as const,
+      color: colors.destructive,
     },
     proBtn: {
       flexDirection: "row" as const,
@@ -527,7 +584,6 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.primary + "0D",
       borderWidth: 1,
       borderColor: colors.primary + "30",
-      marginBottom: 10,
     },
     proIconWrap: {
       width: 38,
@@ -563,11 +619,6 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "800" as const,
       color: colors.primaryForeground,
       letterSpacing: 0.8,
-    },
-    logoutText: {
-      fontSize: 14,
-      fontWeight: "700" as const,
-      color: colors.destructive,
     },
   });
 }
