@@ -77,25 +77,41 @@ export default function VoiceTranscriptReviewScreen() {
                 <Text style={styles.loadingText}>Transcribing your prayer...</Text>
               </View>
             ) : editedText.trim().length > 0 ? (
-              <Text style={styles.transcriptText}>"{editedText}"</Text>
-            ) : (
-              <Text style={styles.emptyText}>No transcription available. Tap Re-record to try again.</Text>
-            )}
+              <>
+                <Text style={styles.transcriptText}>"{editedText}"</Text>
+                <Pressable style={styles.editTextBtn} onPress={() => { setDraftText(editedText); setIsEditModalVisible(true); }}>
+                  <Pencil size={15} color={colors.primary} />
+                  <Text style={styles.editTextBtnText}>Edit Text</Text>
+                </Pressable>
+              </>
+            ) : !transcribeMutation.isPending ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>Transcription unavailable — type it below or continue with audio only.</Text>
+                <TextInput
+                  style={styles.manualInput}
+                  placeholder="Type your transcription here (optional)…"
+                  placeholderTextColor={colors.mutedForeground + "70"}
+                  multiline
+                  value={editedText}
+                  onChangeText={setEditedText}
+                  maxLength={1000}
+                  textAlignVertical="top"
+                />
+              </View>
+            ) : null}
             <View style={styles.transcriptMeta}>
               <Mic size={16} color={colors.mutedForeground} />
               <Text style={styles.transcriptMetaText}>{`${Math.floor(durationSeconds / 60).toString().padStart(2, "0")}:${(durationSeconds % 60).toString().padStart(2, "0")} recorded`}</Text>
             </View>
-            {!transcribeMutation.isPending && editedText.trim().length > 0 && (
-              <Pressable style={styles.editTextBtn} onPress={() => { setDraftText(editedText); setIsEditModalVisible(true); }}>
-                <Pencil size={15} color={colors.primary} />
-                <Text style={styles.editTextBtnText}>Edit Text</Text>
-              </Pressable>
-            )}
           </View>
         </AutoScrollView>
 
         <View style={styles.footer}>
-          <Pressable style={[styles.primaryBtn, (transcribeMutation.isPending || editedText.trim().length === 0) && styles.primaryBtnDisabled]} onPress={handleContinue} disabled={transcribeMutation.isPending || editedText.trim().length === 0}>
+          <Pressable
+            style={[styles.primaryBtn, transcribeMutation.isPending && styles.primaryBtnDisabled]}
+            onPress={handleContinue}
+            disabled={transcribeMutation.isPending}
+          >
             <Text style={styles.primaryBtnText}>Continue</Text>
             <ArrowRight size={20} color={colors.primaryForeground} />
           </Pressable>
@@ -143,7 +159,9 @@ function createStyles(colors: ThemeColors) {
     transcriptCard: { backgroundColor: colors.card, borderRadius: 32, padding: 28, borderWidth: 1, borderColor: colors.border + "60" },
     loadingRow: { flexDirection: "row" as const, alignItems: "center" as const, gap: 12, paddingVertical: 20 },
     loadingText: { fontSize: 15, fontWeight: "600" as const, color: colors.primary },
-    emptyText: { fontSize: 15, lineHeight: 24, color: colors.mutedForeground, fontStyle: "italic" as const, paddingVertical: 12 },
+    emptyState: { gap: 12, paddingVertical: 8 },
+    emptyText: { fontSize: 14, lineHeight: 22, color: colors.mutedForeground, fontStyle: "italic" as const },
+    manualInput: { backgroundColor: colors.background, borderRadius: 16, padding: 14, fontSize: 15, lineHeight: 24, color: colors.foreground, borderWidth: 1.5, borderColor: colors.primary + "40", minHeight: 100, textAlignVertical: "top" as const },
     primaryBtnDisabled: { opacity: 0.45, shadowOpacity: 0 },
     transcriptText: { fontSize: 17, lineHeight: 28, color: colors.secondaryForeground, fontStyle: "italic" as const, fontWeight: "500" as const, marginTop: 6 },
     transcriptMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20 },

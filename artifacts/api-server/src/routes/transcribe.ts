@@ -33,11 +33,12 @@ router.post("/transcribe", async (req, res) => {
     });
 
     const transcription = await openai.audio.transcriptions.create({
-      model: "gpt-4o-mini-transcribe",
+      model: "whisper-1",
       file,
       response_format: "json",
     });
 
+    req.log.info({ textLength: (transcription.text ?? "").length }, "transcription complete");
     res.json({ text: transcription.text ?? "" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Transcription failed";
