@@ -841,7 +841,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    alignItems: "center" as const,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },

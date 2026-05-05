@@ -75,6 +75,7 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
           if (status.didJustFinish) {
             setIsPlaying(false);
             setPositionMs(0);
+            void sound.setPositionAsync(0);
           }
         });
         soundRef.current = sound;
