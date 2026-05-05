@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Animated,
   Platform,
 } from "react-native";
 import { Audio } from "expo-av";
@@ -26,67 +25,71 @@ function formatDuration(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+const WAVEFORM_HEIGHTS = [
+  8, 14, 20, 16, 10, 18, 24, 16, 12, 20,
+  28, 18, 10, 16, 22, 14, 8, 18, 24, 14,
+  10, 20, 16, 12, 18, 24, 16, 8, 14, 20,
+];
+
 export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTranscription }: Props) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
 
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(audioDuration);
   const [transcriptionExpanded, setTranscriptionExpanded] = useState(false);
 
   const soundRef = useRef<Audio.Sound | null>(null);
-  const progressAnim = useRef(new Animated.Value(0)).current;
 
+  // Cleanup on unmount only — audio is loaded lazily on first play
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
+    return () => {
+      if (soundRef.current) {
+        void soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  const togglePlayback = useCallback(async () => {
+    if (isPlaying) {
+      await soundRef.current?.pauseAsync();
+      setIsPlaying(false);
+      return;
+    }
+
+    // Lazy load on first play tap
+    if (!soundRef.current) {
       try {
+        setIsLoading(true);
         await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
         const { sound } = await Audio.Sound.createAsync({ uri: audioUrl }, { shouldPlay: false });
-        if (!mounted) { await sound.unloadAsync(); return; }
         sound.setOnPlaybackStatusUpdate((status) => {
           if (!status.isLoaded) return;
           const pos = status.positionMillis;
           const dur = status.durationMillis ?? audioDuration;
           setPositionMs(pos);
           setDurationMs(dur);
-          const fraction = dur > 0 ? Math.min(pos / dur, 1) : 0;
-          progressAnim.setValue(fraction);
           if (status.didJustFinish) {
             setIsPlaying(false);
             setPositionMs(0);
-            progressAnim.setValue(0);
           }
         });
         soundRef.current = sound;
-        setIsLoaded(true);
+        setIsLoading(false);
       } catch (err) {
         console.error("[VoiceNotePlayer] load error:", err);
+        setIsLoading(false);
+        return;
       }
-    };
-    void load();
-    return () => {
-      mounted = false;
-      if (soundRef.current) {
-        void soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-    };
-  }, [audioUrl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const togglePlayback = useCallback(async () => {
-    if (!soundRef.current || !isLoaded) return;
-    if (isPlaying) {
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      if (Platform.OS !== "web") void Haptics.selectionAsync();
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
     }
-  }, [isPlaying, isLoaded]);
+
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    await soundRef.current.playAsync();
+    setIsPlaying(true);
+  }, [isPlaying, audioUrl, audioDuration]);
 
   const displayDuration = durationMs || audioDuration;
   const fraction = displayDuration > 0 ? positionMs / displayDuration : 0;
@@ -97,7 +100,7 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
         <Pressable
           style={[styles.playBtn, { backgroundColor: colors.primary }]}
           onPress={togglePlayback}
-          disabled={!isLoaded}
+          disabled={isLoading}
         >
           {isPlaying
             ? <Pause size={14} color="#fff" fill="#fff" />
@@ -107,7 +110,6 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
 
         <View style={styles.progressSection}>
           <View style={styles.waveformContainer}>
-            {/* Static waveform bars */}
             {WAVEFORM_HEIGHTS.map((h, i) => {
               const barFraction = i / WAVEFORM_HEIGHTS.length;
               const isPast = barFraction <= fraction;
@@ -160,12 +162,6 @@ export default function VoiceNotePlayer({ audioUrl, audioDuration = 0, audioTran
     </View>
   );
 }
-
-const WAVEFORM_HEIGHTS = [
-  8, 14, 20, 16, 10, 18, 24, 16, 12, 20,
-  28, 18, 10, 16, 22, 14, 8, 18, 24, 14,
-  10, 20, 16, 12, 18, 24, 16, 8, 14, 20,
-];
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

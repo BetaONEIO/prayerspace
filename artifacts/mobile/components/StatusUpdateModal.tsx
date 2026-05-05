@@ -3,7 +3,6 @@ import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
 import VoiceNoteRecorder from "@/components/VoiceNoteRecorder";
-import VoiceNotePlayer from "@/components/VoiceNotePlayer";
 import {
   View,
   Text,
@@ -387,25 +386,23 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               {/* Voice note section */}
               {hasVoice ? (
                 <View style={styles.voiceAttachedSection}>
-                  <View style={styles.voiceAttachedHeader}>
-                    <Mic size={13} color={colors.primary} />
-                    <Text style={styles.voiceAttachedLabel}>Voice note attached</Text>
-                    <Pressable
-                      onPress={() => {
-                        setVoiceNoteUri(null);
-                        setVoiceNoteDuration(0);
-                        setVoiceNoteTranscription(undefined);
-                      }}
-                      hitSlop={8}
-                    >
-                      <X size={14} color={colors.mutedForeground} />
-                    </Pressable>
-                  </View>
-                  <VoiceNotePlayer
-                    audioUrl={voiceNoteUri!}
-                    audioDuration={voiceNoteDuration}
-                    audioTranscription={voiceNoteTranscription}
-                  />
+                  <Mic size={13} color={colors.primary} />
+                  <Text style={styles.voiceAttachedLabel}>
+                    Voice note · {voiceNoteDuration > 0
+                      ? `${Math.floor(voiceNoteDuration / 60000)}:${String(Math.floor((voiceNoteDuration % 60000) / 1000)).padStart(2, "0")}`
+                      : "recorded"}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setVoiceNoteUri(null);
+                      setVoiceNoteDuration(0);
+                      setVoiceNoteTranscription(undefined);
+                    }}
+                    hitSlop={10}
+                    style={styles.voiceChipRemove}
+                  >
+                    <X size={13} color={colors.mutedForeground} />
+                  </Pressable>
                 </View>
               ) : showVoiceRecorder ? (
                 <View style={styles.voiceRecorderSection}>
@@ -942,24 +939,30 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     padding: 16,
   },
   voiceAttachedSection: {
-    backgroundColor: colors.accent,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.primary + "30",
-    padding: 14,
-    gap: 10,
-  },
-  voiceAttachedHeader: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 6,
+    gap: 7,
+    alignSelf: "flex-start" as const,
+    backgroundColor: colors.primary + "12",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.primary + "30",
+    paddingVertical: 6,
+    paddingLeft: 10,
+    paddingRight: 6,
   },
   voiceAttachedLabel: {
-    flex: 1,
     fontSize: 12,
     fontWeight: "700" as const,
     color: colors.primary,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
+  },
+  voiceChipRemove: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.border,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
   },
 });
