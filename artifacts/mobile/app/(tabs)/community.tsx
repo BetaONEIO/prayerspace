@@ -20,6 +20,7 @@ import {
   Share,
   Linking,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import VoiceNotePlayer from '@/components/VoiceNotePlayer';
@@ -84,6 +85,7 @@ import { usePrayer } from "@/providers/PrayerProvider";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { communityStore, StoredCommunity } from "@/lib/communityStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
+import { useDiscoverCommunities, DiscoverCommunity } from "@/lib/useDiscoverCommunities";
 
 type Tab = "Feed" | "Community" | "Groups";
 
@@ -1382,7 +1384,6 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const { isPremiumCommunity } = useChurchEntitlements();
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [privateExpanded, setPrivateExpanded] = useState<boolean>(false);
   const [privateCode, setPrivateCode] = useState<string>("");
   const [matchedPrivate, setMatchedPrivate] = useState<Community | null>(null);
@@ -1396,12 +1397,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
-  const publicCommunities = COMMUNITIES.filter((c) => !c.isPrivate).sort((a, b) => (b.isOfficial ? 1 : 0) - (a.isOfficial ? 1 : 0));
-  const filteredPublic = searchQuery.trim() === ""
-    ? publicCommunities
-    : publicCommunities.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  const { communities: dbCommunities, loading: dbLoading, error: dbError } = useDiscoverCommunities("");
 
   const handleTogglePrivate = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -1478,14 +1474,25 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
         <ChevronRight size={14} color={colors.mutedForeground} />
       </Pressable>
 
-      {filteredPublic.length > 0 ? (
-        filteredPublic.map((community) => {
+      {dbLoading ? (
+        <View style={styles.browseNoResults}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={[styles.browseNoResultsText, { marginTop: 8 }]}>Loading communities...</Text>
+        </View>
+      ) : dbError ? (
+        <View style={styles.browseNoResults}>
+          <Globe size={28} color={colors.mutedForeground + "60"} />
+          <Text style={styles.browseNoResultsText}>Couldn't load communities</Text>
+          <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check your connection and try again.</Text>
+        </View>
+      ) : dbCommunities.length > 0 ? (
+        dbCommunities.map((community: DiscoverCommunity) => {
           const isJoined = joinedCommunityIds.includes(community.id);
           return (
             <Pressable
               key={community.id}
               style={[styles.browseCommunityCard, isJoined && { opacity: 0.75 }]}
-              onPress={() => { if (isJoined) return; onViewProfile(community); }}
+              onPress={() => { if (isJoined) return; onViewProfile(community as Community); }}
             >
               <LinearGradient
                 colors={community.gradientColors}
@@ -1504,11 +1511,6 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
                     <View style={styles.officialBadge}>
                       <Award size={9} color="#B5820A" />
                       <Text style={styles.officialBadgeText}>Official</Text>
-                    </View>
-                  )}
-                  {community.isPrivate && !community.isOfficial && (
-                    <View style={styles.privateBadgeSmall}>
-                      <Lock size={9} color={colors.mutedForeground} />
                     </View>
                   )}
                 </View>
@@ -1536,8 +1538,9 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
         })
       ) : (
         <View style={styles.browseNoResults}>
-          <Search size={28} color={colors.mutedForeground + "60"} />
-          <Text style={styles.browseNoResultsText}>No communities found for "{searchQuery}"</Text>
+          <Globe size={28} color={colors.mutedForeground + "60"} />
+          <Text style={styles.browseNoResultsText}>No communities found yet</Text>
+          <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Try searching or create a community.</Text>
         </View>
       )}
 
@@ -1730,12 +1733,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
   const codeInputRef = useRef<TextInput>(null);
   const searchInputRef = useRef<TextInput>(null);
 
-  const publicCommunities = COMMUNITIES.filter((c) => !c.isPrivate).sort((a, b) => (b.isOfficial ? 1 : 0) - (a.isOfficial ? 1 : 0));
-  const filteredPublic = searchQuery.trim() === ""
-    ? publicCommunities
-    : publicCommunities.filter((c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  const { communities: dbCommunities, loading: dbLoading, error: dbError } = useDiscoverCommunities(searchQuery);
 
   useEffect(() => {
     if (visible) {
@@ -1854,14 +1852,25 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
           style={styles.browseScrollArea}
           contentContainerStyle={[styles.browseScrollContent, { paddingBottom: insets.bottom + 32 }]}
         >
-            {filteredPublic.length > 0 ? (
-              filteredPublic.map((community) => {
+            {dbLoading ? (
+              <View style={styles.browseNoResults}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={[styles.browseNoResultsText, { marginTop: 8 }]}>Loading communities...</Text>
+              </View>
+            ) : dbError ? (
+              <View style={styles.browseNoResults}>
+                <Globe size={28} color={colors.mutedForeground + "60"} />
+                <Text style={styles.browseNoResultsText}>Couldn't load communities</Text>
+                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check your connection and try again.</Text>
+              </View>
+            ) : dbCommunities.length > 0 ? (
+              dbCommunities.map((community: DiscoverCommunity) => {
                 const isJoined = joinedCommunityIds.includes(community.id);
                 return (
                   <Pressable
                     key={community.id}
                     style={[styles.browseCommunityCard, isJoined && { opacity: 0.75 }]}
-                    onPress={() => { if (isJoined) return; onViewProfile(community); }}
+                    onPress={() => { if (isJoined) return; onViewProfile(community as Community); }}
                   >
                     <LinearGradient
                       colors={community.gradientColors}
@@ -1880,11 +1889,6 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                           <View style={styles.officialBadge}>
                             <Award size={9} color="#B5820A" />
                             <Text style={styles.officialBadgeText}>Official</Text>
-                          </View>
-                        )}
-                        {community.isPrivate && !community.isOfficial && (
-                          <View style={styles.privateBadgeSmall}>
-                            <Lock size={9} color={colors.mutedForeground} />
                           </View>
                         )}
                       </View>
@@ -1910,10 +1914,20 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                   </Pressable>
                 );
               })
-            ) : (
+            ) : searchQuery.trim() ? (
               <View style={styles.browseNoResults}>
                 <Search size={28} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>No communities found for "{searchQuery}"</Text>
+                <Text style={styles.browseNoResultsText}>No communities found</Text>
+                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check the spelling or try another search.</Text>
+                <Pressable style={[styles.browseCommunityJoinBtn, { marginTop: 12, paddingHorizontal: 16 }]} onPress={onCreateCommunity}>
+                  <Text style={styles.browseCommunityJoinText}>Create a community</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.browseNoResults}>
+                <Globe size={28} color={colors.mutedForeground + "60"} />
+                <Text style={styles.browseNoResultsText}>No communities found yet</Text>
+                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Try searching or create a community.</Text>
               </View>
             )}
 
