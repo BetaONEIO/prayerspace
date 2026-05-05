@@ -199,6 +199,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   });
 
   return (
+    <>
     <Modal
       visible={visible}
       transparent
@@ -354,20 +355,52 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 </Text>
               </View>
 
-              <View style={styles.optionsRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.optionsScrollRow}
+                contentContainerStyle={styles.optionsScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
                 <ImageAttachment
                   imageUri={null}
                   onImageSelected={(uri) => setStatusImageUri(uri)}
                   onRemove={() => {}}
                 />
-                <Pressable
-                  style={[styles.addVoiceBtn, hasVoice && styles.addVoiceBtnActive]}
-                  onPress={() => {
-                    if (!hasVoice) setShowVoiceRecorder((v) => !v);
-                  }}
-                >
-                  <Mic size={20} color={hasVoice ? colors.primary : colors.primary} />
-                </Pressable>
+
+                {hasVoice ? (
+                  <View style={[styles.optionChip, styles.optionChipVoiceActive]}>
+                    <Mic size={14} color={colors.primary} />
+                    <Text style={[styles.optionChipText, styles.optionChipTextVoiceActive]}>
+                      {voiceNoteIncludeAudio && voiceNoteIncludeTranscription
+                        ? "Audio + Text"
+                        : voiceNoteIncludeAudio
+                          ? "Audio"
+                          : "Text only"}
+                    </Text>
+                    <Pressable
+                      onPress={() => {
+                        setVoiceNoteUri(null);
+                        setVoiceNoteDuration(0);
+                        setVoiceNoteIncludeAudio(true);
+                        setVoiceNoteIncludeTranscription(false);
+                        setVoiceNoteTranscription(undefined);
+                      }}
+                      hitSlop={8}
+                    >
+                      <X size={12} color={colors.primary} />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Pressable
+                    style={styles.optionChip}
+                    onPress={() => setShowVoiceRecorder(true)}
+                  >
+                    <Mic size={14} color={colors.mutedForeground} />
+                    <Text style={styles.optionChipText}>Voice</Text>
+                  </Pressable>
+                )}
+
                 <Pressable
                   style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
                   onPress={() => setIsTimeSensitive((v) => !v)}
@@ -387,48 +420,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                     Anonymous
                   </Text>
                 </Pressable>
-              </View>
-
-              {/* Voice note section */}
-              {hasVoice ? (
-                <View style={styles.voiceAttachedSection}>
-                  <Mic size={13} color={colors.primary} />
-                  <Text style={styles.voiceAttachedLabel}>
-                    {voiceNoteIncludeAudio && voiceNoteIncludeTranscription
-                      ? "Voice · Audio + Text"
-                      : voiceNoteIncludeAudio
-                        ? `Voice · ${voiceNoteDuration > 0 ? `${Math.floor(voiceNoteDuration / 60000)}:${String(Math.floor((voiceNoteDuration % 60000) / 1000)).padStart(2, "0")}` : "Audio"}`
-                        : "Voice · Text only"}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setVoiceNoteUri(null);
-                      setVoiceNoteDuration(0);
-                      setVoiceNoteIncludeAudio(true);
-                      setVoiceNoteIncludeTranscription(false);
-                      setVoiceNoteTranscription(undefined);
-                    }}
-                    hitSlop={10}
-                    style={styles.voiceChipRemove}
-                  >
-                    <X size={13} color={colors.mutedForeground} />
-                  </Pressable>
-                </View>
-              ) : showVoiceRecorder ? (
-                <View style={styles.voiceRecorderSection}>
-                  <VoiceNoteRecorder
-                    onAttach={(uri, dur, inclAudio, inclTranscription, transcription) => {
-                      setVoiceNoteUri(uri);
-                      setVoiceNoteDuration(dur);
-                      setVoiceNoteIncludeAudio(inclAudio);
-                      setVoiceNoteIncludeTranscription(inclTranscription);
-                      setVoiceNoteTranscription(transcription);
-                      setShowVoiceRecorder(false);
-                    }}
-                    onDiscard={() => setShowVoiceRecorder(false)}
-                  />
-                </View>
-              ) : null}
+              </ScrollView>
 
               <View style={styles.tagsSection}>
                 <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
@@ -528,6 +520,42 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
         onClose={() => setViewingStatusImage(null)}
       />
     </Modal>
+
+    <Modal
+      visible={showVoiceRecorder}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowVoiceRecorder(false)}
+      statusBarTranslucent
+    >
+      <View style={styles.voiceModalOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowVoiceRecorder(false)} />
+        <View style={[styles.voiceModalSheet, { paddingBottom: insets.bottom + 24 }]}>
+          <View style={styles.voiceModalHandle} />
+          <View style={styles.voiceModalHeader}>
+            <Text style={styles.voiceModalTitle}>Voice Prayer</Text>
+            <Pressable style={styles.voiceModalClose} onPress={() => setShowVoiceRecorder(false)}>
+              <X size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <Text style={styles.voiceModalSubtitle}>
+            Record your prayer, then choose what to share
+          </Text>
+          <VoiceNoteRecorder
+            onAttach={(uri, dur, inclAudio, inclTranscription, transcription) => {
+              setVoiceNoteUri(uri);
+              setVoiceNoteDuration(dur);
+              setVoiceNoteIncludeAudio(inclAudio);
+              setVoiceNoteIncludeTranscription(inclTranscription);
+              setVoiceNoteTranscription(transcription);
+              setShowVoiceRecorder(false);
+            }}
+            onDiscard={() => setShowVoiceRecorder(false)}
+          />
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }
 
@@ -758,6 +786,74 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   optionsRow: {
     flexDirection: "row",
     gap: 10,
+  },
+  optionsScrollRow: {
+    flexGrow: 0,
+  },
+  optionsScrollContent: {
+    flexDirection: "row" as const,
+    gap: 8,
+    alignItems: "center" as const,
+  },
+  optionChipVoiceActive: {
+    backgroundColor: colors.primary + "18",
+    borderColor: colors.primary + "60",
+    borderStyle: "solid" as const,
+  },
+  optionChipTextVoiceActive: {
+    color: colors.primary,
+    fontWeight: "700" as const,
+  },
+  voiceModalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end" as const,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  voiceModalSheet: {
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  voiceModalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: "center" as const,
+    marginBottom: 4,
+  },
+  voiceModalHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+  },
+  voiceModalTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: colors.foreground,
+  },
+  voiceModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.accent,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  voiceModalSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    marginTop: -8,
   },
   optionChip: {
     flexDirection: "row",
