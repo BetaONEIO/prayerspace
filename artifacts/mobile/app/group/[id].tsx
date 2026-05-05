@@ -51,12 +51,16 @@ import {
   Pause,
   Square,
   X,
+  MessageSquare,
+  UserMinus,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { useGroupState, GroupMember as StoreGroupMember } from "@/lib/groupStore";
+import { useGroupState, groupStore, GroupMember as StoreGroupMember } from "@/lib/groupStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
 type GroupTab = "Chat" | "Members" | "Media";
@@ -388,6 +392,8 @@ export default function GroupDetailScreen() {
   const [chatInput, setChatInput] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(CHAT_MESSAGES);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [memberActionsTarget, setMemberActionsTarget] = useState<Member | null>(null);
+  const [viewingMediaItem, setViewingMediaItem] = useState<MediaItem | null>(null);
   const [memberSearch, setMemberSearch] = useState<string>("");
   const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
   const [viewingGroupImage, setViewingGroupImage] = useState<string | null>(null);
@@ -792,10 +798,43 @@ export default function GroupDetailScreen() {
         onClose={() => setInfoMsg(null)}
       />
 
+      <MemberActionsSheet
+        member={memberActionsTarget}
+        visible={!!memberActionsTarget}
+        onClose={() => setMemberActionsTarget(null)}
+        onViewProfile={() => memberActionsTarget && router.push(`/user/${memberActionsTarget.id}` as never)}
+        onMessage={() => memberActionsTarget && Alert.alert("Message", `Opening DM with ${memberActionsTarget.name}`)}
+        onToggleAdmin={(m) => {
+          const updated = groupState.members.map((mem) =>
+            mem.id === m.id
+              ? { ...mem, role: (mem.role === "Admin" ? "Member" : "Admin") as Member["role"] }
+              : mem
+          );
+          groupStore.update(groupId, { members: updated });
+        }}
+        onToggleLeader={(m) => {
+          const updated = groupState.members.map((mem) =>
+            mem.id === m.id
+              ? { ...mem, role: (mem.role === "Leader" ? "Member" : "Leader") as Member["role"] }
+              : mem
+          );
+          groupStore.update(groupId, { members: updated });
+        }}
+        onRemove={(m) => {
+          groupStore.update(groupId, { members: groupState.members.filter((mem) => mem.id !== m.id) });
+        }}
+      />
+
+      <MediaViewer
+        item={viewingMediaItem}
+        visible={!!viewingMediaItem}
+        onClose={() => setViewingMediaItem(null)}
+      />
+
       {activeTab === "Media" && (
         <MediaGallery
           images={allMediaImages}
-          onImagePress={setViewingGroupImage}
+          onImagePress={(item) => setViewingMediaItem(item)}
         />
       )}
 
@@ -843,7 +882,12 @@ export default function GroupDetailScreen() {
                 <Text style={styles.memberSectionTitle}>Admins</Text>
               </View>
               {admins.map((member) => (
-                <MemberRow key={member.id} member={member} />
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  onPress={() => router.push(`/user/${member.id}` as never)}
+                  onMore={() => { if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMemberActionsTarget(member); }}
+                />
               ))}
             </>
           )}
@@ -857,7 +901,12 @@ export default function GroupDetailScreen() {
                 </Text>
               </View>
               {leaders.map((member) => (
-                <MemberRow key={member.id} member={member} />
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  onPress={() => router.push(`/user/${member.id}` as never)}
+                  onMore={() => { if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMemberActionsTarget(member); }}
+                />
               ))}
             </>
           )}
@@ -871,7 +920,12 @@ export default function GroupDetailScreen() {
                 </Text>
               </View>
               {members.map((member) => (
-                <MemberRow key={member.id} member={member} />
+                <MemberRow
+                  key={member.id}
+                  member={member}
+                  onPress={() => router.push(`/user/${member.id}` as never)}
+                  onMore={() => { if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setMemberActionsTarget(member); }}
+                />
               ))}
             </>
           )}
@@ -1840,7 +1894,7 @@ function MediaGallery({
   onImagePress,
 }: {
   images: MediaItem[];
-  onImagePress: (uri: string) => void;
+  onImagePress: (item: MediaItem) => void;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -1879,7 +1933,7 @@ function MediaGallery({
               styles.mediaThumb,
               !isLastInRow && { marginRight: 3 },
             ]}
-            onPress={() => onImagePress(item.uri)}
+            onPress={() => onImagePress(item)}
             testID={`media-thumb-${item.id}`}
           >
             <Image
@@ -1899,7 +1953,207 @@ function MediaGallery({
   );
 }
 
-function MemberRow({ member }: { member: Member }) {
+function MemberActionsSheet({
+  member,
+  visible,
+  onClose,
+  onViewProfile,
+  onMessage,
+  onToggleAdmin,
+  onToggleLeader,
+  onRemove,
+}: {
+  member: Member | null;
+  visible: boolean;
+  onClose: () => void;
+  onViewProfile: () => void;
+  onMessage: () => void;
+  onToggleAdmin: (m: Member) => void;
+  onToggleLeader: (m: Member) => void;
+  onRemove: (m: Member) => void;
+}) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  if (!member) return null;
+  const isAdmin = member.role === "Admin";
+  const isLeader = member.role === "Leader";
+
+  type Action = {
+    icon: React.ReactNode;
+    label: string;
+    labelColor?: string;
+    onPress: () => void;
+    separator?: boolean;
+  };
+
+  const actions: Action[] = [
+    {
+      icon: <UserPlus size={20} color={colors.foreground} />,
+      label: "View Profile",
+      onPress: () => { onViewProfile(); onClose(); },
+    },
+    {
+      icon: <MessageSquare size={20} color={colors.foreground} />,
+      label: "Message",
+      onPress: () => { onMessage(); onClose(); },
+    },
+  ];
+
+  if (IS_CURRENT_USER_ADMIN) {
+    actions.push({
+      icon: isAdmin
+        ? <ShieldOff size={20} color={colors.foreground} />
+        : <ShieldCheck size={20} color={colors.primary} />,
+      label: isAdmin ? "Remove as Admin" : "Make Admin",
+      separator: true,
+      onPress: () => { onToggleAdmin(member); onClose(); },
+    });
+    actions.push({
+      icon: isLeader
+        ? <ShieldOff size={20} color={colors.foreground} />
+        : <Shield size={20} color={colors.accentForeground} />,
+      label: isLeader ? "Remove as Leader" : "Make Leader",
+      onPress: () => { onToggleLeader(member); onClose(); },
+    });
+    actions.push({
+      icon: <UserMinus size={20} color="#E55" />,
+      label: "Remove from Group",
+      labelColor: "#E55",
+      onPress: () => {
+        onClose();
+        Alert.alert(
+          "Remove Member",
+          `Remove ${member.name} from this group?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Remove", style: "destructive", onPress: () => onRemove(member) },
+          ]
+        );
+      },
+    });
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={styles.memberSheetOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[styles.memberSheetCard, { backgroundColor: colors.card }]}>
+          <View style={styles.memberSheetHandle} />
+
+          {/* Member header */}
+          <View style={styles.memberSheetHeader}>
+            <Image source={{ uri: member.avatar }} style={styles.memberSheetAvatar} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.memberSheetName, { color: colors.foreground }]}>{member.name}</Text>
+              <Text style={[styles.memberSheetRole, { color: colors.mutedForeground }]}>{member.role}</Text>
+            </View>
+            {member.isOnline && (
+              <View style={[styles.memberSheetOnline, { backgroundColor: "#4CAF50" }]}>
+                <Text style={styles.memberSheetOnlineText}>Online</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={[styles.memberSheetDivider, { backgroundColor: colors.border }]} />
+
+          {actions.map((action, i) => (
+            <React.Fragment key={i}>
+              {action.separator && i > 0 && (
+                <View style={[styles.memberSheetDivider, { backgroundColor: colors.border }]} />
+              )}
+              <Pressable
+                style={styles.memberSheetAction}
+                onPress={action.onPress}
+                android_ripple={{ color: colors.primary + "10" }}
+              >
+                {action.icon}
+                <Text style={[styles.memberSheetActionLabel, { color: action.labelColor ?? colors.foreground }]}>
+                  {action.label}
+                </Text>
+              </Pressable>
+            </React.Fragment>
+          ))}
+
+          <View style={{ height: 24 }} />
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+function MediaViewer({
+  item,
+  visible,
+  onClose,
+}: {
+  item: MediaItem | null;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  if (!item) return null;
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#000" }]}>
+        {/* Full-screen image */}
+        <Image
+          source={{ uri: item.uri }}
+          style={StyleSheet.absoluteFillObject}
+          contentFit="contain"
+        />
+
+        {/* Close button */}
+        <Pressable
+          style={[mediaViewerStyles.closeBtn, { top: insets.top + 12 }]}
+          onPress={onClose}
+          hitSlop={12}
+        >
+          <X size={22} color="#fff" />
+        </Pressable>
+
+        {/* Footer with metadata */}
+        <View style={[mediaViewerStyles.footer, { paddingBottom: insets.bottom + 16 }]}>
+          <Text style={mediaViewerStyles.senderName}>{item.senderName}</Text>
+          <Text style={mediaViewerStyles.postedTime}>Posted at {item.time}</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const mediaViewerStyles = StyleSheet.create({
+  closeBtn: {
+    position: "absolute",
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingTop: 20,
+    paddingHorizontal: 20,
+  },
+  senderName: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  postedTime: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
+  },
+});
+
+function MemberRow({ member, onPress, onMore }: { member: Member; onPress?: () => void; onMore?: () => void }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const isAdmin = member.role === "Admin";
@@ -1918,7 +2172,7 @@ function MemberRow({ member }: { member: Member }) {
     : colors.mutedForeground;
 
   return (
-    <View style={styles.memberRow}>
+    <Pressable style={styles.memberRow} onPress={onPress} android_ripple={{ color: colors.primary + "10" }}>
       <View style={styles.memberAvatarWrap}>
         <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
         {member.isOnline && <View style={styles.onlineDot} />}
@@ -1934,10 +2188,10 @@ function MemberRow({ member }: { member: Member }) {
         {isLeader && <Shield size={10} color={roleColor} />}
         <Text style={[styles.roleText, { color: roleColor }]}>{member.role}</Text>
       </View>
-      <Pressable style={styles.memberMoreBtn}>
+      <Pressable style={styles.memberMoreBtn} onPress={onMore} hitSlop={10}>
         <MoreHorizontal size={16} color={colors.mutedForeground} />
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
@@ -2635,6 +2889,73 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   memberMoreBtn: {
     padding: 4,
+  },
+  memberSheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end" as const,
+  },
+  memberSheetCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  memberSheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    alignSelf: "center" as const,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  memberSheetHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    marginBottom: 16,
+  },
+  memberSheetAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  memberSheetName: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    marginBottom: 2,
+  },
+  memberSheetRole: {
+    fontSize: 13,
+  },
+  memberSheetOnline: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  memberSheetOnlineText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600" as const,
+  },
+  memberSheetDivider: {
+    height: 1,
+    marginBottom: 8,
+  },
+  memberSheetAction: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 14,
+    paddingVertical: 13,
+  },
+  memberSheetActionLabel: {
+    fontSize: 15,
+    fontWeight: "500" as const,
   },
   mediaGrid: {
     paddingHorizontal: 16,
