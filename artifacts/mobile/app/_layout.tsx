@@ -15,14 +15,6 @@ import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
 import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 
-try {
-  initializeRevenueCat();
-} catch (err: unknown) {
-  const msg = err instanceof Error ? err.message : "Unknown error";
-  console.warn("[RevenueCat] Initialization failed:", msg);
-  if (__DEV__) Alert.alert("RevenueCat Unavailable", msg);
-}
-
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
@@ -142,6 +134,14 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   useEffect(() => {
+    try {
+      initializeRevenueCat();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      console.warn("[RevenueCat] Initialization failed:", msg);
+      if (__DEV__) Alert.alert("RevenueCat Unavailable", msg);
+    }
+
     SplashScreen.hideAsync();
     recordAppOpen().then(() => {
       ratingStore.trigger("app_open");

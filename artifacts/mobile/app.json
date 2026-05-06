@@ -38,7 +38,29 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications",
+      "expo-splash-screen",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Prayer Space to access your photos so you can add images to prayer requests.",
+          "cameraPermission": "Allow Prayer Space to use the camera so you can add photos to prayer requests."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Prayer Space to access your contacts so you can invite friends and family to pray together."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Prayer Space to use your location to find local prayer communities."
+        }
+      ],
+      "expo-av"
     ],
     "experiments": {
       "typedRoutes": true
