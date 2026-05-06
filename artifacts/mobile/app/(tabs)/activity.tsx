@@ -644,12 +644,12 @@ export default function MessagesScreen() {
             )}
           </View>
           <View style={styles.headerActions}>
+            <Pressable style={styles.composeBtn} testID="compose-btn" onPress={openNewConv}>
+              <Edit size={18} color={colors.primary} />
+            </Pressable>
             <Pressable style={styles.bellWrap} onPress={() => setNotifVisible(true)}>
               <Bell size={18} color={colors.primary} />
               {notifUnreadCount > 0 && <View style={styles.bellBadge} />}
-            </Pressable>
-            <Pressable style={styles.composeBtn} testID="compose-btn" onPress={openNewConv}>
-              <Edit size={18} color={colors.primary} />
             </Pressable>
           </View>
         </View>
