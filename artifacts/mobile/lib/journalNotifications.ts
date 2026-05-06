@@ -1,11 +1,22 @@
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 
 type Frequency = "everyday" | "weekdays" | "weekends" | "once";
 
-export async function requestNotificationPermissions(): Promise<boolean> {
+function isNotificationsAvailable(): boolean {
   if (Platform.OS === "web") return false;
+  if (Constants.appOwnership === "expo") return false;
+  return true;
+}
+
+async function getNotifications() {
+  return import("expo-notifications");
+}
+
+export async function requestNotificationPermissions(): Promise<boolean> {
+  if (!isNotificationsAvailable()) return false;
   try {
+    const Notifications = await getNotifications();
     const { status } = await Notifications.requestPermissionsAsync();
     return status === "granted";
   } catch {
@@ -20,8 +31,10 @@ export async function scheduleJournalReminder(params: {
   frequency: Frequency;
   existingNotificationIds?: string[];
 }): Promise<string[]> {
-  if (Platform.OS === "web") return [];
+  if (!isNotificationsAvailable()) return [];
   try {
+    const Notifications = await getNotifications();
+
     if (params.existingNotificationIds?.length) {
       for (const id of params.existingNotificationIds) {
         await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
@@ -111,8 +124,9 @@ export async function scheduleJournalReminder(params: {
 }
 
 export async function cancelJournalReminder(notificationIds: string[]): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (!isNotificationsAvailable()) return;
   try {
+    const Notifications = await getNotifications();
     for (const id of notificationIds) {
       await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
     }
