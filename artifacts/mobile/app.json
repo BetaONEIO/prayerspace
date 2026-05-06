@@ -60,7 +60,15 @@
           "locationWhenInUsePermission": "Allow Prayer Space to use your location to find local prayer communities."
         }
       ],
-      "expo-av"
+      "expo-av",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "prayerspace",
+          "organization": "beta-one-innovations-ltd"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
