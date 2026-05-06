@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6766859781",
+        "appleTeamId": "V925W88UW6",
+        "ascApiKeyPath": "/Users/twatts/.config/expo/prayerspace/AuthKey_3862GMHNJJ.p8",
+        "ascApiKeyIssuerId": "4e16d890-43a9-4f88-8059-9075115a42a2",
+        "ascApiKeyId": "3862GMHNJJ"
+      },
+      "android": {
+        "track": "internal"
+      }
+    }
+  }
+}
