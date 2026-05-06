@@ -17,9 +17,9 @@ import {
   FlatList,
   Modal,
   TouchableOpacity,
-  Clipboard,
   PanResponder,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -656,7 +656,7 @@ export default function GroupDetailScreen() {
         onPray={(id) => handleAddPrayReaction(id)}
         onReact={(id, emoji) => handleAddEmojiReaction(id, emoji)}
         onCopy={(text) => {
-          try { Clipboard.setString(text); } catch {}
+          void Clipboard.setStringAsync(text).catch(() => {});
           setContextMsg(null);
         }}
         onDelete={(id) => handleDeleteMessage(id)}

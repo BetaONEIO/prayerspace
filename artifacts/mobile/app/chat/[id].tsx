@@ -17,8 +17,8 @@ import {
   Modal,
   Animated,
   Alert,
-  Clipboard,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
@@ -582,7 +582,7 @@ export default function ChatScreen() {
   const handleCopy = useCallback(() => {
     if (!selectedMessage) return;
     closeContextMenu();
-    try { Clipboard.setString(selectedMessage.content); } catch {}
+    void Clipboard.setStringAsync(selectedMessage.content).catch(() => {});
   }, [selectedMessage, closeContextMenu]);
 
   const handleForward = useCallback(() => {
