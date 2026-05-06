@@ -14,9 +14,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.prayerspace.app",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.prayerspace.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -37,6 +41,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "daa5564a-2b6f-4c3a-b289-9dc0444dcecf"
+      }
+    },
+    "owner": "adminbetaone"
   }
 }
