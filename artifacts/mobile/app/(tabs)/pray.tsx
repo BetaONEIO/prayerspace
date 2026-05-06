@@ -108,9 +108,6 @@ export default function PrayScreen() {
               onPressOut={() => handlePressOut(card1Scale)}
               onPress={handleStartPrayer}
             >
-              <View style={styles.cardBgIcon}>
-                <Text style={styles.cardBgEmoji}>🙏</Text>
-              </View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitleWhite}>Start a Prayer</Text>
                 <Text style={styles.cardSubtitleWhite}>
@@ -127,9 +124,6 @@ export default function PrayScreen() {
               onPressOut={() => handlePressOut(card2Scale)}
               onPress={handlePrayerTime}
             >
-              <View style={styles.communityBgIcon}>
-                <Text style={styles.cardBgEmoji}>🕊️</Text>
-              </View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitleDark}>Prayer Space</Text>
                 <Text style={styles.cardSubtitleMuted}>Pause, reflect, and spend time with God</Text>
