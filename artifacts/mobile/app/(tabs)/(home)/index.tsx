@@ -9,9 +9,12 @@ import {
   FlatList,
   Platform,
   Modal,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
+import * as Contacts from "expo-contacts";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +34,8 @@ import {
   Heart,
   X,
   Users,
+  BookUser,
+  Search,
 } from "lucide-react-native";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -84,7 +89,7 @@ export default function HomeScreen() {
     refetchInterval: 30000,
   });
   const { verse, isLoading: verseLoading } = useDailyVerse();
-  const { favourites, frequentlyPrayedFor } = useFavourites();
+  const { favourites, frequentlyPrayedFor, addFavourites } = useFavourites();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
@@ -101,6 +106,98 @@ export default function HomeScreen() {
       setNudgeDismissed(val === "true");
     });
   }, []);
+
+  const [addrBookDismissed, setAddrBookDismissed] = useState(false);
+  const [addrBookModalVisible, setAddrBookModalVisible] = useState(false);
+  const [addrBookContacts, setAddrBookContacts] = useState<Contacts.ExistingContact[]>([]);
+  const [addrBookLoading, setAddrBookLoading] = useState(false);
+  const [addrBookSearch, setAddrBookSearch] = useState("");
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem("addr_book_dismissed").then((val) => {
+      setAddrBookDismissed(val === "true");
+    });
+  }, []);
+
+  const TELEGRAM_ACCOUNT_TYPES = [
+    "org.telegram.messenger",
+    "org.telegram",
+    "telegram",
+  ];
+
+  const handleConnectAddressBook = useCallback(async () => {
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setAddrBookLoading(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== "granted") {
+        setAddrBookLoading(false);
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [
+          Contacts.Fields.Name,
+          Contacts.Fields.PhoneNumbers,
+          Contacts.Fields.Image,
+          Contacts.Fields.Emails,
+          Contacts.Fields.RawImage,
+        ],
+      });
+      const filtered = data.filter((c) => {
+        if (!c.name) return false;
+        const phones = c.phoneNumbers ?? [];
+        if (phones.length === 0) return false;
+        const acctType = ((c as Record<string, unknown>).accountType as string | undefined ?? "").toLowerCase();
+        if (TELEGRAM_ACCOUNT_TYPES.some((t) => acctType.includes(t))) return false;
+        return true;
+      }).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+      setAddrBookContacts(filtered);
+      setSelectedContactIds(new Set());
+      setAddrBookSearch("");
+      setAddrBookModalVisible(true);
+    } catch {
+      // permission denied or error
+    }
+    setAddrBookLoading(false);
+  }, []);
+
+  const handleDismissAddrBook = useCallback(async () => {
+    await AsyncStorage.setItem("addr_book_dismissed", "true");
+    setAddrBookDismissed(true);
+  }, []);
+
+  const filteredAddrContacts = useMemo(() => {
+    const q = addrBookSearch.trim().toLowerCase();
+    if (!q) return addrBookContacts;
+    return addrBookContacts.filter((c) => (c.name ?? "").toLowerCase().includes(q));
+  }, [addrBookContacts, addrBookSearch]);
+
+  const toggleContactSelection = useCallback((id: string) => {
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleAddSelectedContacts = useCallback(() => {
+    const toAdd = addrBookContacts
+      .filter((c) => c.id && selectedContactIds.has(c.id))
+      .map((c) => ({
+        id: c.id ?? String(Math.random()),
+        name: c.name ?? "Unknown",
+        avatar: c.image?.uri ?? "",
+        phone: c.phoneNumbers?.[0]?.number ?? "",
+      }));
+    addFavourites(toAdd);
+    setAddrBookModalVisible(false);
+    setAddrBookDismissed(true);
+    void AsyncStorage.setItem("addr_book_dismissed", "true");
+  }, [addrBookContacts, selectedContactIds, addFavourites]);
 
   const handleDismissNudge = useCallback(async () => {
     await AsyncStorage.setItem("community_nudge_dismissed", "true");
@@ -429,7 +526,128 @@ export default function HomeScreen() {
               contentContainerStyle={styles.frequentList}
             />
           )}
+
+          {!addrBookDismissed && Platform.OS !== "web" && (
+            <View style={styles.addrBookBanner}>
+              <View style={styles.addrBookIconWrap}>
+                <BookUser size={18} color={colors.primary} />
+              </View>
+              <View style={styles.addrBookBody}>
+                <Text style={styles.addrBookTitle}>Connect your address book</Text>
+                <Text style={styles.addrBookSub}>Add SMS, WhatsApp & Facebook contacts</Text>
+              </View>
+              <Pressable
+                style={styles.addrBookConnectBtn}
+                onPress={() => void handleConnectAddressBook()}
+                disabled={addrBookLoading}
+              >
+                {addrBookLoading
+                  ? <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  : <Text style={styles.addrBookConnectText}>Connect</Text>
+                }
+              </Pressable>
+              <Pressable
+                style={styles.addrBookDismiss}
+                onPress={() => void handleDismissAddrBook()}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={13} color={colors.mutedForeground} />
+              </Pressable>
+            </View>
+          )}
         </View>
+
+        <Modal
+          visible={addrBookModalVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setAddrBookModalVisible(false)}
+        >
+          <SafeAreaView style={[styles.addrModalSafe, { backgroundColor: colors.background }]} edges={["top", "bottom"]}>
+            <View style={styles.addrModalHeader}>
+              <Pressable onPress={() => setAddrBookModalVisible(false)}>
+                <X size={22} color={colors.foreground} />
+              </Pressable>
+              <Text style={[styles.addrModalTitle, { color: colors.foreground }]}>Address Book</Text>
+              <Pressable
+                onPress={handleAddSelectedContacts}
+                disabled={selectedContactIds.size === 0}
+              >
+                <Text style={[styles.addrModalDone, { color: selectedContactIds.size > 0 ? colors.primary : colors.mutedForeground }]}>
+                  Add {selectedContactIds.size > 0 ? `(${selectedContactIds.size})` : ""}
+                </Text>
+              </Pressable>
+            </View>
+
+            <Text style={[styles.addrModalSub, { color: colors.mutedForeground }]}>
+              SMS, WhatsApp & Facebook contacts only — Telegram not included
+            </Text>
+
+            <View style={[styles.addrSearchWrap, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+              <Search size={16} color={colors.mutedForeground} />
+              <TextInput
+                style={[styles.addrSearchInput, { color: colors.foreground }]}
+                placeholder="Search contacts..."
+                placeholderTextColor={colors.mutedForeground}
+                value={addrBookSearch}
+                onChangeText={setAddrBookSearch}
+                autoCorrect={false}
+              />
+            </View>
+
+            <FlatList
+              data={filteredAddrContacts}
+              keyExtractor={(item) => item.id ?? item.name ?? String(Math.random())}
+              contentContainerStyle={styles.addrList}
+              renderItem={({ item }) => {
+                const isSelected = item.id ? selectedContactIds.has(item.id) : false;
+                const initials = (item.name ?? "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+                return (
+                  <Pressable
+                    style={[styles.addrContactRow, isSelected && { backgroundColor: colors.primary + "10" }]}
+                    onPress={() => item.id && toggleContactSelection(item.id)}
+                  >
+                    <View style={[styles.addrAvatarWrap, { borderColor: isSelected ? colors.primary : "transparent" }]}>
+                      {item.image?.uri ? (
+                        <Image source={{ uri: item.image.uri }} style={styles.addrAvatar} />
+                      ) : (
+                        <View style={[styles.addrAvatarFallback, { backgroundColor: colors.primary + "20" }]}>
+                          <Text style={[styles.addrAvatarInitials, { color: colors.primary }]}>{initials}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.addrContactInfo}>
+                      <Text style={[styles.addrContactName, { color: colors.foreground }]} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {item.phoneNumbers?.[0]?.number && (
+                        <Text style={[styles.addrContactPhone, { color: colors.mutedForeground }]} numberOfLines={1}>
+                          {item.phoneNumbers[0].number}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[
+                      styles.addrCheckbox,
+                      {
+                        backgroundColor: isSelected ? colors.primary : "transparent",
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      },
+                    ]}>
+                      {isSelected && <CheckCircle size={16} color="#fff" fill="#fff" />}
+                    </View>
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.addrEmpty}>
+                  <Text style={[styles.addrEmptyText, { color: colors.mutedForeground }]}>
+                    {addrBookSearch ? "No contacts match your search." : "No contacts found."}
+                  </Text>
+                </View>
+              }
+            />
+          </SafeAreaView>
+        </Modal>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Prayer Requests</Text>
@@ -1140,6 +1358,167 @@ function createStyles(colors: ThemeColors) {
       alignItems: "center" as const,
       justifyContent: "center" as const,
       flexShrink: 0,
+    },
+    addrBookBanner: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      backgroundColor: colors.primary + "0D",
+      borderRadius: 16,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      marginTop: 14,
+      borderWidth: 1,
+      borderColor: colors.primary + "22",
+      gap: 10,
+    },
+    addrBookIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.primary + "18",
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
+    },
+    addrBookBody: {
+      flex: 1,
+      gap: 2,
+    },
+    addrBookTitle: {
+      fontSize: 13,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+    },
+    addrBookSub: {
+      fontSize: 11,
+      color: colors.mutedForeground,
+      fontWeight: "500" as const,
+    },
+    addrBookConnectBtn: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 999,
+      minWidth: 74,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    addrBookConnectText: {
+      fontSize: 12,
+      fontWeight: "700" as const,
+      color: colors.primaryForeground,
+    },
+    addrBookDismiss: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.muted,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
+    },
+    addrModalSafe: {
+      flex: 1,
+    },
+    addrModalHeader: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "space-between" as const,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    addrModalTitle: {
+      fontSize: 17,
+      fontWeight: "700" as const,
+    },
+    addrModalDone: {
+      fontSize: 15,
+      fontWeight: "700" as const,
+    },
+    addrModalSub: {
+      fontSize: 12,
+      fontWeight: "500" as const,
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    addrSearchWrap: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      marginHorizontal: 20,
+      marginBottom: 12,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      gap: 10,
+      borderWidth: 1,
+    },
+    addrSearchInput: {
+      flex: 1,
+      fontSize: 15,
+    },
+    addrList: {
+      paddingHorizontal: 20,
+      paddingBottom: 24,
+    },
+    addrContactRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      gap: 12,
+      marginBottom: 4,
+    },
+    addrAvatarWrap: {
+      width: 46,
+      height: 46,
+      borderRadius: 23,
+      borderWidth: 2,
+      overflow: "hidden" as const,
+    },
+    addrAvatar: {
+      width: "100%" as unknown as number,
+      height: "100%" as unknown as number,
+    },
+    addrAvatarFallback: {
+      width: "100%" as unknown as number,
+      height: "100%" as unknown as number,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    addrAvatarInitials: {
+      fontSize: 17,
+      fontWeight: "700" as const,
+    },
+    addrContactInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    addrContactName: {
+      fontSize: 15,
+      fontWeight: "600" as const,
+    },
+    addrContactPhone: {
+      fontSize: 12,
+      fontWeight: "400" as const,
+    },
+    addrCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
+    },
+    addrEmpty: {
+      paddingVertical: 40,
+      alignItems: "center" as const,
+    },
+    addrEmptyText: {
+      fontSize: 14,
+      fontWeight: "500" as const,
     },
   });
 }
