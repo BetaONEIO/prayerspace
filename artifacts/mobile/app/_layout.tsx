@@ -14,6 +14,26 @@ import SmartRatingModal from "@/components/SmartRatingModal";
 import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
 import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://99dfa309c3f8908682618eb0362142fe@o4511344663986176.ingest.de.sentry.io/4511344668639312',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -132,7 +152,7 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   useEffect(() => {
     try {
       initializeRevenueCat();
@@ -169,4 +189,4 @@ export default function RootLayout() {
       </SubscriptionProvider>
     </QueryClientProvider>
   );
-}
+});

@@ -5,7 +5,9 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
+import * as Sentry from "@sentry/react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
@@ -24,7 +26,10 @@ import {
   LogOut,
   Sun,
   Moon,
+  Bug,
 } from "lucide-react-native";
+
+const SENTRY_DIAGNOSTICS_EMAIL = "busyguyuk@gmail.com";
 import { useThemeColors, useTheme, ThemeMode } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
@@ -201,6 +206,50 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
+
+        {user?.email === SENTRY_DIAGNOSTICS_EMAIL && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>SENTRY DIAGNOSTICS</Text>
+            <View style={styles.card}>
+              {renderRow(
+                <Bug size={18} color={colors.primary + "90"} />,
+                "Send test message to Sentry",
+                () => {
+                  const id = Sentry.captureMessage(
+                    "Test message from Settings screen",
+                    "info"
+                  );
+                  Alert.alert("Sent", `Event ID: ${id}`);
+                }
+              )}
+              <View style={styles.divider} />
+              {renderRow(
+                <Bug size={18} color={"#ff5252"} />,
+                "Throw test error (will not crash app)",
+                () => {
+                  try {
+                    throw new Error("Sentry test error from Settings screen");
+                  } catch (err) {
+                    const id = Sentry.captureException(err);
+                    Alert.alert("Captured", `Event ID: ${id}`);
+                  }
+                }
+              )}
+              <View style={styles.divider} />
+              {renderRow(
+                <Bug size={18} color={"#ff5252"} />,
+                "Throw UNCAUGHT error (tests global handler)",
+                () => {
+                  setTimeout(() => {
+                    throw new Error(
+                      "Sentry uncaught test error from Settings screen"
+                    );
+                  }, 0);
+                }
+              )}
+            </View>
+          </View>
+        )}
 
         <Pressable
           style={[styles.signOutBtn, isSigningOut && styles.signOutBtnDisabled]}
