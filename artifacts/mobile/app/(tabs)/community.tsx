@@ -2464,16 +2464,12 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
-      <KeyboardAvoidingView
-        style={styles.joinModalOverlay}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <Animated.View
+        style={[
+          styles.joinModalSheet,
+          { paddingTop: insets.top, paddingBottom: insets.bottom + 40, transform: [{ translateY: slideAnim }], opacity: fadeAnim },
+        ]}
       >
-        <Animated.View
-          style={[
-            styles.joinModalSheet,
-            { paddingTop: insets.top, paddingBottom: insets.bottom + 40, transform: [{ translateY: slideAnim }], opacity: fadeAnim },
-          ]}
-        >
           <View style={styles.joinModalHeader}>
             <Pressable style={styles.joinModalBackBtn} onPress={handleClose}>
               <X size={20} color={colors.foreground} />
@@ -2563,7 +2559,6 @@ function JoinGroupModal({ visible, onClose, onJoin }: JoinGroupModalProps) {
             </Animated.View>
           )}
         </Animated.View>
-      </KeyboardAvoidingView>
     </Modal>
   );
 }
