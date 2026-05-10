@@ -11,64 +11,7 @@ export type Recipient = {
   source: "app" | "whatsapp" | "sim";
 };
 
-export const ALL_RECIPIENTS: Recipient[] = [
-  {
-    id: "r1",
-    name: "Michael Scott",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    subtitle: "Recent prayer partner",
-    onApp: true,
-    source: "app",
-  },
-  {
-    id: "r2",
-    name: "Pam Beesly",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    subtitle: "Community member",
-    onApp: true,
-    source: "app",
-  },
-  {
-    id: "r3",
-    name: "Alice Thompson",
-    avatar: "https://randomuser.me/api/portraits/women/62.jpg",
-    subtitle: "Prayer circle",
-    onApp: true,
-    source: "app",
-  },
-  {
-    id: "r4",
-    name: "Dwight Schrute",
-    initials: "DW",
-    subtitle: "WhatsApp Contact",
-    onApp: false,
-    source: "whatsapp",
-  },
-  {
-    id: "r5",
-    name: "Jim Halpert",
-    initials: "JH",
-    subtitle: "SIM Contact",
-    onApp: false,
-    source: "sim",
-  },
-  {
-    id: "r6",
-    name: "Kevin Malone",
-    initials: "KM",
-    subtitle: "WhatsApp Contact",
-    onApp: false,
-    source: "whatsapp",
-  },
-  {
-    id: "r7",
-    name: "Angela Martin",
-    initials: "AM",
-    subtitle: "SIM Contact",
-    onApp: false,
-    source: "sim",
-  },
-];
+export const ALL_RECIPIENTS: Recipient[] = [];
 
 export type FeedPostMeta = {
   isAnonymous: boolean;
