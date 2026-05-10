@@ -12,7 +12,8 @@ import {
   Alert,
 } from "react-native";
 import { Image } from "expo-image";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import {
   Search,
@@ -319,7 +320,7 @@ const SAMPLE_CONVERSATIONS: ConversationListItem[] = [];
 export default function MessagesScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -705,7 +706,7 @@ export default function MessagesScreen() {
             keyExtractor={(item) => item.conversation_id}
             renderItem={renderItem}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 16 }]}
+            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 8 }]}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListEmptyComponent={
               search.trim() ? (

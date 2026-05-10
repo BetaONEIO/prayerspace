@@ -29,6 +29,7 @@ import { Image, ImageSource } from "expo-image";
 const ANON_AVATAR = require("../../assets/images/anon_user.png") as ImageSource;
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Users,
@@ -203,7 +204,7 @@ type GroupSubTab = "My Groups" | "Community";
 export default function CommunityScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { profile, session } = useAuth();
   const currentUserId = session?.user?.id ?? "user-1";
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
@@ -723,7 +724,7 @@ export default function CommunityScreen() {
         <GroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
       ) : (
         <AutoScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 8 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
