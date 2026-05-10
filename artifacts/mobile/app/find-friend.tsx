@@ -10,7 +10,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import {
   ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck,
-  Clock, ChevronRight, Share2, MessageCircle, Mail, Link2, MessageSquare,
+  Clock, ChevronRight, Share2, MessageCircle, Link2, MessageSquare,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import * as Contacts from "expo-contacts";
@@ -29,10 +29,24 @@ interface ContactWithStatus {
   initials: string;
   email?: string;
   phone?: string;
+  phones: string[];
   existingUser?: FoundUser;
 }
 
-const APP_LINK = "https://prayerspace.app";
+const APP_DOWNLOAD_LINK = "https://prayerspace.app/download";
+const INVITE_BODY = `Join me on Prayer Space 🙏\nRead prayer requests, stay connected, and pray together.\n\nDownload:\n${APP_DOWNLOAD_LINK}`;
+
+function normalizePhoneForWA(phone: string): string {
+  let digits = phone.replace(/\D/g, "");
+  if (phone.trim().startsWith("0")) {
+    digits = "44" + digits.slice(1);
+  }
+  return digits;
+}
+
+function normalizePhoneForSMS(phone: string): string {
+  return phone.replace(/\s/g, "");
+}
 
 function deriveUsername(name: string | null): string {
   if (!name) return "@user";
@@ -42,19 +56,21 @@ function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
 }
 function buildInviteMessage(firstName?: string) {
-  return `Hey${firstName ? ` ${firstName}` : ""}! I've been using Prayer Space to stay connected in prayer — thought you might find it helpful 🙏\nJoin me here: ${APP_LINK}`;
+  return `Hey${firstName ? ` ${firstName}` : ""}! ${INVITE_BODY}`;
 }
 
-// ─── Invite Bottom Sheet ───────────────────────────────────────────────────────
+// ─── Invite Bottom Sheet ────────────────────────────────────────────────────────
 
 interface InviteSheetProps {
   visible: boolean;
   onClose: () => void;
   firstName?: string;
+  phone?: string;
   colors: ThemeColors;
+  onInviteSent?: () => void;
 }
 
-function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) {
+function InviteSheet({ visible, onClose, firstName, phone, colors, onInviteSent }: InviteSheetProps) {
   const slideAnim = useRef(new Animated.Value(400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [copied, setCopied] = useState(false);
@@ -79,10 +95,27 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
 
   const handleWhatsApp = async () => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
-    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    let url: string;
+    if (phone) {
+      const cleaned = normalizePhoneForWA(phone);
+      url = `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
+    } else {
+      url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    }
     const canOpen = await Linking.canOpenURL(url).catch(() => false);
     if (canOpen) {
       await Linking.openURL(url);
+      onInviteSent?.();
+      onClose();
+      return;
+    }
+    const fallback = phone
+      ? `whatsapp://send?phone=${normalizePhoneForWA(phone)}&text=${encodeURIComponent(message)}`
+      : `whatsapp://send?text=${encodeURIComponent(message)}`;
+    const canFallback = await Linking.canOpenURL(fallback).catch(() => false);
+    if (canFallback) {
+      await Linking.openURL(fallback);
+      onInviteSent?.();
     } else {
       Alert.alert("WhatsApp not found", "WhatsApp doesn't appear to be installed on this device.");
     }
@@ -91,24 +124,18 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
 
   const handleMessages = async () => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const num = phone ? normalizePhoneForSMS(phone) : "";
     const smsUrl = Platform.OS === "ios"
-      ? `sms:&body=${encodeURIComponent(message)}`
-      : `sms:?body=${encodeURIComponent(message)}`;
+      ? `sms:${num}&body=${encodeURIComponent(message)}`
+      : `sms:${num}?body=${encodeURIComponent(message)}`;
     await Linking.openURL(smsUrl).catch(() => null);
-    onClose();
-  };
-
-  const handleEmail = async () => {
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-    const subject = encodeURIComponent("Join me on Prayer Space 🙏");
-    const body = encodeURIComponent(message);
-    await Linking.openURL(`mailto:?subject=${subject}&body=${body}`).catch(() => null);
+    onInviteSent?.();
     onClose();
   };
 
   const handleCopyLink = async () => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await Clipboard.setStringAsync(APP_LINK);
+    await Clipboard.setStringAsync(APP_DOWNLOAD_LINK);
     setCopied(true);
     setTimeout(() => { setCopied(false); onClose(); }, 1200);
   };
@@ -117,6 +144,7 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     try {
       await Share.share({ message, title: "Invite to Prayer Space" });
+      onInviteSent?.();
     } catch { }
     onClose();
   };
@@ -131,21 +159,14 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
     },
     {
       key: "messages",
-      label: "Messages",
+      label: "Text Message",
       icon: <MessageCircle size={20} color="#3B82F6" />,
       iconBg: "#3B82F614",
       onPress: handleMessages,
     },
     {
-      key: "email",
-      label: "Email",
-      icon: <Mail size={20} color={colors.primary} />,
-      iconBg: colors.primary + "14",
-      onPress: handleEmail,
-    },
-    {
       key: "copy",
-      label: copied ? "Copied!" : "Copy Link",
+      label: copied ? "Copied!" : "Copy Invite Link",
       icon: <Link2 size={20} color={colors.mutedForeground} />,
       iconBg: colors.muted,
       onPress: handleCopyLink,
@@ -161,20 +182,23 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
       </TouchableWithoutFeedback>
 
       <Animated.View style={[sheetStyles.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Drag handle */}
         <View style={sheetStyles.handle} />
 
-        {/* Header */}
         <View style={sheetStyles.sheetHeader}>
-          <Text style={sheetStyles.sheetTitle}>Invite to Prayer Space</Text>
+          <Text style={sheetStyles.sheetTitle}>
+            {firstName ? `Invite ${firstName}` : "Invite to Prayer Space"}
+          </Text>
           <Pressable style={({ pressed }) => [sheetStyles.closeBtn, pressed && { opacity: 0.6 }]} onPress={onClose} hitSlop={8}>
             <X size={18} color={colors.mutedForeground} />
           </Pressable>
         </View>
 
-        <Text style={sheetStyles.sheetSubtitle}>Share with your friends and grow together in prayer</Text>
+        <Text style={sheetStyles.sheetSubtitle}>
+          {phone
+            ? `Opens directly to ${firstName ?? "your contact"} — no need to search again`
+            : "Share with your friends and grow together in prayer"}
+        </Text>
 
-        {/* Share options */}
         <View style={sheetStyles.optionsList}>
           {shareOptions.map((opt, i) => (
             <Pressable
@@ -197,7 +221,6 @@ function InviteSheet({ visible, onClose, firstName, colors }: InviteSheetProps) 
           ))}
         </View>
 
-        {/* More options */}
         <Pressable
           style={({ pressed }) => [sheetStyles.moreBtn, pressed && { opacity: 0.75 }]}
           onPress={handleMore}
@@ -245,7 +268,7 @@ function createSheetStyles(colors: ThemeColors) {
   });
 }
 
-// ─── Main Screen ───────────────────────────────────────────────────────────────
+// ─── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function FindFriendScreen() {
   const router = useRouter();
@@ -263,19 +286,21 @@ export default function FindFriendScreen() {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const [inviteContactFirstName, setInviteContactFirstName] = useState<string | undefined>(undefined);
+  const [inviteContactPhone, setInviteContactPhone] = useState<string | undefined>(undefined);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
   const bannerAnim = useRef(new Animated.Value(0)).current;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (Platform.OS === "web") { setContactsPermission("denied"); return; }
-    Contacts.getPermissionsAsync().then((r) => setContactsPermission(r.status as any)).catch(() => setContactsPermission("denied"));
+    Contacts.getPermissionsAsync().then((r) => setContactsPermission(r.status as "granted" | "denied" | "undetermined")).catch(() => setContactsPermission("denied"));
   }, []);
 
   useEffect(() => {
     if (contactsPermission !== null && contactsPermission !== "granted") {
       Animated.spring(bannerAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 10 }).start();
     }
-  }, [contactsPermission]);
+  }, [contactsPermission, bannerAnim]);
 
   useEffect(() => {
     if (contactsPermission !== "granted" || Platform.OS === "web") return;
@@ -286,13 +311,15 @@ export default function FindFriendScreen() {
           fields: [Contacts.Fields.Name, Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
           sort: Contacts.SortTypes.FirstName,
         });
-        const emailMap = new Map<string, Contacts.Contact>();
+
+        const emailMap = new Map<string, Contacts.ExistingContact>();
         const emails: string[] = [];
         for (const contact of rawContacts) {
           if (!contact.name) continue;
           const email = contact.emails?.[0]?.email?.toLowerCase();
           if (email && !emailMap.has(email)) { emailMap.set(email, contact); emails.push(email); }
         }
+
         const emailToUser = new Map<string, FoundUser>();
         if (emails.length > 0) {
           try {
@@ -306,18 +333,45 @@ export default function FindFriendScreen() {
             }
           } catch { }
         }
+
         const list: ContactWithStatus[] = [];
-        const seen = new Set<string>();
+        const seenKeys = new Set<string>();
+        const seenNormalized = new Set<string>();
+
         for (const contact of rawContacts) {
           if (!contact.name) continue;
+
           const email = contact.emails?.[0]?.email?.toLowerCase();
-          const phone = contact.phoneNumbers?.[0]?.number;
-          const key = email ?? `${contact.name}-${phone ?? ""}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          list.push({ id: contact.id ?? key, name: contact.name, initials: getInitials(contact.name), email, phone, existingUser: email ? emailToUser.get(email) : undefined });
+          const phones = (contact.phoneNumbers ?? [])
+            .map((pn) => pn.number)
+            .filter((n): n is string => !!n && n.trim().length > 0);
+
+          // Primary dedup key: email > first normalized phone > name
+          const firstNormalized = phones[0] ? phones[0].replace(/\D/g, "") : null;
+          const key = email ?? (firstNormalized ? `p:${firstNormalized}` : `n:${contact.name}`);
+
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
+
+          // Also dedup by normalized phone to catch formatting variants
+          if (firstNormalized) {
+            if (seenNormalized.has(firstNormalized)) continue;
+            seenNormalized.add(firstNormalized);
+          }
+
+          const phone = phones[0];
+          list.push({
+            id: contact.id ?? key,
+            name: contact.name,
+            initials: getInitials(contact.name),
+            email,
+            phone,
+            phones,
+            existingUser: email ? emailToUser.get(email) : undefined,
+          });
           if (list.length >= 60) break;
         }
+
         list.sort((a, b) => {
           if (a.existingUser && !b.existingUser) return -1;
           if (!a.existingUser && b.existingUser) return 1;
@@ -362,7 +416,7 @@ export default function FindFriendScreen() {
     setRequestingPermission(true);
     try {
       const result = await Contacts.requestPermissionsAsync();
-      setContactsPermission(result.status as any);
+      setContactsPermission(result.status as "granted" | "denied" | "undetermined");
       if (result.status === "granted") Animated.spring(bannerAnim, { toValue: 0, useNativeDriver: true, tension: 60, friction: 10 }).start();
     } catch { } finally { setRequestingPermission(false); }
   }, [bannerAnim]);
@@ -398,12 +452,41 @@ export default function FindFriendScreen() {
     if (!trimmed) { setResults([]); setHasSearched(false); setShowDropdown(false); return; }
     debounceRef.current = setTimeout(() => searchMutation.mutate(trimmed), 350);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query]);
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openInviteSheet = useCallback((firstName?: string) => {
+  const openInviteSheet = useCallback((firstName?: string, phone?: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setInviteContactFirstName(firstName);
+    setInviteContactPhone(phone);
     setInviteSheetVisible(true);
+  }, []);
+
+  const handleInviteContact = useCallback((contact: ContactWithStatus) => {
+    const firstName = contact.name.split(" ")[0];
+
+    if (contact.phones.length === 0) return;
+
+    if (contact.phones.length === 1) {
+      openInviteSheet(firstName, contact.phones[0]);
+      return;
+    }
+
+    // Multiple numbers — let user pick
+    Alert.alert(
+      `Invite ${firstName}`,
+      "Which number would you like to use?",
+      [
+        ...contact.phones.map((p) => ({
+          text: p,
+          onPress: () => openInviteSheet(firstName, p),
+        })),
+        { text: "Cancel", style: "cancel" as const },
+      ]
+    );
+  }, [openInviteSheet]);
+
+  const handleInviteSent = useCallback((contactId: string) => {
+    setInvitedIds((prev) => new Set([...prev, contactId]));
   }, []);
 
   const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
@@ -518,6 +601,8 @@ export default function FindFriendScreen() {
                 contactsList.map((contact, index) => {
                   const status = contact.existingUser ? getRequestStatus(contact.existingUser.id) : "none";
                   const isLast = index === contactsList.length - 1;
+                  const hasPhone = contact.phones.length > 0;
+                  const isInvited = invitedIds.has(contact.id);
                   return (
                     <View key={contact.id} style={[styles.contactRow, !isLast && styles.contactRowBorder]}>
                       {contact.existingUser?.avatar_url ? (
@@ -532,7 +617,9 @@ export default function FindFriendScreen() {
                         {contact.existingUser ? (
                           <Text style={styles.contactOnApp}>On Prayer Space</Text>
                         ) : (
-                          <Text style={styles.contactNotOnApp} numberOfLines={1}>{contact.email ?? contact.phone ?? "Not on Prayer Space"}</Text>
+                          <Text style={styles.contactNotOnApp} numberOfLines={1}>
+                            {contact.phone ?? (contact.email ?? "Not on Prayer Space")}
+                          </Text>
                         )}
                       </View>
                       {contact.existingUser ? (
@@ -552,10 +639,22 @@ export default function FindFriendScreen() {
                             <Text style={styles.contactAddBtnText}>Add</Text>
                           </Pressable>
                         )
+                      ) : isInvited ? (
+                        <View style={styles.invitedPill}>
+                          <Text style={styles.invitedPillText}>Invited ✓</Text>
+                        </View>
                       ) : (
-                        <Pressable style={({ pressed }) => [styles.contactInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet(contact.name.split(" ")[0])}>
-                          <Share2 size={13} color={colors.primary} />
-                          <Text style={styles.contactInviteBtnText}>Invite</Text>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.contactInviteBtn,
+                            !hasPhone && styles.contactInviteBtnDisabled,
+                            pressed && hasPhone && { opacity: 0.75 },
+                          ]}
+                          onPress={() => hasPhone && handleInviteContact(contact)}
+                          disabled={!hasPhone}
+                        >
+                          <Share2 size={13} color={hasPhone ? colors.primary : colors.mutedForeground} />
+                          <Text style={[styles.contactInviteBtnText, !hasPhone && { color: colors.mutedForeground }]}>Invite</Text>
                         </Pressable>
                       )}
                     </View>
@@ -572,7 +671,15 @@ export default function FindFriendScreen() {
         visible={inviteSheetVisible}
         onClose={() => setInviteSheetVisible(false)}
         firstName={inviteContactFirstName}
+        phone={inviteContactPhone}
         colors={colors}
+        onInviteSent={() => {
+          // Mark the contact as invited by finding them by phone
+          const matchedContact = contactsList.find(
+            (c) => inviteContactPhone && c.phones.includes(inviteContactPhone)
+          );
+          if (matchedContact) handleInviteSent(matchedContact.id);
+        }}
       />
     </>
   );
@@ -649,6 +756,9 @@ function createStyles(colors: ThemeColors) {
     contactAddBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.primary },
     contactAddBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
     contactInviteBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary + "50", backgroundColor: colors.primary + "0A" },
+    contactInviteBtnDisabled: { borderColor: colors.border, backgroundColor: colors.secondary, opacity: 0.5 },
     contactInviteBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primary },
+    invitedPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.secondary },
+    invitedPillText: { fontSize: 13, fontWeight: "600" as const, color: colors.mutedForeground },
   });
 }

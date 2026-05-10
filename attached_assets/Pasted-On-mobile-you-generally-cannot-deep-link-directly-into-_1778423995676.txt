@@ -1,0 +1,99 @@
+On mobile, you generally cannot deep-link directly into a specific contact thread inside WhatsApp/SMS unless you use the phone number itself. The good news is you already have the number from the contacts list, so you can make the experience feel native.
+
+Give Replit this:
+
+Improve contact invite flow so invites open directly against the selected contact’s phone number.
+
+## Goal
+
+When a user taps “Invite” on a contact:
+
+* the selected phone number should be passed into the share action
+* WhatsApp should open directly to a conversation with that number
+* SMS should open directly to a new message for that number
+* avoid generic share sheets where possible
+
+## Current issue
+
+Right now:
+
+* tapping Invite opens a generic share module
+* the selected contact is lost
+* user must manually choose the person again
+
+We already have access to the contact phone number, so we should use it directly.
+
+## WhatsApp behaviour
+
+When user chooses WhatsApp:
+
+* open WhatsApp chat directly for that phone number
+* prefill the invite message automatically
+
+Use WhatsApp deep linking with the contact number:
+
+```js
+https://wa.me/<number>?text=<encodedMessage>
+```
+
+Requirements:
+
+* remove spaces from number
+* convert UK numbers correctly if needed
+* URL encode message text
+
+Example message:
+
+Join me on Prayer Space 🙏
+Read prayer requests, stay connected, and pray together.
+
+Download:
+[https://prayerspace.app/download](https://prayerspace.app/download)
+
+## SMS behaviour
+
+When user chooses Text Message:
+
+* open the device SMS app directly to that number
+* prefill the message body
+
+Use:
+
+* sms:number?body=
+  or platform-specific equivalent
+
+## Invite options modal
+
+When tapping Invite:
+show modal:
+
+* WhatsApp
+* Text Message
+* Copy Invite Link
+* More Options
+
+Each option should use the selected contact’s phone number.
+
+## Contact handling improvements
+
+If contact has:
+
+* no phone number → disable Invite button
+* multiple numbers → ask which number to use
+* duplicate contacts → deduplicate before rendering list
+
+## Important UX improvement
+
+After invite is sent:
+
+* show subtle success feedback
+* optional:
+  “Invite sent to Adrian”
+
+## Goal outcome
+
+Invite actions feel native and personal:
+
+* WhatsApp opens directly to that contact
+* SMS opens directly to that contact
+* users do not need to manually search for the person again
