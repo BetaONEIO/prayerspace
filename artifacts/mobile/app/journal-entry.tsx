@@ -17,7 +17,7 @@ import {
   TextStyle,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router";
 import {
@@ -66,6 +66,7 @@ export default function JournalEntryScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { addJournalEntry, updateJournalEntry, journal } = usePrayer();
 
   const isEditing = !!editId;
@@ -607,7 +608,7 @@ export default function JournalEntryScreen() {
         )}
 
         <Pressable
-          style={[styles.journalBtn, !canSave && styles.journalBtnDisabled]}
+          style={[styles.journalBtn, !canSave && styles.journalBtnDisabled, { marginBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 16 : 24) }]}
           onPress={handleSave}
           disabled={!canSave}
         >

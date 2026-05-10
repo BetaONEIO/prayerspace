@@ -1257,8 +1257,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
       ) : dbError ? (
         <View style={styles.browseNoResults}>
           <Globe size={28} color={colors.mutedForeground + "60"} />
-          <Text style={styles.browseNoResultsText}>Couldn't load communities</Text>
-          <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check your connection and try again.</Text>
+          <Text style={styles.browseNoResultsText}>Browse available communities</Text>
         </View>
       ) : dbCommunities.length > 0 ? (
         dbCommunities.map((community: DiscoverCommunity) => {
@@ -1635,8 +1634,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             ) : dbError ? (
               <View style={styles.browseNoResults}>
                 <Globe size={28} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>Couldn't load communities</Text>
-                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check your connection and try again.</Text>
+                <Text style={styles.browseNoResultsText}>Browse available communities</Text>
               </View>
             ) : dbCommunities.length > 0 ? (
               dbCommunities.map((community: DiscoverCommunity) => {
@@ -7920,7 +7918,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   adminMenuItem: { flexDirection: "row" as const, alignItems: "center" as const, paddingVertical: 14, gap: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   adminMenuIconWrap: { width: 38, height: 38, borderRadius: 19, alignItems: "center" as const, justifyContent: "center" as const },
   adminMenuItemText: { flex: 1, fontSize: 15, fontWeight: "600" as const },
-  groupsContextCard: { borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1 },
+  groupsContextCard: { borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 14, borderWidth: 1 },
   groupsContextText: { fontSize: 13, lineHeight: 19 },
 
   // Feed All / Mine filter toggle
