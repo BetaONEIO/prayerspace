@@ -1,0 +1,122 @@
+Improve mobile screen layout handling for keyboards, bottom navigation bars, and safe areas across the app.
+
+## Current issues
+
+On some screens:
+
+* inputs are hidden behind the keyboard
+* buttons get cut off at the bottom
+* content overlaps the Android/iOS navigation area
+* footer links disappear when typing
+* layouts do not resize correctly when keyboard opens
+
+## Goal
+
+All screens should properly respect:
+
+* mobile keyboard height
+* bottom safe areas
+* device navigation bars
+* dynamic screen resizing
+
+## Apply this app-wide
+
+This should be implemented consistently across:
+
+* login/signup
+* forgot password
+* prayer creation
+* messages/chat
+* onboarding
+* settings
+* journal pages
+* modals and bottom sheets
+
+## Required behaviour
+
+### 1. Keyboard avoidance
+
+When keyboard opens:
+
+* focused input should remain visible
+* page should shift or scroll naturally
+* important actions/buttons should not disappear
+
+Examples:
+
+* Send button
+* Continue button
+* Sign In button
+* Reset password button
+
+## 2. Safe area padding
+
+Respect:
+
+* iPhone safe areas
+* Android gesture/navigation bars
+* bottom home indicators
+
+Add bottom padding dynamically using safe area insets.
+
+## 3. Scrollable content
+
+Long screens should:
+
+* become scrollable when keyboard opens
+* avoid fixed heights that break on smaller devices
+
+Use flexible layouts instead of hardcoded screen heights.
+
+## 4. Sticky bottom buttons
+
+For screens with primary actions:
+
+* keep CTA buttons visible above keyboard
+* animate smoothly when keyboard appears
+
+Examples:
+
+* Send Prayer
+* Continue
+* Save
+* Sign In
+
+## 5. Footer handling
+
+Footer text/links should:
+
+* move above keyboard
+  or
+* fade/hide temporarily while typing
+
+Never allow:
+
+* footer text overlapping inputs
+* links hidden under navigation bar
+
+## 6. Animations
+
+Keyboard transitions should feel smooth:
+
+* subtle upward movement
+* no sudden jumps
+* no layout flickering
+
+## 7. Testing requirements
+
+Test on:
+
+* small Android devices
+* iPhones with dynamic island
+* devices with gesture navigation
+* devices with software navigation buttons
+
+## Goal outcome
+
+Every screen adapts correctly when the keyboard opens:
+
+* inputs remain visible
+* buttons remain usable
+* content respects device safe areas
+* nothing is cut off behind the keyboard or footer/navigation area

@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useCallback } from "react";
 import { Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { PrayerProvider } from "@/providers/PrayerProvider";
 import { FavouritesProvider } from "@/providers/FavouritesProvider";
@@ -173,6 +174,7 @@ export default Sentry.wrap(function RootLayout() {
       <SubscriptionProvider>
         <ThemeProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
+            <KeyboardProvider>
             <AuthProvider>
               <PrayerProvider>
                 <FavouritesProvider>
@@ -184,6 +186,7 @@ export default Sentry.wrap(function RootLayout() {
                 </FavouritesProvider>
               </PrayerProvider>
             </AuthProvider>
+            </KeyboardProvider>
           </GestureHandlerRootView>
         </ThemeProvider>
       </SubscriptionProvider>

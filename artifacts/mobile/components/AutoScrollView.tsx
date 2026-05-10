@@ -1,9 +1,12 @@
 import React, { useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { ScrollView, ScrollViewProps } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewProps } from 'react-native-keyboard-controller';
 
-export const AutoScrollView = forwardRef<ScrollView, ScrollViewProps>(
-  (props, forwardedRef) => {
+type AutoScrollViewProps = KeyboardAwareScrollViewProps & ScrollViewProps;
+
+export const AutoScrollView = forwardRef<ScrollView, AutoScrollViewProps>(
+  ({ bottomOffset = 20, ...props }, forwardedRef) => {
     const innerRef = useRef<ScrollView>(null);
 
     useImperativeHandle(forwardedRef, () => innerRef.current as ScrollView);
@@ -14,7 +17,14 @@ export const AutoScrollView = forwardRef<ScrollView, ScrollViewProps>(
       }, [])
     );
 
-    return <ScrollView ref={innerRef} {...props} />;
+    return (
+      <KeyboardAwareScrollView
+        ref={innerRef}
+        bottomOffset={bottomOffset}
+        keyboardShouldPersistTaps="handled"
+        {...props}
+      />
+    );
   }
 );
 

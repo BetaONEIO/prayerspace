@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import {
   ChevronLeft,
@@ -52,7 +52,8 @@ const FOCUS_OPTIONS: FocusOption[] = [
 
 export default function CreateGroupScreen() {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState<Step>(1);
@@ -438,7 +439,7 @@ export default function CreateGroupScreen() {
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
+const createStyles = (colors: ThemeColors, bottomInset = 0) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -721,8 +722,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 24,
+    paddingTop: 16,
+    paddingBottom: Math.max(bottomInset, 16) + 8,
   },
   nextBtn: {
     flexDirection: "row" as const,
