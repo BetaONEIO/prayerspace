@@ -1,5 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator, Animated, Keyboard, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  Animated,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Dimensions,
+} from "react-native";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
@@ -165,84 +178,98 @@ export default function VerifyOtpScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.safeArea}>
-        <Pressable style={styles.backBtn} onPress={() => router.replace("/register")}>
-          <ArrowLeft size={20} color={colors.foreground} />
-        </Pressable>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <AutoScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Pressable style={styles.backBtn} onPress={() => router.replace("/register")}>
+              <ArrowLeft size={20} color={colors.foreground} />
+            </Pressable>
 
-        <View style={styles.content}>
-          <View style={styles.logoWrap}>
-            <Image source={{ uri: LOGO_URI }} style={styles.logo} contentFit="contain" />
-          </View>
-
-          {!email ? (
-            <View style={styles.successContainer}>
-              <View style={styles.iconWrap}><Mail size={28} color={colors.primary} /></View>
-              <Text style={styles.title}>No email on file</Text>
-              <Text style={styles.successSubtitle}>We don't have an email to verify. Please go back and start registration again.</Text>
-              <Pressable
-                style={[styles.verifyBtn, { marginTop: 24, paddingHorizontal: 24 }]}
-                onPress={() => router.replace("/register")}
-                testID="otp-back-to-register"
-              >
-                <Text style={styles.verifyBtnText}>Back to Register</Text>
-              </Pressable>
-              <Pressable style={{ marginTop: 12, padding: 8 }} onPress={() => router.replace("/login")}>
-                <Text style={styles.resendLink}>Sign in instead</Text>
-              </Pressable>
+            <View style={styles.logoWrap}>
+              <Image source={{ uri: LOGO_URI }} style={styles.logo} contentFit="contain" />
             </View>
-          ) : success ? (
-            <Animated.View style={[styles.successContainer, { opacity: successAnim, transform: [{ scale: successAnim }] }]}>
-              <View style={styles.successIcon}><CheckCircle size={48} color={colors.primary} /></View>
-              <Text style={styles.successTitle}>Email Verified!</Text>
-              <Text style={styles.successSubtitle}>Your account is confirmed. Taking you in…</Text>
-            </Animated.View>
-          ) : (
-            <>
-              <View style={styles.headerArea}>
+
+            {!email ? (
+              <View style={styles.centeredArea}>
                 <View style={styles.iconWrap}><Mail size={28} color={colors.primary} /></View>
-                <Text style={styles.title}>Check your email</Text>
-                <Text style={styles.subtitle}>We sent a 8-digit code to</Text>
-                <Text style={styles.emailText}>{maskedEmail}</Text>
+                <Text style={styles.title}>No email on file</Text>
+                <Text style={styles.subtitle}>We don't have an email to verify. Please go back and start registration again.</Text>
+                <Pressable
+                  style={[styles.verifyBtn, { marginTop: 24, paddingHorizontal: 24 }]}
+                  onPress={() => router.replace("/register")}
+                  testID="otp-back-to-register"
+                >
+                  <Text style={styles.verifyBtnText}>Back to Register</Text>
+                </Pressable>
+                <Pressable style={{ marginTop: 12, padding: 8 }} onPress={() => router.replace("/login")}>
+                  <Text style={styles.resendLink}>Sign in instead</Text>
+                </Pressable>
               </View>
-
-              <Animated.View style={[styles.codeArea, { transform: [{ translateX: shakeAnim }] }]}>
-                <View style={styles.codeRow}>
-                  {Array(CODE_LENGTH).fill(null).map((_, i) => (
-                    <View key={i} style={[styles.digitBox, digits[i] ? styles.digitBoxFilled : undefined, error ? styles.digitBoxError : undefined]}>
-                      <TextInput
-                        ref={(ref) => { inputRefs.current[i] = ref; }}
-                        style={styles.digitInput}
-                        value={digits[i]}
-                        onChangeText={(t) => handleDigitChange(t, i)}
-                        onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
-                        keyboardType="number-pad"
-                        maxLength={1}
-                        textContentType="oneTimeCode"
-                        autoComplete="one-time-code"
-                        selectTextOnFocus
-                        editable={!isVerifying && !success}
-                        caretHidden
-                        testID={`otp-digit-${i}`}
-                      />
-                    </View>
-                  ))}
-                </View>
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            ) : success ? (
+              <Animated.View style={[styles.centeredArea, { opacity: successAnim, transform: [{ scale: successAnim }] }]}>
+                <View style={styles.successIcon}><CheckCircle size={48} color={colors.primary} /></View>
+                <Text style={styles.successTitle}>Email Verified!</Text>
+                <Text style={styles.subtitle}>Your account is confirmed. Taking you in…</Text>
               </Animated.View>
+            ) : (
+              <>
+                <View style={styles.headerArea}>
+                  <View style={styles.iconWrap}><Mail size={28} color={colors.primary} /></View>
+                  <Text style={styles.title}>Check your email</Text>
+                  <Text style={styles.subtitle}>We sent a 8-digit code to</Text>
+                  <Text style={styles.emailText}>{maskedEmail}</Text>
+                </View>
 
-              <Pressable style={[styles.verifyBtn, (!isComplete || isVerifying) && styles.verifyBtnDisabled]} onPress={handleVerify} disabled={!isComplete || isVerifying} testID="otp-verify-btn">
-                {isVerifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.verifyBtnText}>Verify Email</Text>}
-              </Pressable>
+                <Animated.View style={[styles.codeArea, { transform: [{ translateX: shakeAnim }] }]}>
+                  <View style={styles.codeRow}>
+                    {Array(CODE_LENGTH).fill(null).map((_, i) => (
+                      <View key={i} style={[styles.digitBox, digits[i] ? styles.digitBoxFilled : undefined, error ? styles.digitBoxError : undefined]}>
+                        <TextInput
+                          ref={(ref) => { inputRefs.current[i] = ref; }}
+                          style={styles.digitInput}
+                          value={digits[i]}
+                          onChangeText={(t) => handleDigitChange(t, i)}
+                          onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
+                          keyboardType="number-pad"
+                          maxLength={1}
+                          textContentType="oneTimeCode"
+                          autoComplete="one-time-code"
+                          selectTextOnFocus
+                          editable={!isVerifying && !success}
+                          caretHidden
+                          testID={`otp-digit-${i}`}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                </Animated.View>
 
-              <View style={styles.resendRow}>
-                {isSending ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-                  : countdown > 0 ? <Text style={styles.resendCountdown}>Resend code in <Text style={styles.resendCountdownBold}>{countdown}s</Text></Text>
-                  : <Pressable onPress={sendOtp} testID="otp-resend-btn"><Text style={styles.resendLink}>Resend code</Text></Pressable>}
-              </View>
-              <Text style={styles.spamNote}>Can't find it? Check your spam or junk folder.</Text>
-            </>
-          )}
-        </View>
+                <Pressable
+                  style={[styles.verifyBtn, (!isComplete || isVerifying) && styles.verifyBtnDisabled]}
+                  onPress={handleVerify}
+                  disabled={!isComplete || isVerifying}
+                  testID="otp-verify-btn"
+                >
+                  {isVerifying ? <ActivityIndicator color="#fff" /> : <Text style={styles.verifyBtnText}>Verify Email</Text>}
+                </Pressable>
+
+                <View style={styles.resendRow}>
+                  {isSending ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                    : countdown > 0 ? <Text style={styles.resendCountdown}>Resend code in <Text style={styles.resendCountdownBold}>{countdown}s</Text></Text>
+                    : <Pressable onPress={sendOtp} testID="otp-resend-btn"><Text style={styles.resendLink}>Resend code</Text></Pressable>}
+                </View>
+                <Text style={styles.spamNote}>Can't find it? Check your spam or junk folder.</Text>
+              </>
+            )}
+          </AutoScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -252,33 +279,144 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.background },
     safeArea: { flex: 1 },
-    backBtn: { width: 40, height: 40, marginTop: 8, marginLeft: 16, alignItems: "center" as const, justifyContent: "center" as const },
-    content: { flex: 1, paddingHorizontal: 28, paddingTop: 16, paddingBottom: 32 },
-    logoWrap: { alignItems: "center" as const, marginBottom: 24 },
+    flex: { flex: 1 },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 28,
+      paddingTop: 8,
+      paddingBottom: 32,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      marginTop: 8,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
+    logoWrap: { alignItems: "center" as const, marginTop: 16, marginBottom: 24 },
     logo: { width: 72, height: 72 },
     headerArea: { alignItems: "center" as const, marginBottom: 36 },
-    iconWrap: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.accent, alignItems: "center" as const, justifyContent: "center" as const, marginBottom: 20, borderWidth: 1.5, borderColor: colors.primary + "30" },
-    title: { fontSize: 26, fontWeight: "800" as const, color: colors.foreground, letterSpacing: -0.5, marginBottom: 10 },
-    subtitle: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" as const, lineHeight: 21 },
-    emailText: { fontSize: 14, fontWeight: "700" as const, color: colors.foreground, marginTop: 4 },
+    iconWrap: {
+      width: 68,
+      height: 68,
+      borderRadius: 34,
+      backgroundColor: colors.accent,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      marginBottom: 20,
+      borderWidth: 1.5,
+      borderColor: colors.primary + "30",
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: "800" as const,
+      color: colors.foreground,
+      letterSpacing: -0.5,
+      marginBottom: 10,
+      textAlign: "center" as const,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      textAlign: "center" as const,
+      lineHeight: 21,
+    },
+    emailText: {
+      fontSize: 14,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+      marginTop: 4,
+    },
     codeArea: { alignItems: "center" as const, marginBottom: 28 },
-    codeRow: { flexDirection: "row", gap: 8, marginBottom: 14, justifyContent: "center" as const, flexWrap: "nowrap" as const },
-    digitBox: { width: CODE_BOX_SIZE, height: 58, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center" as const, justifyContent: "center" as const },
+    codeRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 14,
+      justifyContent: "center" as const,
+      flexWrap: "nowrap" as const,
+    },
+    digitBox: {
+      width: CODE_BOX_SIZE,
+      height: 58,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
     digitBoxFilled: { borderColor: colors.primary, backgroundColor: colors.accent },
     digitBoxError: { borderColor: "#D9534F", backgroundColor: "#FEF0EF" },
-    digitInput: { fontSize: 24, fontWeight: "800" as const, color: colors.foreground, textAlign: "center" as const, width: "100%" as const, height: "100%" as const, padding: 0 },
-    errorText: { fontSize: 13, color: "#D9534F", textAlign: "center" as const, fontWeight: "600" as const },
-    verifyBtn: { height: 54, backgroundColor: colors.primary, borderRadius: 18, alignItems: "center" as const, justifyContent: "center" as const, shadowColor: colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 6, marginBottom: 20 },
+    digitInput: {
+      fontSize: 24,
+      fontWeight: "800" as const,
+      color: colors.foreground,
+      textAlign: "center" as const,
+      width: "100%" as const,
+      height: "100%" as const,
+      padding: 0,
+    },
+    errorText: {
+      fontSize: 13,
+      color: "#D9534F",
+      textAlign: "center" as const,
+      fontWeight: "600" as const,
+    },
+    verifyBtn: {
+      height: 54,
+      backgroundColor: colors.primary,
+      borderRadius: 18,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.25,
+      shadowRadius: 16,
+      elevation: 6,
+      marginBottom: 20,
+    },
     verifyBtnDisabled: { opacity: 0.5 },
-    verifyBtnText: { fontSize: 16, fontWeight: "700" as const, color: colors.primaryForeground },
-    resendRow: { alignItems: "center" as const, height: 28, justifyContent: "center" as const, marginBottom: 12 },
+    verifyBtnText: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: colors.primaryForeground,
+    },
+    resendRow: {
+      alignItems: "center" as const,
+      height: 28,
+      justifyContent: "center" as const,
+      marginBottom: 12,
+    },
     resendCountdown: { fontSize: 13, color: colors.mutedForeground },
     resendCountdownBold: { fontWeight: "700" as const, color: colors.foreground },
     resendLink: { fontSize: 13, fontWeight: "700" as const, color: colors.primary },
-    spamNote: { fontSize: 12, color: colors.mutedForeground, textAlign: "center" as const, marginTop: 8 },
-    successContainer: { flex: 1, alignItems: "center" as const, justifyContent: "center" as const, paddingBottom: 60 },
-    successIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accent, alignItems: "center" as const, justifyContent: "center" as const, marginBottom: 24, borderWidth: 1.5, borderColor: colors.primary + "40" },
-    successTitle: { fontSize: 28, fontWeight: "800" as const, color: colors.foreground, letterSpacing: -0.5, marginBottom: 12 },
-    successSubtitle: { fontSize: 15, color: colors.mutedForeground, textAlign: "center" as const, lineHeight: 22, maxWidth: 260 },
+    spamNote: {
+      fontSize: 12,
+      color: colors.mutedForeground,
+      textAlign: "center" as const,
+      marginTop: 8,
+    },
+    centeredArea: {
+      alignItems: "center" as const,
+      paddingVertical: 40,
+    },
+    successIcon: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      backgroundColor: colors.accent,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      marginBottom: 24,
+      borderWidth: 1.5,
+      borderColor: colors.primary + "40",
+    },
+    successTitle: {
+      fontSize: 28,
+      fontWeight: "800" as const,
+      color: colors.foreground,
+      letterSpacing: -0.5,
+      marginBottom: 12,
+    },
   });
 }

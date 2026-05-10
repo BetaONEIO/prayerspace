@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -125,7 +126,11 @@ export default function CompleteProfileScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.container}>
+        <AutoScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.logoArea}>
             <Image source={{ uri: LOGO_URI }} style={styles.logoImage} contentFit="contain" />
             <Text style={styles.greeting}>
@@ -211,7 +216,7 @@ export default function CompleteProfileScreen() {
             Your date of birth is used only for age verification and is never
             shared publicly.
           </Text>
-        </View>
+        </AutoScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -227,7 +232,7 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
     },
     container: {
-      flex: 1,
+      flexGrow: 1,
       justifyContent: "center" as const,
       paddingHorizontal: 28,
       paddingVertical: 32,

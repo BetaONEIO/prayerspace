@@ -6,6 +6,7 @@ import {
   Pressable,
   TextInput,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -52,7 +53,12 @@ export default function ChurchSetup() {
             </Text>
           </View>
 
-          <View style={styles.form}>
+          <ScrollView
+            style={styles.formScroll}
+            contentContainerStyle={styles.form}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.field}>
               <Text style={styles.label}>Community name</Text>
               <TextInput
@@ -103,7 +109,7 @@ export default function ChurchSetup() {
                 testID="church-location-input"
               />
             </View>
-          </View>
+          </ScrollView>
 
           <View style={styles.actions}>
             <Pressable
@@ -143,7 +149,8 @@ function createStyles(colors: ThemeColors) {
     headingArea: { gap: 10, marginBottom: 28 },
     title: { fontSize: 28, fontWeight: "800" as const, color: colors.foreground, lineHeight: 36 },
     subtitle: { fontSize: 15, color: colors.mutedForeground, lineHeight: 22 },
-    form: { flex: 1, gap: 18 },
+    formScroll: { flex: 1 },
+    form: { gap: 18, paddingBottom: 8 },
     field: { gap: 8 },
     label: { fontSize: 13, fontWeight: "700" as const, color: colors.foreground, letterSpacing: 0.3 },
     optional: { fontWeight: "400" as const, color: colors.mutedForeground },

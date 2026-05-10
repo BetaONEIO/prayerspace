@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
 } from "react-native";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, Mail, CheckCircle, ArrowRight } from "lucide-react-native";
@@ -143,12 +144,16 @@ export default function PasswordResetScreen() {
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <Animated.View style={[styles.flex, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()} testID="password-reset-back">
-            <ChevronLeft size={20} color={colors.secondaryForeground} />
-          </Pressable>
+        <AutoScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            <Pressable style={styles.backBtn} onPress={() => router.back()} testID="password-reset-back">
+              <ChevronLeft size={20} color={colors.secondaryForeground} />
+            </Pressable>
 
-          <View style={styles.content}>
             <View style={styles.iconWrap}>
               <Mail size={28} color={colors.primary} />
             </View>
@@ -198,15 +203,15 @@ export default function PasswordResetScreen() {
                 </>
               )}
             </Pressable>
-          </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Remembered your password? </Text>
-            <Pressable onPress={() => router.push("/login")}>
-              <Text style={styles.footerLink}>Sign In</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Remembered your password? </Text>
+              <Pressable onPress={() => router.push("/login")}>
+                <Text style={styles.footerLink}>Sign In</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </AutoScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -217,11 +222,15 @@ function createStyles(colors: ThemeColors) {
     safeArea: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingHorizontal: 24,
-      paddingBottom: 24,
     },
     flex: {
       flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingTop: 8,
+      paddingBottom: 32,
     },
     backBtn: {
       width: 42,
@@ -243,9 +252,6 @@ function createStyles(colors: ThemeColors) {
       marginBottom: 24,
       borderWidth: 1,
       borderColor: colors.border,
-    },
-    content: {
-      flex: 1,
     },
     title: {
       fontSize: 28,
@@ -312,6 +318,7 @@ function createStyles(colors: ThemeColors) {
       shadowOpacity: 0.3,
       shadowRadius: 16,
       elevation: 6,
+      marginBottom: 24,
     },
     resetBtnDisabled: {
       opacity: 0.65,
@@ -324,7 +331,7 @@ function createStyles(colors: ThemeColors) {
     footer: {
       flexDirection: "row" as const,
       justifyContent: "center" as const,
-      paddingBottom: 8,
+      paddingVertical: 8,
     },
     footerText: {
       fontSize: 14,
@@ -339,7 +346,7 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
       alignItems: "center" as const,
       justifyContent: "center" as const,
-      paddingHorizontal: 8,
+      paddingHorizontal: 32,
       paddingBottom: 40,
     },
     successIconWrap: {
