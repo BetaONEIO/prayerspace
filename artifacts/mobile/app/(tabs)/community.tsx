@@ -1506,6 +1506,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
   const privateExpandAnim = useRef(new Animated.Value(0)).current;
   const codeInputRef = useRef<TextInput>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { communities: dbCommunities, loading: dbLoading, error: dbError } = useDiscoverCommunities(searchQuery);
 
@@ -1538,7 +1539,10 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
       friction: 12,
     }).start();
     if (nextExpanded) {
-      setTimeout(() => codeInputRef.current?.focus(), 300);
+      setTimeout(() => {
+        codeInputRef.current?.focus();
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 320);
     } else {
       setPrivateCode("");
       setMatchedPrivate(null);
@@ -1590,6 +1594,11 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
           { paddingTop: insets.top, transform: [{ translateY: slideAnim }] },
         ]}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={insets.top}
+        >
         <View style={styles.browseFullHeader}>
           <View>
             <Text style={styles.switcherTitle}>Browse Communities</Text>
@@ -1621,6 +1630,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
         </View>
 
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           style={styles.browseScrollArea}
@@ -1812,6 +1822,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
               </Text>
             </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </Animated.View>
     </Modal>
   );
