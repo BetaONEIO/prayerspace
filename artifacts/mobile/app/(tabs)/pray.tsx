@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { Video, ResizeMode } from "expo-av";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Sun, ChevronLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -21,6 +21,7 @@ import { useMemo } from "react";
 export default function PrayScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const card1Scale = useRef(new Animated.Value(1)).current;
   const card2Scale = useRef(new Animated.Value(1)).current;
@@ -100,7 +101,7 @@ export default function PrayScreen() {
           </Text>
         </View>
 
-        <View style={styles.cardsContainer}>
+        <View style={[styles.cardsContainer, { paddingBottom: insets.bottom + 16 }]}>
           <Animated.View style={{ transform: [{ scale: card1Scale }] }}>
             <Pressable
               style={styles.startPrayerCard}

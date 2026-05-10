@@ -203,6 +203,7 @@ type GroupSubTab = "My Groups" | "Community";
 export default function CommunityScreen() {
   const themeColors = useThemeColors();
   const colors = themeColors;
+  const insets = useSafeAreaInsets();
   const { profile, session } = useAuth();
   const currentUserId = session?.user?.id ?? "user-1";
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
@@ -722,7 +723,7 @@ export default function CommunityScreen() {
         <GroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
       ) : (
         <AutoScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import * as Contacts from "expo-contacts";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
   Bell,
@@ -70,6 +70,7 @@ import { recentActivity as initialActivity } from "@/mocks/data";
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
   const { stats } = usePrayer();
   const { hasBeenPrayed } = useNotifications();
@@ -378,7 +379,7 @@ export default function HomeScreen() {
       <StatusUpdateModal visible={statusVisible} onClose={handleCloseStatus} />
       <AutoScrollView
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
