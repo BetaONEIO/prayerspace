@@ -242,7 +242,7 @@ export default function TopHeartsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <ArrowLeft size={20} color={colors.secondaryForeground} />

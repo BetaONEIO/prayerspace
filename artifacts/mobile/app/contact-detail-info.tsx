@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { CheckCheck, Home, MessageCircle, Shield } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -10,7 +11,8 @@ import { ThemeColors } from "@/constants/colors";
 export default function ContactDetailInfoScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
   const { contactName, contactAvatar } = useLocalSearchParams<{ contactName?: string; contactAvatar?: string }>();
 
   const name = contactName ?? "Michael Scott";
@@ -80,11 +82,11 @@ export default function ContactDetailInfoScreen() {
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, insetsBottom: number) {
   return StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.3)", justifyContent: "flex-end" },
     backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, paddingBottom: Platform.OS === "ios" ? 40 : 28, borderTopWidth: 1, borderColor: colors.border + "40" },
+    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28, paddingBottom: insetsBottom + 20, borderTopWidth: 1, borderColor: colors.border + "40" },
     handle: { width: 40, height: 4, backgroundColor: colors.muted, borderRadius: 2, alignSelf: "center", marginBottom: 24 },
     profileSection: { alignItems: "center", marginBottom: 20 },
     avatarWrapper: { position: "relative", marginBottom: 14 },

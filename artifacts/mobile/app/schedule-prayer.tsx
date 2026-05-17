@@ -79,9 +79,11 @@ export default function SchedulePrayerScreen() {
             </View>
           </AutoScrollView>
 
-          <View style={styles.footer}>
-            <Pressable style={styles.scheduleBtn} onPress={handleSchedule}><Text style={styles.scheduleBtnText}>Schedule This Prayer</Text></Pressable>
-          </View>
+          <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.background }}>
+            <View style={styles.footer}>
+              <Pressable style={styles.scheduleBtn} onPress={handleSchedule}><Text style={styles.scheduleBtnText}>Schedule This Prayer</Text></Pressable>
+            </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </>

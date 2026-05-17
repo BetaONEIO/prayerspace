@@ -98,7 +98,7 @@ export default function EditProfileScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.header}>
             <Pressable style={styles.backBtn} onPress={() => router.back()} disabled={isUpdatingProfile}>

@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Animated as RNAnimated } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
 import { ArrowLeft, MoreHorizontal, MessageCircle, BookOpen, Heart, Church } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,6 +15,7 @@ const GREEN = "#34C759";
 export default function ContactDetailScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [isFavourited, setIsFavourited] = useState(false);
@@ -37,7 +38,7 @@ export default function ContactDetailScreen() {
   const contact = allContacts.find((c) => c.id === id) ?? { id: "c1", name: "Michael Scott", avatar: "https://randomuser.me/api/portraits/men/32.jpg", email: "michael@dundermifflin.com", status: "online" as const };
 
   return (
-    <AutoScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <AutoScrollView style={styles.scroll} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.headerBg}>
         <SafeAreaView edges={["top"]}>

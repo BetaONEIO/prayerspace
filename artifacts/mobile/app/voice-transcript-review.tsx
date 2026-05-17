@@ -118,7 +118,7 @@ export default function VoiceTranscriptReviewScreen() {
           </View>
         </AutoScrollView>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 24) }]}>
           <Pressable
             style={[styles.primaryBtn, transcribeMutation.isPending && styles.primaryBtnDisabled]}
             onPress={handleContinue}

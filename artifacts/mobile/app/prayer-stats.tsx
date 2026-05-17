@@ -23,7 +23,7 @@ export default function PrayerStatsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>

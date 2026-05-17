@@ -54,7 +54,7 @@ export default function PrivacySettingsScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={20} color={colors.secondaryForeground} />

@@ -15,7 +15,7 @@ export default function ManageContactsScreen() {
   const [autoOutreach, setAutoOutreach] = useState(true);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}><ArrowLeft size={20} color={colors.secondaryForeground} /></Pressable>
         <Text style={styles.title}>Manage Contacts</Text>

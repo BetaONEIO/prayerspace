@@ -39,7 +39,7 @@ export default function PrayerSessionScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.bgGradient} />
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable style={styles.headerBtn} onPress={() => router.back()}><X size={22} color={colors.foreground} /></Pressable>
           <View style={styles.headerCenter}>

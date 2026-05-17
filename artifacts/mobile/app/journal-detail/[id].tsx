@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -143,6 +143,7 @@ function frequencyLabel(freq: Frequency): string {
 
 export default function JournalDetailScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const TAG_CONFIG = useMemo(() => getTagConfig(colors), [colors]);
   const router = useRouter();
@@ -488,7 +489,7 @@ export default function JournalDetailScreen() {
       </AutoScrollView>
 
       {entry.tag !== "praying_for" && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 12, 16) }]}>
           <Pressable
             style={styles.editBtn}
             onPress={() => router.push(`/journal-entry?editId=${entry.id}` as never)}

@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -78,6 +78,7 @@ const getSourceColors = (colors: ThemeColors): Record<string, string> => ({
 
 export default function SelectRecipientsScreen() {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const SOURCE_COLORS = getSourceColors(colors);
   const router = useRouter();
@@ -360,7 +361,7 @@ export default function SelectRecipientsScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom + 16, 36) }]}>
         <View style={styles.footerTop}>
           <Text style={styles.selectedCount}>
             {totalSelected} {totalSelected === 1 ? "selected" : "selected"}

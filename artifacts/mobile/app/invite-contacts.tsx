@@ -115,7 +115,7 @@ export default function InviteContactsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Your Contacts</Text>

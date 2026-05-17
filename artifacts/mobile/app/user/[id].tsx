@@ -43,7 +43,7 @@ export default function OtherUserProfileScreen() {
   const user = allContacts.find((c) => c.id === id) ?? { name: "Michael Scott", avatar: "https://randomuser.me/api/portraits/men/32.jpg", status: "online" as const };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>

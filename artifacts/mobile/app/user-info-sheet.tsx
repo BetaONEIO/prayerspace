@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
 import { MessageCircle, Mic, Users, Mail, Star, CheckCircle } from "lucide-react-native";
@@ -18,7 +19,8 @@ const MUTUAL_AVATARS = [
 export default function UserInfoSheetScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
   const { userName, userAvatar, userBio, userLocation } = useLocalSearchParams<{ userName?: string; userAvatar?: string; userBio?: string; userLocation?: string }>();
 
   const name = userName ?? "Sarah Jenkins";
@@ -100,11 +102,11 @@ export default function UserInfoSheetScreen() {
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, insetsBottom: number) {
   return StyleSheet.create({
     overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
     backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 36, borderTopRightRadius: 36, paddingTop: 16, paddingHorizontal: 28, paddingBottom: Platform.OS === "ios" ? 40 : 28, borderTopWidth: 1, borderColor: colors.border + "40", maxHeight: "90%" },
+    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 36, borderTopRightRadius: 36, paddingTop: 16, paddingHorizontal: 28, paddingBottom: insetsBottom + 20, borderTopWidth: 1, borderColor: colors.border + "40", maxHeight: "90%" },
     handle: { width: 44, height: 5, backgroundColor: colors.muted, borderRadius: 3, alignSelf: "center", marginBottom: 24 },
     scrollContent: { paddingBottom: 16 },
     profileSection: { alignItems: "center", marginBottom: 24 },

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -32,7 +33,7 @@ export default function SendingProgressScreen() {
   const progressWidth = progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.spinnerWrapper}>
         <View style={styles.spinnerTrack} />
         <Animated.View style={[styles.spinnerArc, { transform: [{ rotate: spin }] }]} />
@@ -60,7 +61,7 @@ export default function SendingProgressScreen() {
       </View>
 
       <Text style={styles.disclaimer}>Some messages may be sent through different channels</Text>
-    </View>
+    </SafeAreaView>
   );
 }
 

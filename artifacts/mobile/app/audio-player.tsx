@@ -23,7 +23,7 @@ export default function AudioPlayerScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.bgGradient} />
-      <SafeAreaView style={styles.safeArea} edges={["top"]}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <Pressable style={styles.headerBtn} onPress={() => router.back()}><ChevronDown size={22} color={colors.foreground} /></Pressable>
           <Text style={styles.headerLabel}>NOW PLAYING</Text>

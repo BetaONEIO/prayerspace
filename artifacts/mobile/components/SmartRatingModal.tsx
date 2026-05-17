@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as StoreReview from "expo-store-review";
 import * as Haptics from "expo-haptics";
 import { X, ArrowLeft, Send } from "lucide-react-native";
@@ -27,6 +28,7 @@ type Step = "ask" | "feedback" | "thanks_review" | "thanks_feedback";
 
 export default function SmartRatingModal({ visible, onClose, onRated }: SmartRatingModalProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [step, setStep] = useState<Step>("ask");
   const [feedbackText, setFeedbackText] = useState("");
@@ -107,7 +109,7 @@ export default function SmartRatingModal({ visible, onClose, onRated }: SmartRat
           <Animated.View
             style={[
               styles.sheet,
-              { transform: [{ translateY: sheetAnim }, { scale: scaleAnim }] },
+              { transform: [{ translateY: sheetAnim }, { scale: scaleAnim }], paddingBottom: Math.max(insets.bottom + 24, 32) },
             ]}
           >
             {step === "ask" && (

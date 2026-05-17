@@ -72,13 +72,15 @@ export default function BulkNotifyScreen() {
 
         <FlatList data={filteredContacts} keyExtractor={(item) => item.id} renderItem={renderContact} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false} />
 
-        <View style={styles.footer}>
-          <Pressable style={styles.sendBtn} onPress={handleSend}>
-            <Mail size={20} color={colors.primaryForeground} />
-            <Text style={styles.sendBtnText}>Send Mass Notification ({selected.length})</Text>
-          </Pressable>
-          <Text style={styles.footerNote}>Recipients will receive an in-app notification, email, or SMS depending on their preferences.</Text>
-        </View>
+        <SafeAreaView edges={["bottom"]} style={{ backgroundColor: colors.background }}>
+          <View style={styles.footer}>
+            <Pressable style={styles.sendBtn} onPress={handleSend}>
+              <Mail size={20} color={colors.primaryForeground} />
+              <Text style={styles.sendBtnText}>Send Mass Notification ({selected.length})</Text>
+            </Pressable>
+            <Text style={styles.footerNote}>Recipients will receive an in-app notification, email, or SMS depending on their preferences.</Text>
+          </View>
+        </SafeAreaView>
       </SafeAreaView>
     </>
   );
