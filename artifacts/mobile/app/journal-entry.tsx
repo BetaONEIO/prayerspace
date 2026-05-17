@@ -9,28 +9,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Modal,
   Alert,
-  ActivityIndicator,
   NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
-  TextStyle,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Stack } from "expo-router";
 import {
-  ChevronLeft,
   Heart,
   HandHeart,
   BookOpen,
   Mic,
-  Type,
   Square,
   CheckCircle,
-  Edit3,
-  X,
   Bold,
   Italic,
   List,
@@ -39,15 +32,12 @@ import {
   ArrowLeft,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { BlurView } from "expo-blur";
-import { useMutation } from "@tanstack/react-query";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import FormattedText from "@/components/FormattedText";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
-import { transcribeAudio } from "@/lib/transcribe";
 
 type Mode = "text" | "voice";
 type Tag = "gratitude" | "petition" | "reflection";
@@ -62,11 +52,15 @@ const TAGS: { id: Tag; label: string; Icon: typeof Heart }[] = [
 
 export default function JournalEntryScreen() {
   const router = useRouter();
-  const { editId } = useLocalSearchParams<{ editId?: string }>();
+  const { editId, transcript: incomingTranscript, pendingTitle, pendingTag } = useLocalSearchParams<{
+    editId?: string;
+    transcript?: string;
+    pendingTitle?: string;
+    pendingTag?: string;
+  }>();
   const themeColors = useThemeColors();
   const colors = themeColors;
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
   const { addJournalEntry, updateJournalEntry, journal } = usePrayer();
 
   const isEditing = !!editId;
@@ -98,24 +92,21 @@ export default function JournalEntryScreen() {
   const [isBodyFocused, setIsBodyFocused] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
 
-  const { isRecording, duration, startRecording, stopRecording, error: recordingError } = useAudioRecording();
+  const { isRecording, duration, startRecording, stopRecording } = useAudioRecording();
   const [hasRecorded, setHasRecorded] = useState(false);
 
-  const transcribeMutation = useMutation({
-    mutationFn: async (audioUri: string) => transcribeAudio(audioUri),
-    onSuccess: (text) => {
-      setTranscriptText(text);
-    },
-    onError: (err) => {
-      Alert.alert("Transcription Error", (err as Error).message || "Could not transcribe audio. Please try again.");
-      setShowTranscriptModal(false);
-    },
-  });
-
-  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
-  const [transcriptText, setTranscriptText] = useState("");
-  const [editingTranscript, setEditingTranscript] = useState(false);
-  const [pendingSeconds, setPendingSeconds] = useState(0);
+  useEffect(() => {
+    if (incomingTranscript) {
+      setBody(incomingTranscript);
+      setHasRecorded(true);
+      setMode("voice");
+      if (pendingTitle) setTitle(pendingTitle);
+      if (pendingTag && ["gratitude", "petition", "reflection"].includes(pendingTag)) {
+        setActiveTag(pendingTag as Tag);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hasUnsavedWork = title.trim().length > 0 || body.trim().length > 0 || hasRecorded || isRecording;
   const { DiscardModal } = useUnsavedChangesWarning(hasUnsavedWork);
@@ -193,67 +184,44 @@ export default function JournalEntryScreen() {
   const handleStartRecording = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setHasRecorded(false);
-    setTranscriptText("");
+    setBody("");
     await startRecording();
   }, [startRecording]);
 
   const handleStopRecording = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const uri = await stopRecording();
-    setPendingSeconds(duration);
-    setEditingTranscript(false);
-    setShowTranscriptModal(true);
     console.log("[JournalEntry] Voice recording stopped at", duration, "seconds, URI:", uri);
-    if (uri) {
-      transcribeMutation.mutate(uri);
-    }
-  }, [duration, stopRecording, transcribeMutation]);
-
-  const handleConfirmTranscript = useCallback(() => {
-    setShowTranscriptModal(false);
-    setHasRecorded(true);
-    setBody(transcriptText);
-    console.log("[JournalEntry] Transcript confirmed");
-  }, [transcriptText]);
+    router.push({
+      pathname: "/voice-transcript-review" as never,
+      params: {
+        duration: String(duration),
+        audioUri: uri ?? "",
+        returnTo: "journal",
+        pendingTitle: title,
+        pendingTag: activeTag,
+      },
+    });
+  }, [duration, stopRecording, router, title, activeTag]);
 
   const handleSave = useCallback(() => {
+    if (!body.trim()) {
+      Alert.alert("Empty Entry", "Please write something before saving.");
+      return;
+    }
+    const entryTitle = title.trim() || (mode === "voice" ? "Voice Prayer" : "Prayer Entry");
     if (isEditing && editId) {
-      if (!body.trim()) {
-        Alert.alert("Empty Entry", "Please write something before saving.");
-        return;
-      }
-      const entryTitle = title.trim() || "Prayer Entry";
       console.log("[JournalEntry] Updating entry:", { editId, title: entryTitle, tag: activeTag });
       updateJournalEntry(editId, { title: entryTitle, body: body.trim(), tag: activeTag });
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       triggerSavedToast(true);
       return;
     }
-
-    if (mode === "text") {
-      if (!body.trim()) {
-        Alert.alert("Empty Entry", "Please write something before saving.");
-        return;
-      }
-      const entryTitle = title.trim() || "Prayer Entry";
-      console.log("[JournalEntry] Saving text entry:", { title: entryTitle, tag: activeTag });
-      addJournalEntry({ title: entryTitle, body: body.trim(), tag: activeTag });
-    } else {
-      if (!hasRecorded) {
-        Alert.alert("No Recording", "Please record your prayer before saving.");
-        return;
-      }
-      const entryTitle = title.trim() || "Voice Prayer";
-      const voiceBody = transcriptText.trim()
-        ? transcriptText.trim()
-        : `Voice prayer recorded — ${formatTime(pendingSeconds)} duration.${body.trim() ? "\n\n" + body.trim() : ""}`;
-      console.log("[JournalEntry] Saving voice entry:", { title: entryTitle, duration: pendingSeconds });
-      addJournalEntry({ title: entryTitle, body: voiceBody, tag: activeTag });
-    }
-
+    console.log("[JournalEntry] Saving entry:", { title: entryTitle, tag: activeTag, mode });
+    addJournalEntry({ title: entryTitle, body: body.trim(), tag: activeTag });
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     triggerSavedToast(false);
-  }, [isEditing, editId, mode, title, body, activeTag, hasRecorded, pendingSeconds, transcriptText, addJournalEntry, updateJournalEntry, triggerSavedToast]);
+  }, [isEditing, editId, mode, title, body, activeTag, addJournalEntry, updateJournalEntry, triggerSavedToast]);
 
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
@@ -335,8 +303,7 @@ export default function JournalEntryScreen() {
     [body, selection, isBodyFocused]
   );
 
-  const canSave =
-    mode === "text" ? body.trim().length > 0 : hasRecorded;
+  const canSave = body.trim().length > 0;
 
   const rippleScale = rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] });
   const rippleOpacity = rippleAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0] });
@@ -459,7 +426,6 @@ export default function JournalEntryScreen() {
                 setIsBodyFocused(true);
                 setTimeout(() => bodyInputRef.current?.focus(), 50);
               }}
-              activeOpacity={1}
             >
               <View style={styles.quoteBar} />
               <View style={{ flex: 1 }}>
@@ -510,7 +476,7 @@ export default function JournalEntryScreen() {
 
             <View style={styles.voiceCenter}>
               <View style={styles.timerWrap}>
-                <Text style={styles.timerText}>{formatTime(isRecording ? duration : pendingSeconds)}</Text>
+                <Text style={styles.timerText}>{formatTime(duration)}</Text>
                 <Text style={styles.timerLabel}>
                   {isRecording ? "RECORDING" : hasRecorded ? "COMPLETED" : "READY"}
                 </Text>
@@ -561,7 +527,7 @@ export default function JournalEntryScreen() {
                 <View style={styles.recordedBanner}>
                   <View style={styles.recordedDot} />
                   <Text style={styles.recordedText}>
-                    Recording complete · {formatTime(pendingSeconds)}
+                    Recording complete · {formatTime(duration)}
                   </Text>
                   <Pressable onPress={handleStartRecording}>
                     <Text style={styles.reRecordText}>Re-record</Text>
@@ -607,96 +573,17 @@ export default function JournalEntryScreen() {
           </AutoScrollView>
         )}
 
-        <Pressable
-          style={[styles.journalBtn, !canSave && styles.journalBtnDisabled, { marginBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 16 : 24) }]}
-          onPress={handleSave}
-          disabled={!canSave}
-        >
-          <BookOpen size={18} color={colors.primaryForeground} />
-          <Text style={styles.journalBtnText}>{isEditing ? "Save Changes" : "Save to Prayer Journal"}</Text>
-        </Pressable>
+        <SafeAreaView edges={["bottom"]}>
+          <Pressable
+            style={[styles.journalBtn, !canSave && styles.journalBtnDisabled]}
+            onPress={handleSave}
+            disabled={!canSave}
+          >
+            <BookOpen size={18} color={colors.primaryForeground} />
+            <Text style={styles.journalBtnText}>{isEditing ? "Save Changes" : "Save to Prayer Journal"}</Text>
+          </Pressable>
+        </SafeAreaView>
       </KeyboardAvoidingView>
-
-      {/* Transcript Review Modal */}
-      <Modal
-        visible={showTranscriptModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowTranscriptModal(false)}
-      >
-        <BlurView intensity={18} tint="dark" style={styles.modalOverlay}>
-          <View style={styles.transcriptSheet}>
-            <View style={styles.sheetHandle} />
-
-            <View style={styles.transcriptHeader}>
-              <View style={styles.transcriptIconWrap}>
-                {transcribeMutation.isPending ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Mic size={22} color={colors.primaryForeground} />
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.transcriptTitle}>
-                  {transcribeMutation.isPending ? "Transcribing…" : "Voice Prayer Transcribed"}
-                </Text>
-                <Text style={styles.transcriptSubtitle}>{formatTime(pendingSeconds)} · Review before saving</Text>
-              </View>
-              <Pressable style={styles.transcriptCloseBtn} onPress={() => setShowTranscriptModal(false)}>
-                <X size={18} color={colors.mutedForeground} />
-              </Pressable>
-            </View>
-
-            <View style={styles.transcriptDivider} />
-
-            {transcribeMutation.isPending ? (
-              <View style={styles.transcriptLoadingWrap}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <Text style={styles.transcriptLoadingText}>Converting your prayer to text…</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.transcriptScrollArea} showsVerticalScrollIndicator={false}>
-                <View style={styles.transcriptBodyCard}>
-                  <View style={styles.quoteBar} />
-                  {editingTranscript ? (
-                    <TextInput
-                      style={[styles.bodyInput, { minHeight: 140, fontSize: 15 }]}
-                      multiline
-                      value={transcriptText}
-                      onChangeText={setTranscriptText}
-                      textAlignVertical="top"
-                      autoFocus
-                    />
-                  ) : (
-                    <Text style={styles.transcriptBody}>{transcriptText}</Text>
-                  )}
-                </View>
-              </ScrollView>
-            )}
-
-            <View style={styles.transcriptActions}>
-              <Pressable
-                style={[styles.transcriptEditBtn, transcribeMutation.isPending && { opacity: 0.4 }]}
-                onPress={() => setEditingTranscript((v) => !v)}
-                disabled={transcribeMutation.isPending}
-              >
-                <Edit3 size={18} color={colors.accentForeground} />
-                <Text style={styles.transcriptEditBtnText}>
-                  {editingTranscript ? "Done Editing" : "Edit"}
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.transcriptConfirmBtn, transcribeMutation.isPending && { opacity: 0.4 }]}
-                onPress={handleConfirmTranscript}
-                disabled={transcribeMutation.isPending}
-              >
-                <CheckCircle size={18} color={colors.primaryForeground} />
-                <Text style={styles.transcriptConfirmBtnText}>Confirm</Text>
-              </Pressable>
-            </View>
-          </View>
-        </BlurView>
-      </Modal>
 
       {/* Saved Toast */}
       {showSavedToast && (
@@ -1124,8 +1011,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginHorizontal: 20,
-    marginBottom: Platform.OS === "ios" ? 16 : 24,
     marginTop: 4,
+    marginBottom: 12,
     backgroundColor: colors.secondary,
     borderRadius: 999,
     paddingVertical: 18,

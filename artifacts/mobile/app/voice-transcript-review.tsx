@@ -16,9 +16,10 @@ export default function VoiceTranscriptReviewScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ duration?: string; audioUri?: string }>();
+  const params = useLocalSearchParams<{ duration?: string; audioUri?: string; returnTo?: string; pendingTitle?: string; pendingTag?: string }>();
   const durationSeconds = parseInt(params.duration ?? "0", 10);
   const audioUri = params.audioUri ?? "";
+  const returnTo = params.returnTo ?? "prayer-mode";
   const [editedText, setEditedText] = useState("");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [draftText, setDraftText] = useState("");
@@ -53,8 +54,19 @@ export default function VoiceTranscriptReviewScreen() {
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.replace({ pathname: "/prayer-mode" as never, params: { transcript: editedText, audioUri, duration: String(durationSeconds) } });
-  }, [router, editedText]);
+    if (returnTo === "journal") {
+      router.replace({
+        pathname: "/journal-entry" as never,
+        params: {
+          transcript: editedText,
+          pendingTitle: params.pendingTitle ?? "",
+          pendingTag: params.pendingTag ?? "",
+        },
+      });
+    } else {
+      router.replace({ pathname: "/prayer-mode" as never, params: { transcript: editedText, audioUri, duration: String(durationSeconds) } });
+    }
+  }, [router, editedText, returnTo, audioUri, durationSeconds, params.pendingTitle, params.pendingTag]);
 
   const parts = editedText ? [{ text: editedText, highlight: false }] : [];
 

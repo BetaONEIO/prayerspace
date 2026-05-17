@@ -1,7 +1,12 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const API_URL = (() => {
+  const explicit = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+  if (explicit) return explicit;
+  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+  return domain ? `https://${domain}` : "";
+})();
 
 function getMimeType(uri: string): string {
   const lower = uri.toLowerCase();
