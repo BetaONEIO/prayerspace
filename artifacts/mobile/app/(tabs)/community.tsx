@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { feedStore } from "@/lib/feedStore";
+import { groupCreatedStore } from "@/lib/groupStore";
 import { recordCommunityEngagement } from "@/hooks/useReviewPrompt";
 import { ratingStore } from "@/lib/ratingStore";
 import { useAuth } from "@/providers/AuthProvider";
@@ -2012,6 +2013,25 @@ function MyGroupsContent() {
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
   const [groupsFilter, setGroupsFilter] = useState<"all" | "leading">("all");
   const { joinedGroupIds } = useNotifications();
+
+  React.useEffect(() => {
+    groupCreatedStore.register((created) => {
+      const newGroup: MyGroup = {
+        id: created.id,
+        name: created.name,
+        memberCount: 1,
+        lastActivity: "Just now",
+        avatar: created.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(created.name)}&background=random&color=fff&size=128`,
+        activeRequests: 0,
+        isAdmin: true,
+      };
+      setMyGroups((prev) => {
+        if (prev.some((g) => g.id === created.id)) return prev;
+        return [newGroup, ...prev];
+      });
+    });
+    return () => groupCreatedStore.unregister();
+  }, []);
 
   React.useEffect(() => {
     joinedGroupIds.forEach((notifGroupId) => {

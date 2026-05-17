@@ -32,6 +32,7 @@ import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
+import { groupCreatedStore, groupStore } from "@/lib/groupStore";
 
 type Step = 1 | 2;
 type FocusCategory = "Prayer" | "Bible Study" | "Support" | "Testimony";
@@ -135,7 +136,24 @@ export default function CreateGroupScreen() {
       setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: false }), 50);
     } else {
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      console.log("Creating group:", { groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri });
+      const newId = `g_${Date.now()}`;
+      groupCreatedStore.emit({
+        id: newId,
+        name: groupName,
+        avatar: groupPhotoUri,
+        focus: selectedFocus,
+        privacy: selectedPrivacy,
+        safeSpace: safeSpaceEnabled,
+      });
+      groupStore.update(newId, {
+        name: groupName,
+        photoUri: groupPhotoUri,
+        privacy: selectedPrivacy,
+        safeSpace: safeSpaceEnabled,
+        focus: selectedFocus ?? "Prayer",
+        description: "",
+        members: [],
+      });
       openCreatedModal();
     }
   }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal]);

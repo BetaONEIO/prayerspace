@@ -90,3 +90,37 @@ export function useGroupState(id: string): GroupState {
 
   return state;
 }
+
+export interface CreatedGroupPayload {
+  id: string;
+  name: string;
+  avatar: string | null;
+  focus: FocusCategory | null;
+  privacy: PrivacyType;
+  safeSpace: boolean;
+}
+
+type CreatedListener = (group: CreatedGroupPayload) => void;
+
+let _createdListener: CreatedListener | null = null;
+const _createdQueue: CreatedGroupPayload[] = [];
+
+export const groupCreatedStore = {
+  register(fn: CreatedListener) {
+    _createdListener = fn;
+    while (_createdQueue.length > 0) {
+      const g = _createdQueue.shift();
+      if (g) fn(g);
+    }
+  },
+  unregister() {
+    _createdListener = null;
+  },
+  emit(group: CreatedGroupPayload) {
+    if (_createdListener) {
+      _createdListener(group);
+    } else {
+      _createdQueue.push(group);
+    }
+  },
+};
