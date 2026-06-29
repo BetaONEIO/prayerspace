@@ -269,40 +269,46 @@ export default function TopHeartsScreen() {
               </View>
             </View>
 
-            <View style={styles.favouritesGrid}>
-              {favourites.map((contact) => (
-                <Pressable
-                  key={contact.id}
-                  style={styles.favouriteItem}
-                  onLongPress={() => handleRemoveFavourite(contact.id)}
-                  onPress={() => router.push(`/contact/${contact.id}`)}
-                >
-                  <View style={styles.favouriteAvatarWrap}>
-                    {contact.avatar ? (
-                      <Image source={{ uri: contact.avatar }} style={styles.favouriteAvatar} />
-                    ) : (
-                      <View style={[styles.favouriteAvatar, styles.favouriteInitialsBg]}>
-                        <Text style={styles.favouriteInitialsText}>
-                          {getInitials(contact.name)}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.heartBadge}>
-                      <Heart size={8} color="#fff" fill="#fff" />
-                    </View>
-                  </View>
-                  <Text style={styles.favouriteName} numberOfLines={1}>
-                    {contact.name}
-                  </Text>
-                </Pressable>
-              ))}
-              <Pressable style={styles.favouriteItem} onPress={() => setShowAddModal(true)}>
-                <View style={styles.addCircle}>
-                  <Plus size={26} color={colors.primary + "80"} />
-                </View>
-                <Text style={styles.addLabel}>Add</Text>
+            {favourites.length === 0 ? (
+              <Pressable style={styles.emptySection} onPress={() => setShowAddModal(true)}>
+                <Text style={styles.emptySectionText}>No favourites yet — tap to add people you pray for</Text>
               </Pressable>
-            </View>
+            ) : (
+              <View style={styles.favouritesGrid}>
+                {favourites.map((contact) => (
+                  <Pressable
+                    key={contact.id}
+                    style={styles.favouriteItem}
+                    onLongPress={() => handleRemoveFavourite(contact.id)}
+                    onPress={() => router.push(`/contact/${contact.id}`)}
+                  >
+                    <View style={styles.favouriteAvatarWrap}>
+                      {contact.avatar ? (
+                        <Image source={{ uri: contact.avatar }} style={styles.favouriteAvatar} />
+                      ) : (
+                        <View style={[styles.favouriteAvatar, styles.favouriteInitialsBg]}>
+                          <Text style={styles.favouriteInitialsText}>
+                            {getInitials(contact.name)}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.heartBadge}>
+                        <Heart size={8} color="#fff" fill="#fff" />
+                      </View>
+                    </View>
+                    <Text style={styles.favouriteName} numberOfLines={1}>
+                      {contact.name}
+                    </Text>
+                  </Pressable>
+                ))}
+                <Pressable style={styles.favouriteItem} onPress={() => setShowAddModal(true)}>
+                  <View style={styles.addCircle}>
+                    <Plus size={26} color={colors.primary + "80"} />
+                  </View>
+                  <Text style={styles.addLabel}>Add</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
@@ -311,35 +317,41 @@ export default function TopHeartsScreen() {
               <Text style={styles.sectionLabel}>FREQUENTLY PRAYED FOR</Text>
             </View>
 
-            <View style={styles.listContainer}>
-              {frequentlyPrayedFor.map((item) => (
-                <Pressable
-                  key={item.id}
-                  style={styles.listCard}
-                  onPress={() => router.push(`/contact/${item.id}`)}
-                >
-                  <View style={styles.listLeft}>
-                    <Image source={{ uri: item.avatar }} style={styles.listAvatar} />
-                    <View style={styles.listInfo}>
-                      <Text style={styles.listName}>{item.name}</Text>
-                      <View style={styles.listMeta}>
-                        <Text style={styles.prayerCount}>{item.prayerCount} Prayers</Text>
-                        <View style={styles.dot} />
-                        <Text style={styles.frequency}>{item.frequency}</Text>
+            {frequentlyPrayedFor.length === 0 ? (
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>Send prayers to see who you pray for most often</Text>
+              </View>
+            ) : (
+              <View style={styles.listContainer}>
+                {frequentlyPrayedFor.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={styles.listCard}
+                    onPress={() => router.push(`/contact/${item.id}`)}
+                  >
+                    <View style={styles.listLeft}>
+                      <Image source={{ uri: item.avatar }} style={styles.listAvatar} />
+                      <View style={styles.listInfo}>
+                        <Text style={styles.listName}>{item.name}</Text>
+                        <View style={styles.listMeta}>
+                          <Text style={styles.prayerCount}>{item.prayerCount} Prayers</Text>
+                          <View style={styles.dot} />
+                          <Text style={styles.frequency}>{item.frequency}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
-                  <View style={styles.actionBtns}>
-                    <Pressable style={styles.msgBtn} onPress={() => router.push("/(tabs)/(home)")}>
-                      <MessageCircle size={17} color={colors.primary} />
-                    </Pressable>
-                    <Pressable style={styles.prayBtn} onPress={() => router.push("/(tabs)/pray")}>
-                      <HandHeart size={18} color={colors.primary} />
-                    </Pressable>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+                    <View style={styles.actionBtns}>
+                      <Pressable style={styles.msgBtn} onPress={() => router.push("/(tabs)/(home)")}>
+                        <MessageCircle size={17} color={colors.primary} />
+                      </Pressable>
+                      <Pressable style={styles.prayBtn} onPress={() => router.push("/(tabs)/pray")}>
+                        <HandHeart size={18} color={colors.primary} />
+                      </Pressable>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
           </View>
 
           <View style={{ height: 32 }} />
@@ -639,6 +651,16 @@ const createStyles = (colors: ThemeColors) =>
       textAlign: "center",
     },
     listContainer: { gap: 10 },
+    emptySection: {
+      paddingVertical: 20,
+      paddingHorizontal: 4,
+    },
+    emptySectionText: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      textAlign: "center" as const,
+      lineHeight: 20,
+    },
     listCard: {
       backgroundColor: colors.card,
       borderRadius: 24,

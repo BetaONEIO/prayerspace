@@ -339,24 +339,6 @@ export default function HomeScreen() {
     [router, styles]
   );
 
-  const renderFrequentEmptyState = useCallback(() => (
-    <View style={styles.frequentEmptyRow}>
-      {[0, 1, 2, 3].map((i) => (
-        <Pressable
-          key={i}
-          style={styles.frequentItem}
-          onPress={() => router.push("/top-hearts")}
-        >
-          <View style={styles.frequentEmptyCircle}>
-            <Plus size={22} color={colors.primary} strokeWidth={1.8} />
-          </View>
-          <Text style={styles.frequentNameMuted} numberOfLines={1}>
-            {i === 0 ? "Add" : ""}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  ), [router, styles, colors]);
 
   const toastStyle = useMemo(() => ({
     opacity: toastAnim,
@@ -504,15 +486,12 @@ export default function HomeScreen() {
             )}
           </View>
           {frequentlyPrayedFor.length === 0 && favourites.length === 0 ? (
-            <>
-              {renderFrequentEmptyState()}
-              <Pressable
-                style={styles.emptyAddPrompt}
-                onPress={() => router.push("/top-hearts")}
-              >
-                <Text style={styles.emptyAddPromptText}>Manage your prayer list</Text>
-              </Pressable>
-            </>
+            <Pressable
+              style={styles.emptyAddPrompt}
+              onPress={() => router.push("/top-hearts")}
+            >
+              <Text style={styles.emptyAddPromptText}>Add people you pray for regularly</Text>
+            </Pressable>
           ) : (
             <FlatList
               data={[
@@ -1008,11 +987,6 @@ function createStyles(colors: ThemeColors) {
       fontWeight: "700" as const,
       color: colors.primary,
     },
-    frequentNameMuted: {
-      fontSize: 13,
-      fontWeight: "600" as const,
-      color: colors.mutedForeground,
-    },
     addCircle: {
       width: 64,
       height: 64,
@@ -1116,22 +1090,6 @@ function createStyles(colors: ThemeColors) {
       fontSize: 14,
       color: colors.mutedForeground,
       fontWeight: "500" as const,
-    },
-    frequentEmptyRow: {
-      flexDirection: "row" as const,
-      gap: 14,
-      paddingBottom: 4,
-    },
-    frequentEmptyCircle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      borderWidth: 1.5,
-      borderColor: colors.primary + "40",
-      borderStyle: "dashed" as const,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      backgroundColor: colors.primary + "06",
     },
     emptyAddPrompt: {
       marginTop: 14,
