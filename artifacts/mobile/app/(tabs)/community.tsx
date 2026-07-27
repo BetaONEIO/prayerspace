@@ -236,6 +236,7 @@ export default function CommunityScreen() {
   const [prayingUsersPost, setPrayingUsersPost] = useState<FeedPost | null>(null);
   const [shareTarget, setShareTarget] = useState<FeedPost | null>(null);
   const [hasNewUpdates, setHasNewUpdates] = useState<boolean>(false);
+  const [pendingFeedPosts, setPendingFeedPosts] = useState<FeedPost[]>([]);
   const newUpdateAnim = useRef(new Animated.Value(0)).current;
   const activeCommunityRef = useRef<Community>(DEFAULT_COMMUNITY);
   const [prayingForPrompt, setPrayingForPrompt] = useState<{ post: FeedPost } | null>(null);
@@ -277,9 +278,11 @@ export default function CommunityScreen() {
 
   useEffect(() => {
     feedStore.register((post) => {
-      const withCommunity = { ...post, communityId: activeCommunityRef.current.id };
-      setAllFeedPosts((prev) => [withCommunity as FeedPost, ...prev]);
-      setAllCommunityPosts((prev) => [withCommunity as FeedPost, ...prev]);
+      const withCommunity = { ...post, communityId: activeCommunityRef.current.id } as FeedPost;
+      // Buffer the post — show the "New updates available" banner instead of
+      // injecting directly into the visible feed.
+      setPendingFeedPosts((prev) => [withCommunity, ...prev]);
+      setHasNewUpdates(true);
     });
     return () => feedStore.unregister();
   }, []);
@@ -298,6 +301,14 @@ export default function CommunityScreen() {
 
   const handleLoadNewUpdates = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Flush pending posts into the visible feed, then hide the banner.
+    setPendingFeedPosts((pending) => {
+      if (pending.length > 0) {
+        setAllFeedPosts((prev) => [...pending, ...prev]);
+        setAllCommunityPosts((prev) => [...pending, ...prev]);
+      }
+      return [];
+    });
     Animated.timing(newUpdateAnim, {
       toValue: 0,
       duration: 200,
