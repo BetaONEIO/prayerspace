@@ -196,9 +196,9 @@ export default function HomeScreen() {
         phone: c.phoneNumbers?.[0]?.number ?? "",
       }));
     addFavourites(toAdd);
+    // Just close the modal — don't dismiss the banner so the user can
+    // come back and add more contacts later.
     setAddrBookModalVisible(false);
-    setAddrBookDismissed(true);
-    void AsyncStorage.setItem("addr_book_dismissed", "true");
   }, [addrBookContacts, selectedContactIds, addFavourites]);
 
   const handleDismissNudge = useCallback(async () => {
@@ -514,7 +514,9 @@ export default function HomeScreen() {
                 <BookUser size={18} color={colors.primary} />
               </View>
               <View style={styles.addrBookBody}>
-                <Text style={styles.addrBookTitle}>Connect your address book</Text>
+                <Text style={styles.addrBookTitle}>
+                  {favourites.length > 0 ? "Add more contacts" : "Connect your address book"}
+                </Text>
                 <Text style={styles.addrBookSub}>Add SMS, WhatsApp & Facebook contacts</Text>
               </View>
               <Pressable
@@ -524,7 +526,9 @@ export default function HomeScreen() {
               >
                 {addrBookLoading
                   ? <ActivityIndicator size="small" color={colors.primaryForeground} />
-                  : <Text style={styles.addrBookConnectText}>Connect</Text>
+                  : <Text style={styles.addrBookConnectText}>
+                      {favourites.length > 0 ? "Add more" : "Connect"}
+                    </Text>
                 }
               </Pressable>
               <Pressable
@@ -535,6 +539,21 @@ export default function HomeScreen() {
                 <X size={13} color={colors.mutedForeground} />
               </Pressable>
             </View>
+          )}
+          {addrBookDismissed && Platform.OS !== "web" && (
+            <Pressable
+              style={styles.addrBookReopenRow}
+              onPress={() => void handleConnectAddressBook()}
+              disabled={addrBookLoading}
+            >
+              {addrBookLoading
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <>
+                    <BookUser size={13} color={colors.primary} />
+                    <Text style={styles.addrBookReopenText}>Import more from address book</Text>
+                  </>
+              }
+            </Pressable>
           )}
         </View>
 
@@ -1353,6 +1372,20 @@ function createStyles(colors: ThemeColors) {
       fontSize: 11,
       color: colors.mutedForeground,
       fontWeight: "500" as const,
+    },
+    addrBookReopenRow: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 6,
+      marginTop: 10,
+      alignSelf: "flex-start" as const,
+      paddingVertical: 4,
+    },
+    addrBookReopenText: {
+      fontSize: 12,
+      fontWeight: "600" as const,
+      color: colors.primary,
+      textDecorationLine: "underline" as const,
     },
     addrBookConnectBtn: {
       backgroundColor: colors.primary,
