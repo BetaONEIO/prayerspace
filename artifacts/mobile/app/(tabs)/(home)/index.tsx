@@ -367,7 +367,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <Pressable style={styles.menuButton} onPress={handleOpenDrawer}>
-            <Menu size={22} color={colors.secondaryForeground} />
+            <Menu size={20} color={colors.secondaryForeground} />
           </Pressable>
           <Text style={styles.appTitle}>Prayer Space</Text>
           <View style={styles.headerRight}>

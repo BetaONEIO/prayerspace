@@ -34,7 +34,9 @@ import {
   UserX,
   ShieldAlert,
   ArchiveRestore,
+  Menu,
 } from "lucide-react-native";
+import NavigationDrawer from "@/components/NavigationDrawer";
 import * as Haptics from "expo-haptics";
 import { Swipeable } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -325,6 +327,7 @@ export default function MessagesScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { unreadCount: notifUnreadCount } = useNotifications();
+  const [drawerVisible, setDrawerVisible] = useState(false);
   const [notifVisible, setNotifVisible] = useState(false);
   const [search, setSearch] = useState("");
   const [newConvVisible, setNewConvVisible] = useState(false);
@@ -631,26 +634,37 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]} {...swipeHandlers}>
+      <NavigationDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+        activeRoute=""
+      />
+      <NotificationsPanel visible={notifVisible} onClose={() => setNotifVisible(false)} />
       <Animated.View style={[styles.flex, { opacity: fadeAnim }]}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>Messages</Text>
-            {showArchived ? (
-              <Text style={styles.headerSub}>Archived conversations</Text>
-            ) : totalUnread > 0 ? (
-              <Text style={styles.headerSub}>
-                {totalUnread} unread message{totalUnread !== 1 ? "s" : ""}
-              </Text>
-            ) : (
-              <Text style={styles.headerSub}>Your prayer conversations</Text>
-            )}
+          <View style={styles.headerLeft}>
+            <Pressable style={styles.iconBtn} onPress={() => setDrawerVisible(true)}>
+              <Menu size={20} color={colors.secondaryForeground} />
+            </Pressable>
+            <View>
+              <Text style={styles.headerTitle}>Messages</Text>
+              {showArchived ? (
+                <Text style={styles.headerSub}>Archived conversations</Text>
+              ) : totalUnread > 0 ? (
+                <Text style={styles.headerSub}>
+                  {totalUnread} unread message{totalUnread !== 1 ? "s" : ""}
+                </Text>
+              ) : (
+                <Text style={styles.headerSub}>Your prayer conversations</Text>
+              )}
+            </View>
           </View>
           <View style={styles.headerActions}>
-            <Pressable style={styles.composeBtn} testID="compose-btn" onPress={openNewConv}>
-              <Edit size={18} color={colors.primary} />
+            <Pressable style={styles.iconBtn} testID="compose-btn" onPress={openNewConv}>
+              <Edit size={20} color={colors.secondaryForeground} />
             </Pressable>
             <Pressable style={styles.bellWrap} onPress={() => setNotifVisible(true)}>
-              <Bell size={18} color={colors.primary} />
+              <Bell size={20} color={colors.secondaryForeground} />
               {notifUnreadCount > 0 && <View style={styles.bellBadge} />}
             </Pressable>
           </View>
@@ -725,8 +739,6 @@ export default function MessagesScreen() {
           />
         )}
       </Animated.View>
-
-      <NotificationsPanel visible={notifVisible} onClose={() => setNotifVisible(false)} />
 
       {/* New conversation sheet */}
       <Modal visible={newConvVisible} transparent animationType="none" onRequestClose={closeNewConv}>
@@ -986,35 +998,48 @@ function createStyles(colors: ThemeColors) {
     flex: { flex: 1 },
     header: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 24,
-      paddingTop: 8,
-      paddingBottom: 16,
+      paddingTop: 10,
+      paddingBottom: 14,
+    },
+    headerLeft: {
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      gap: 10,
+      flex: 1,
     },
     headerTitle: {
-      fontSize: 28,
-      fontWeight: "800" as const,
+      fontSize: 18,
+      fontWeight: "700" as const,
       color: colors.foreground,
-      letterSpacing: -0.5,
+      letterSpacing: -0.3,
     },
     headerSub: {
       fontSize: 12,
       color: colors.mutedForeground,
-      fontWeight: "500" as const,
-      marginTop: 2,
+      fontWeight: "400" as const,
+      marginTop: 1,
     },
     headerActions: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       gap: 8,
-      marginTop: 4,
+    },
+    iconBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.secondary,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
     },
     bellWrap: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: colors.accent,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.secondary,
       alignItems: "center" as const,
       justifyContent: "center" as const,
       position: "relative" as const,
@@ -1028,15 +1053,7 @@ function createStyles(colors: ThemeColors) {
       borderRadius: 4,
       backgroundColor: colors.primary,
       borderWidth: 1.5,
-      borderColor: colors.background,
-    },
-    composeBtn: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      backgroundColor: colors.accent,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
+      borderColor: colors.secondary,
     },
     searchWrap: {
       flexDirection: "row",
