@@ -66,6 +66,7 @@ export default function CreateGroupScreen() {
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
   const [showCreatedModal, setShowCreatedModal] = useState<boolean>(false);
   const [showNameAlert, setShowNameAlert] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const nameAlertFade = useRef(new Animated.Value(0)).current;
   const nameAlertScale = useRef(new Animated.Value(0.92)).current;
   const createdModalFade = useRef(new Animated.Value(0)).current;
@@ -125,7 +126,7 @@ export default function CreateGroupScreen() {
     router.replace({ pathname: "/(tabs)/community", params: { tab: "Groups" } });
   }, [router]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (step === 1) {
       if (!groupName.trim()) {
         openNameAlert();
@@ -135,28 +136,37 @@ export default function CreateGroupScreen() {
       setStep(2);
       setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: false }), 50);
     } else {
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const newId = `g_${Date.now()}`;
-      groupCreatedStore.emit({
-        id: newId,
-        name: groupName,
-        avatar: groupPhotoUri,
-        focus: selectedFocus,
-        privacy: selectedPrivacy,
-        safeSpace: safeSpaceEnabled,
-      });
-      groupStore.update(newId, {
-        name: groupName,
-        photoUri: groupPhotoUri,
-        privacy: selectedPrivacy,
-        safeSpace: safeSpaceEnabled,
-        focus: selectedFocus ?? "Prayer",
-        description: "",
-        members: [],
-      });
-      openCreatedModal();
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      try {
+        if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        const newId = `g_${Date.now()}`;
+        groupCreatedStore.emit({
+          id: newId,
+          name: groupName,
+          avatar: groupPhotoUri,
+          focus: selectedFocus,
+          privacy: selectedPrivacy,
+          safeSpace: safeSpaceEnabled,
+        });
+        groupStore.update(newId, {
+          name: groupName,
+          photoUri: groupPhotoUri,
+          privacy: selectedPrivacy,
+          safeSpace: safeSpaceEnabled,
+          focus: selectedFocus ?? "Prayer",
+          description: "",
+          members: [],
+        });
+        openCreatedModal();
+      } catch (err) {
+        console.error("[CreateGroup] Failed to create group:", err);
+        Alert.alert("Error", "Something went wrong creating your group. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal]);
+  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal, isSubmitting]);
 
   const handleBack = useCallback(() => {
     if (step === 2) {
@@ -384,11 +394,15 @@ export default function CreateGroupScreen() {
         </AutoScrollView>
 
         <View style={styles.footer}>
-          <Pressable style={styles.nextBtn} onPress={handleNext}>
+          <Pressable
+            style={[styles.nextBtn, isSubmitting && { opacity: 0.7 }]}
+            onPress={() => { void handleNext(); }}
+            disabled={isSubmitting}
+          >
             <Text style={styles.nextBtnText}>
-              {step === 1 ? "Next: Privacy" : "Create Group"}
+              {isSubmitting ? "Creating…" : step === 1 ? "Next: Privacy" : "Create Group"}
             </Text>
-            <ChevronRight size={20} color={colors.primaryForeground} />
+            {!isSubmitting && <ChevronRight size={20} color={colors.primaryForeground} />}
           </Pressable>
         </View>
       </KeyboardAvoidingView>

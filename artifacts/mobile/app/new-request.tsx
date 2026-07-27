@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import PrayerDatePicker from "@/components/PrayerDatePicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -13,6 +14,8 @@ import {
   Alert,
   ScrollView,
   Animated,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
@@ -59,6 +62,42 @@ export default function NewRequestScreen() {
 
   const { DiscardModal } = useUnsavedChangesWarning(content.trim().length > 0);
 
+  const DRAFT_KEY = "@prayer_space:new_request_draft";
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore draft on mount
+  useEffect(() => {
+    AsyncStorage.getItem(DRAFT_KEY).then((raw) => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as {
+          content?: string;
+          selectedTags?: string[];
+          eventDate?: string | null;
+        };
+        if (saved.content) setContent(saved.content);
+        if (saved.selectedTags?.length) setSelectedTags(saved.selectedTags);
+        if (saved.eventDate) setEventDate(saved.eventDate);
+      } catch {
+        // ignore corrupt draft
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave draft with 600ms debounce
+  useEffect(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (!content.trim() && !selectedTags.length && !eventDate) {
+        void AsyncStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      void AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({ content, selectedTags, eventDate }));
+    }, 600);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [content, selectedTags, eventDate]);
+
   useEffect(() => {
     Animated.timing(tagsHeightAnim, {
       toValue: tagsExpanded ? 1 : 0,
@@ -80,6 +119,7 @@ export default function NewRequestScreen() {
       Alert.alert("Empty Request", "Please describe your prayer request.");
       return;
     }
+    Keyboard.dismiss();
     console.log("Post request:", { content, isAnonymous, isTimeSensitive, selectedTags, audience: selectedAudience.key, hasImage: !!requestImageUri, eventDate });
     const senderName = isAnonymous ? "Someone" : currentUser.name;
     const requestId = `request-${Date.now()}`;
@@ -98,10 +138,12 @@ export default function NewRequestScreen() {
       avatar: isAnonymous ? undefined : currentUser.avatar,
       unread: true,
     });
+    // Clear draft after successful post
+    void AsyncStorage.removeItem(DRAFT_KEY);
     Alert.alert("Posted!", "Your prayer request has been shared.", [
       { text: "OK", onPress: () => router.back() },
     ]);
-  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, eventDate, router, addNotification]);
+  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, eventDate, router, addNotification, DRAFT_KEY]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -148,10 +190,12 @@ export default function NewRequestScreen() {
           </Pressable>
         </View>
 
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.userRow}>
@@ -380,6 +424,7 @@ export default function NewRequestScreen() {
             </View>
           )}
         </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       <ImageViewer
         uri={viewingRequestImage}

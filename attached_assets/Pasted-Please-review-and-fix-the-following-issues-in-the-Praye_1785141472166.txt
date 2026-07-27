@@ -1,0 +1,233 @@
+Please review and fix the following issues in the Prayer Space mobile app. Prioritise mobile usability, keyboard behaviour, data persistence and reliable loading of real user data.
+
+## 1. Status updates and pop-ups
+
+Improve the way status updates, alerts, notices and modal windows are closed.
+
+* Add a smooth closing animation, such as a short fade-out or slide-down.
+* Ensure the close button works consistently.
+* Prevent the modal or notification from remaining invisibly layered over the page after closing.
+* Restore scrolling and screen interaction immediately after it closes.
+* Make sure repeated taps cannot create duplicate modals.
+
+## 2. Join with a code
+
+Improve the “Join with a code” text input for mobile devices.
+
+* When the keyboard opens, keep the input and submit button visible above the keyboard.
+* Automatically scroll the active field into view.
+* Do not allow the keyboard to cover the input, validation message or button.
+* Allow the keyboard to close when the user taps outside the field.
+* Allow the user to submit using the keyboard’s Done, Go or Enter button.
+* Trim accidental spaces from the code before submitting.
+* Display a clear error if the code is invalid.
+
+## 3. Creating a prayer
+
+Review and improve the complete “Create Prayer” experience.
+
+### Prayer focus selector
+
+* When the user selects or opens the prayer focus field, move or scroll the view so the field and its options remain visible.
+* Ensure the selector is not hidden behind the keyboard.
+* Close the prayer focus selector when the user selects another action, such as uploading a photo.
+
+### Photo upload layering
+
+There is currently a layering issue involving the prayer focus selector and the photo upload control.
+
+* Make sure the photo upload control always appears above any previously opened selector or dropdown.
+* Correct the z-index and stacking context of the photo upload interface.
+* Alternatively, automatically close the prayer focus selector before opening the photo upload interface.
+* Ensure only one dropdown, modal or selection panel can be open at a time.
+
+### Photo upload and keyboard
+
+If the user is typing a prayer and then selects “Upload Photo”, the upload dialogue can be hidden behind the phone keyboard.
+
+Please fix this so that:
+
+* The keyboard closes before the photo picker opens.
+* The photo picker or upload dialogue is always fully visible.
+* The upload control works on both iOS and Android.
+* The user does not lose their typed prayer when selecting or uploading a photo.
+
+### Prayer draft saving
+
+Temporarily save the prayer while the user is typing.
+
+* Autosave the prayer text as a local draft.
+* Save other selected values where appropriate, including prayer focus and privacy settings.
+* Use a short debounce so it does not save after every individual keystroke.
+* Restore the draft if the user accidentally closes the screen, navigates away or the app refreshes.
+* Clear the draft after the prayer has been successfully submitted.
+* Do not create duplicate prayers from the same draft.
+
+### Keyboard dismissal
+
+* Close the keyboard when the user taps outside a text field.
+* Close it when the user opens another control, such as prayer focus, image upload or privacy settings.
+* Close it when the user submits or leaves the form.
+* Ensure the screen returns to its correct position after the keyboard closes.
+
+## 4. Remove dummy notifications
+
+Remove all dummy, test and placeholder notifications from the app.
+
+* Do not display fake notification counts.
+* Do not show placeholder notification records.
+* Make sure the notification badge is based only on real unread notifications for the signed-in user.
+* Clear any test notification data from the development database if it is safe to do so.
+* Ensure empty notification states display correctly.
+
+## 5. Community page user data
+
+Investigate why other users’ information may not be loading correctly on community pages.
+
+Community pages should pull real data for each user, including where available:
+
+* Profile photo
+* Display name
+* Username
+* Biography
+* Prayer activity
+* Group membership
+* Relevant community updates
+* Follow or connection status
+
+Please:
+
+* Confirm the correct user ID is being passed into each community component.
+* Check database queries and joins.
+* Check row-level security and permissions.
+* Avoid relying only on the signed-in user’s profile data.
+* Add loading, empty and error states.
+* Prevent one user’s cached data from appearing on another user’s profile.
+* Refresh the data after a user updates their profile.
+* Use a shared user-profile query or service rather than duplicating profile-loading logic across pages.
+
+## 6. Address book and contact invitations
+
+Users can currently add or import their address book, but they need a way to return to it later and invite more people.
+
+Please add an “Invite Contacts” or “Address Book” section that allows users to:
+
+* Reopen their device contacts with permission.
+* View previously imported or matched contacts.
+* Search their contacts.
+* Select additional people to invite.
+* See which contacts have already been invited.
+* See which contacts are already using Prayer Space.
+* Avoid sending duplicate invitations.
+* Retry failed invitations.
+* Revoke or manage contact access where supported.
+
+Do not permanently store a user’s full address book unless this is necessary and clearly explained. Prefer storing only the minimum information required for invitations and matching, with appropriate consent.
+
+## 7. Groups
+
+Review and repair the Groups experience.
+
+### Group form keyboard behaviour
+
+* Keep all active fields visible above the phone keyboard.
+* Scroll the selected input into view.
+* Keep the Save or Create Group button accessible.
+* Close the keyboard when the user taps outside a field or submits the form.
+
+### Group saving
+
+Groups are currently not being saved correctly.
+
+Please:
+
+* Confirm that the create-group request is being sent.
+* Validate the submitted values.
+* Surface any database or API error rather than failing silently.
+* Show a loading state while saving.
+* Disable the button during submission to prevent duplicates.
+* Confirm success only after the database has returned a successful result.
+* Add the creator as the group owner or administrator.
+* Add the creator as a group member.
+* Navigate to the newly created group after success.
+* Refresh the group list so the new group appears immediately.
+* Preserve the entered values if saving fails.
+
+### Incorrect “New updates available” message
+
+The feed currently displays “New updates available” even when there are no new updates.
+
+Please:
+
+* Only show this message when newer records actually exist.
+* Compare against the latest update currently loaded or the user’s last viewed timestamp.
+* Do not trigger it from dummy data, cached data or the initial page load.
+* Hide the message once the latest content has been loaded.
+* Prevent it from reappearing until genuinely newer content exists.
+
+### Restore group chat
+
+Investigate where the group chat functionality has gone.
+
+* Check whether the chat route, tab, component or feature flag has been removed or hidden.
+* Restore a clearly labelled “Chat” or “Messages” tab within each group.
+* Ensure only authorised group members can access it.
+* Load messages for the correct group ID.
+* Support sending, receiving and refreshing messages.
+* Display appropriate loading, empty and error states.
+* Preserve the group’s other tabs and content.
+
+### Review group messages
+
+Review the current message functionality for the following:
+
+* Messages save successfully.
+* Messages appear in the correct order.
+* New messages appear without requiring a complete page refresh.
+* The message field respects the mobile keyboard.
+* The Send button remains visible above the keyboard.
+* Sending cannot create duplicate messages.
+* Empty messages cannot be submitted.
+* Failed messages show an error and can be retried.
+* Long messages wrap correctly.
+* Timestamps and sender details are accurate.
+* Messages are associated with the correct user and group.
+* Users cannot read or send messages in groups they cannot access.
+* The message list scrolls to the newest message appropriately.
+* Opening the keyboard does not hide the latest messages or input field.
+
+## General implementation requirements
+
+* Prioritise the mobile experience on both iOS and Android.
+* Use safe-area insets where needed.
+* Avoid fixed-position elements being covered by the keyboard.
+* Use consistent keyboard dismissal behaviour throughout the app.
+* Review z-index and stacking contexts across modals, dropdowns and upload controls.
+* Do not replace real data with hard-coded placeholder data.
+* Add useful console and server-side error logging during development.
+* Do not expose private user data through logs.
+* Preserve the existing visual design unless a layout change is required to fix usability.
+* Reuse shared components and hooks for keyboard handling, form persistence, user profiles and loading states.
+* Do not mark an issue as resolved until the complete user flow has been tested.
+
+## Testing checklist
+
+Test each flow on a mobile-sized viewport and, where possible, a real iOS and Android device.
+
+Confirm that:
+
+1. Status updates close smoothly and fully.
+2. Join-code fields remain visible above the keyboard.
+3. Prayer text is not lost when uploading a photo.
+4. The prayer focus selector and photo picker never overlap incorrectly.
+5. Prayer drafts restore after leaving and returning.
+6. The keyboard closes when the user moves away from a field.
+7. No dummy notifications are displayed.
+8. Community profiles show the correct user’s data.
+9. Contacts can be reopened and additional people invited.
+10. Groups save and appear immediately.
+11. “New updates available” appears only when true.
+12. Group chat is visible and accessible to members.
+13. Group messages save, load and refresh correctly.
+
+Please inspect the existing implementation first, identify the root cause of each issue, and make targeted fixes rather than rebuilding working sections unnecessarily.

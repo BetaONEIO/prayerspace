@@ -235,7 +235,7 @@ export default function CommunityScreen() {
   const [stopPrayingPost, setStopPrayingPost] = useState<{ id: string; post: FeedPost } | null>(null);
   const [prayingUsersPost, setPrayingUsersPost] = useState<FeedPost | null>(null);
   const [shareTarget, setShareTarget] = useState<FeedPost | null>(null);
-  const [hasNewUpdates, setHasNewUpdates] = useState<boolean>(true);
+  const [hasNewUpdates, setHasNewUpdates] = useState<boolean>(false);
   const newUpdateAnim = useRef(new Animated.Value(0)).current;
   const activeCommunityRef = useRef<Community>(DEFAULT_COMMUNITY);
   const [prayingForPrompt, setPrayingForPrompt] = useState<{ post: FeedPost } | null>(null);
@@ -1354,10 +1354,13 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
               placeholder="Enter community code"
               placeholderTextColor={colors.mutedForeground + "70"}
               value={privateCode}
-              onChangeText={handlePrivateCodeChange}
+              onChangeText={(t) => handlePrivateCodeChange(t.trim())}
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={20}
+              returnKeyType="go"
+              onSubmitEditing={() => { if (matchedPrivate) handleJoinPrivate(); }}
+              blurOnSubmit={false}
             />
             {matchedPrivate && (
               <CheckCircle2 size={18} color={colors.green} />
