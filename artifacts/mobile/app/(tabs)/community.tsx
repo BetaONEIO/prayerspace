@@ -2012,13 +2012,30 @@ function MyGroupsContent() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const router = useRouter();
-  const [myGroups, setMyGroups] = useState<MyGroup[]>(INITIAL_MY_GROUPS);
+  const [myGroups, setMyGroups] = useState<MyGroup[]>(() => {
+    // Seed initial list with any groups created earlier this session
+    // (handles the case where this component was not mounted when emit() fired)
+    const fromStore = groupCreatedStore.getAll().map((created): MyGroup => ({
+      id: created.id,
+      name: created.name,
+      memberCount: 1,
+      lastActivity: "Just now",
+      avatar: created.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(created.name)}&background=random&color=fff&size=128`,
+      activeRequests: 0,
+      isAdmin: true,
+    }));
+    const merged = [...fromStore, ...INITIAL_MY_GROUPS];
+    // deduplicate by id
+    const seen = new Set<string>();
+    return merged.filter((g) => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
+  });
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
   const [groupsFilter, setGroupsFilter] = useState<"all" | "leading">("all");
   const { joinedGroupIds } = useNotifications();
 
   React.useEffect(() => {
-    groupCreatedStore.register((created) => {
+    // Listen for groups created while this component is mounted
+    const unsub = groupCreatedStore.register((created) => {
       const newGroup: MyGroup = {
         id: created.id,
         name: created.name,
@@ -2033,7 +2050,7 @@ function MyGroupsContent() {
         return [newGroup, ...prev];
       });
     });
-    return () => groupCreatedStore.unregister();
+    return unsub;
   }, []);
 
   React.useEffect(() => {

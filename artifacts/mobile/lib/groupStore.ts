@@ -102,25 +102,33 @@ export interface CreatedGroupPayload {
 
 type CreatedListener = (group: CreatedGroupPayload) => void;
 
-let _createdListener: CreatedListener | null = null;
-const _createdQueue: CreatedGroupPayload[] = [];
+// Permanent log of all groups created this session — never cleared.
+// MyGroupsContent reads this on every mount so it always has the full list,
+// regardless of whether the component was mounted when emit() fired.
+const _allCreated: CreatedGroupPayload[] = [];
+const _createdListeners = new Set<CreatedListener>();
 
 export const groupCreatedStore = {
-  register(fn: CreatedListener) {
-    _createdListener = fn;
-    while (_createdQueue.length > 0) {
-      const g = _createdQueue.shift();
-      if (g) fn(g);
-    }
+  /** Subscribe to future creates. Returns an unsubscribe function. */
+  register(fn: CreatedListener): () => void {
+    _createdListeners.add(fn);
+    return () => _createdListeners.delete(fn);
   },
+
+  /** @deprecated — kept for backward compatibility; use register() return value instead. */
   unregister() {
-    _createdListener = null;
+    // no-op: callers now use the returned cleanup function
   },
+
+  /** All groups created this session, newest first. */
+  getAll(): CreatedGroupPayload[] {
+    return [..._allCreated];
+  },
+
   emit(group: CreatedGroupPayload) {
-    if (_createdListener) {
-      _createdListener(group);
-    } else {
-      _createdQueue.push(group);
-    }
+    // Guard against duplicate emits
+    if (_allCreated.some((g) => g.id === group.id)) return;
+    _allCreated.unshift(group);
+    _createdListeners.forEach((fn) => fn(group));
   },
 };
