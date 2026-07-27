@@ -65,7 +65,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Home", route: "/(tabs)/(home)", icon: Home },
       { label: "My Communities", route: "/(tabs)/community?tab=Community", icon: Users },
-      { label: "Groups", route: "/(tabs)/community?tab=Groups", icon: MessageSquare },
+      { label: "Prayer Groups", route: "/(tabs)/community?tab=Groups", icon: MessageSquare },
     ],
   },
   {

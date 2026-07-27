@@ -1,0 +1,91 @@
+Please improve the wording throughout the "Groups" section to make it immediately obvious that these are **Prayer Groups**, not generic social groups.
+
+## Rename the section
+
+Change the main navigation label from:
+
+- Groups
+
+to:
+
+- Prayer Groups
+
+Update any related page titles and headings to remain consistent throughout the app.
+
+## Update headings
+
+Change:
+
+- My Groups
+- Community
+
+To:
+
+- My Prayer Groups
+- Community Prayer Groups
+
+(Or simply keep "Community" if space is limited, but ensure the context still clearly indicates these are Prayer Groups.)
+
+## Update introductory text
+
+Replace:
+
+"Prayer groups are focused spaces within your community — for deeper, more personal prayer with a trusted circle."
+
+With something warmer and clearer, such as:
+
+"Prayer Groups are private spaces where trusted friends, family and church members can pray together, encourage one another and share prayer updates."
+
+or
+
+"Pray together in trusted groups with friends, family and your church community."
+
+## Update action cards
+
+Change:
+
+- Create a new group
+- Join a group
+
+To:
+
+- Create Prayer Group
+- Join Prayer Group
+
+These labels should clearly communicate the purpose without requiring users to infer what type of group they are joining.
+
+## Update terminology throughout the app
+
+Search the entire application and replace generic references to "Group" with "Prayer Group" wherever appropriate, including:
+
+- Buttons
+- Empty states
+- Confirmation messages
+- Toast notifications
+- Dialogues
+- Forms
+- Success messages
+- Error messages
+- Search placeholders
+- Settings
+- Notifications
+
+Examples:
+
+"Group created successfully"
+→ "Prayer Group created successfully"
+
+"Join Group"
+→ "Join Prayer Group"
+
+"Create Group"
+→ "Create Prayer Group"
+
+"My Groups"
+→ "My Prayer Groups"
+
+## Keep wording natural
+
+Avoid repeating "Prayer Group" excessively where it feels unnecessary. Use shorter wording only where the surrounding context already makes it obvious.
+
+The goal is that a first-time user instantly understands these are spaces specifically designed for praying together, rather than generic chat or community groups.

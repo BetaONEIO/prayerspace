@@ -158,7 +158,7 @@ export default function ManageGroupScreen() {
 
   const handleSave = useCallback(() => {
     if (!groupName.trim()) {
-      Alert.alert("Group Name Required", "Please enter a group name.");
+      Alert.alert("Prayer Group Name Required", "Please enter a name for your prayer group.");
       return;
     }
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

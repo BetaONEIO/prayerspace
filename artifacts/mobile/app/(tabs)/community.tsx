@@ -712,7 +712,7 @@ export default function CommunityScreen() {
               onPress={() => handleTabPress(tab)}
             >
               <Text style={[styles.segmentText, activeTab === tab && styles.segmentTextActive]}>
-                {tab}
+                {tab === "Groups" ? "Prayer Groups" : tab}
               </Text>
             </Pressable>
           ))}
@@ -2097,7 +2097,7 @@ function MyGroupsContent() {
       >
         <View style={[styles.groupsContextCard, { backgroundColor: colors.primary + "0C", borderColor: colors.primary + "22" }]}>
           <Text style={[styles.groupsContextText, { color: colors.mutedForeground }]}>
-            Prayer groups are focused spaces within your community — for deeper, more personal prayer with a trusted circle.
+            Pray together in trusted groups with friends, family and your church community.
           </Text>
         </View>
 
@@ -2107,7 +2107,7 @@ function MyGroupsContent() {
               <View style={styles.createGroupPlus}>
                 <Plus size={16} color={colors.primary} />
               </View>
-              <Text style={styles.createGroupText}>Create a new group</Text>
+              <Text style={styles.createGroupText}>Create Prayer Group</Text>
             </View>
             <ChevronRight size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -2123,7 +2123,7 @@ function MyGroupsContent() {
               <View style={styles.joinGroupIcon}>
                 <LogIn size={16} color={colors.primaryForeground} />
               </View>
-              <Text style={styles.joinGroupText}>Join a group</Text>
+              <Text style={styles.joinGroupText}>Join Prayer Group</Text>
             </View>
             <ChevronRight size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -2201,9 +2201,9 @@ function MyGroupsContent() {
 
             {myGroups.length === 0 && (
               <View style={styles.groupsEmpty}>
-                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No groups yet</Text>
+                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No prayer groups yet</Text>
                 <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
-                  Create a group or join one with an invite code.
+                  Create a prayer group or join one with an invite code.
                 </Text>
               </View>
             )}
@@ -2222,9 +2222,9 @@ function MyGroupsContent() {
             ))}
             {filteredGroups.length === 0 && (
               <View style={styles.groupsEmpty}>
-                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No groups you lead</Text>
+                <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No prayer groups you lead</Text>
                 <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
-                  Create a new group to become an admin.
+                  Create a prayer group to get started.
                 </Text>
               </View>
             )}
@@ -2319,7 +2319,7 @@ function CommunityGroupsContent({
       {!hasAnyGroups ? (
         <View style={styles.groupsEmpty}>
           <Users size={36} color={colors.mutedForeground} style={{ opacity: 0.4 }} />
-          <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No community groups yet</Text>
+          <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No community prayer groups yet</Text>
           <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
             Groups created by your community admin will appear here once available.
           </Text>
@@ -2392,7 +2392,7 @@ function GroupsContent({
                 subTab === t && styles.groupsSubTabTextActive,
               ]}
             >
-              {t}
+              {t === "My Groups" ? "My Prayer Groups" : "Community Groups"}
             </Text>
           </Pressable>
         ))}

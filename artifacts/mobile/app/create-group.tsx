@@ -400,7 +400,7 @@ export default function CreateGroupScreen() {
             disabled={isSubmitting}
           >
             <Text style={styles.nextBtnText}>
-              {isSubmitting ? "Creating…" : step === 1 ? "Next: Privacy" : "Create Group"}
+              {isSubmitting ? "Creating…" : step === 1 ? "Next: Privacy" : "Create Prayer Group"}
             </Text>
             {!isSubmitting && <ChevronRight size={20} color={colors.primaryForeground} />}
           </Pressable>
@@ -418,8 +418,8 @@ export default function CreateGroupScreen() {
             <View style={styles.alertIconWrap}>
               <Text style={styles.alertIcon}>✏️</Text>
             </View>
-            <Text style={styles.alertTitle}>Group Name Required</Text>
-            <Text style={styles.alertMessage}>Please give your group a name to continue.</Text>
+            <Text style={styles.alertTitle}>Prayer Group Name Required</Text>
+            <Text style={styles.alertMessage}>Please give your prayer group a name to continue.</Text>
             <Pressable style={styles.alertBtn} onPress={closeNameAlert}>
               <Text style={styles.alertBtnText}>Got it</Text>
             </Pressable>
@@ -447,7 +447,7 @@ export default function CreateGroupScreen() {
               <CheckCircle size={48} color={colors.primary} />
             </View>
 
-            <Text style={styles.createdTitle}>Group Created!</Text>
+            <Text style={styles.createdTitle}>Prayer Group Created!</Text>
 
             {groupPhotoUri ? (
               <Image source={{ uri: groupPhotoUri }} style={styles.createdGroupPhoto} />
