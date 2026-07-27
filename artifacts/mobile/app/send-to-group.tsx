@@ -41,32 +41,9 @@ interface MyGroup {
   activeRequests: number;
 }
 
-const USER_GROUPS: MyGroup[] = [
-  {
-    id: "g1",
-    name: "Grace Community",
-    memberCount: 24,
-    lastActivity: "2 hours ago",
-    avatar: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&q=80",
-    activeRequests: 3,
-  },
-  {
-    id: "g2",
-    name: "Morning Prayer Circle",
-    memberCount: 11,
-    lastActivity: "Yesterday",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    activeRequests: 1,
-  },
-  {
-    id: "g3",
-    name: "Family First",
-    memberCount: 6,
-    lastActivity: "3 days ago",
-    avatar: "https://images.unsplash.com/photo-1511895426328-dc8714191011?w=400&q=80",
-    activeRequests: 0,
-  },
-];
+// Groups are populated from the user's actual prayer groups.
+// No placeholder data — an empty state is shown when the user hasn't joined any.
+const USER_GROUPS: MyGroup[] = [];
 
 const getUpdateTagLabels = (colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> => ({
   still_need_prayer: { label: "Still need prayer", bg: colors.accent, color: colors.primary },

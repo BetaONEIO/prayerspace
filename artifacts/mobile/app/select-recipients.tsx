@@ -41,32 +41,9 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "sim", label: "SIM" },
 ];
 
-const COMMUNITIES = [
-  {
-    id: "c1",
-    name: "Morning Prayer Circle",
-    members: 24,
-    avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-  },
-  {
-    id: "c2",
-    name: "Family Group",
-    members: 8,
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-  },
-  {
-    id: "c3",
-    name: "Church Friends",
-    members: 47,
-    avatar: "https://randomuser.me/api/portraits/men/15.jpg",
-  },
-  {
-    id: "c4",
-    name: "Bible Study",
-    members: 12,
-    avatar: "https://randomuser.me/api/portraits/women/29.jpg",
-  },
-];
+// Communities are populated from the user's actual joined communities.
+// No placeholder data — an empty state is shown when the user hasn't joined any.
+const COMMUNITIES: { id: string; name: string; members: number; avatar: string }[] = [];
 
 const FREQUENTLY_USED_IDS = ["r1", "r2", "r3"];
 
@@ -242,35 +219,47 @@ export default function SelectRecipientsScreen() {
 
   const renderCommunitiesTab = () => (
     <View style={styles.listContent}>
-      <Text style={styles.sectionLabel}>Your Communities</Text>
-      <View style={styles.groupCard}>
-        {COMMUNITIES.map((community, index) => {
-          const isSelected = selectedCommunities.includes(community.id);
-          return (
-            <View key={community.id}>
-              {index > 0 && <View style={styles.divider} />}
-              <Pressable
-                style={styles.contactRow}
-                onPress={() => handleCommunityToggle(community.id)}
-              >
-                <Image source={{ uri: community.avatar }} style={styles.avatar} />
-                <View style={styles.contactInfo}>
-                  <Text style={styles.contactName}>{community.name}</Text>
-                  <View style={styles.subtitleRow}>
-                    <Users size={11} color={colors.mutedForeground} />
-                    <Text style={styles.contactSubtitle}>
-                      {community.members} members
-                    </Text>
-                  </View>
+      {COMMUNITIES.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Users size={32} color={colors.mutedForeground} style={{ marginBottom: 12, opacity: 0.5 }} />
+          <Text style={styles.emptyText}>No communities yet</Text>
+          <Text style={[styles.emptyText, { fontSize: 13, marginTop: 4, opacity: 0.7 }]}>
+            Join a community to share prayer requests with your group.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.sectionLabel}>Your Communities</Text>
+          <View style={styles.groupCard}>
+            {COMMUNITIES.map((community, index) => {
+              const isSelected = selectedCommunities.includes(community.id);
+              return (
+                <View key={community.id}>
+                  {index > 0 && <View style={styles.divider} />}
+                  <Pressable
+                    style={styles.contactRow}
+                    onPress={() => handleCommunityToggle(community.id)}
+                  >
+                    <Image source={{ uri: community.avatar }} style={styles.avatar} />
+                    <View style={styles.contactInfo}>
+                      <Text style={styles.contactName}>{community.name}</Text>
+                      <View style={styles.subtitleRow}>
+                        <Users size={11} color={colors.mutedForeground} />
+                        <Text style={styles.contactSubtitle}>
+                          {community.members} members
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
+                      {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
+                    </View>
+                  </Pressable>
                 </View>
-                <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
-                  {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
-                </View>
-              </Pressable>
-            </View>
-          );
-        })}
-      </View>
+              );
+            })}
+          </View>
+        </>
+      )}
     </View>
   );
 
