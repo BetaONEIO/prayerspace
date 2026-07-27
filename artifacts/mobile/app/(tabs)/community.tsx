@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo, useSyncExternalStore } from "react";
 import { feedStore } from "@/lib/feedStore";
 import { groupCreatedStore } from "@/lib/groupStore";
 import { recordCommunityEngagement } from "@/hooks/useReviewPrompt";
@@ -2012,59 +2012,54 @@ function MyGroupsContent() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const router = useRouter();
-  const [myGroups, setMyGroups] = useState<MyGroup[]>(() => {
-    // Seed initial list with any groups created earlier this session
-    // (handles the case where this component was not mounted when emit() fired)
-    const fromStore = groupCreatedStore.getAll().map((created): MyGroup => ({
-      id: created.id,
-      name: created.name,
+  // useSyncExternalStore gives us the live snapshot from groupCreatedStore.
+  // It works regardless of when this component mounts relative to emit() — React
+  // will re-render whenever emit() replaces the snapshot array.
+  const createdPayloads = useSyncExternalStore(
+    groupCreatedStore.subscribe,
+    groupCreatedStore.getSnapshot,
+    groupCreatedStore.getSnapshot,
+  );
+
+  const createdGroups = useMemo<MyGroup[]>(() =>
+    createdPayloads.map((c) => ({
+      id: c.id,
+      name: c.name,
       memberCount: 1,
       lastActivity: "Just now",
-      avatar: created.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(created.name)}&background=random&color=fff&size=128`,
+      avatar: c.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff&size=128`,
       activeRequests: 0,
       isAdmin: true,
-    }));
-    const merged = [...fromStore, ...INITIAL_MY_GROUPS];
-    // deduplicate by id
-    const seen = new Set<string>();
-    return merged.filter((g) => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
-  });
+    })),
+    [createdPayloads],
+  );
+
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
   const [groupsFilter, setGroupsFilter] = useState<"all" | "leading">("all");
   const { joinedGroupIds } = useNotifications();
 
-  React.useEffect(() => {
-    // Listen for groups created while this component is mounted
-    const unsub = groupCreatedStore.register((created) => {
-      const newGroup: MyGroup = {
-        id: created.id,
-        name: created.name,
-        memberCount: 1,
-        lastActivity: "Just now",
-        avatar: created.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(created.name)}&background=random&color=fff&size=128`,
-        activeRequests: 0,
-        isAdmin: true,
-      };
-      setMyGroups((prev) => {
-        if (prev.some((g) => g.id === created.id)) return prev;
-        return [newGroup, ...prev];
-      });
-    });
-    return unsub;
-  }, []);
+  const [joinedGroups, setJoinedGroups] = useState<MyGroup[]>(INITIAL_MY_GROUPS);
 
   React.useEffect(() => {
     joinedGroupIds.forEach((notifGroupId) => {
       const mapped = NOTIFICATION_GROUP_MAP[notifGroupId];
       if (!mapped) return;
-      setMyGroups((prev) => {
-        const alreadyExists = prev.some((g) => g.id === mapped.id || g.name === mapped.name);
-        if (alreadyExists) return prev;
-        console.log("[MyGroups] Adding notification-joined group:", mapped.name);
+      setJoinedGroups((prev) => {
+        if (prev.some((g) => g.id === mapped.id || g.name === mapped.name)) return prev;
         return [mapped, ...prev];
       });
     });
   }, [joinedGroupIds]);
+
+  // Merge created + joined, deduplicated by id, created groups first
+  const myGroups = useMemo<MyGroup[]>(() => {
+    const seen = new Set<string>();
+    return [...createdGroups, ...joinedGroups].filter((g) => {
+      if (seen.has(g.id)) return false;
+      seen.add(g.id);
+      return true;
+    });
+  }, [createdGroups, joinedGroups]);
 
   const handleGroupPress = useCallback((groupId: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -2082,7 +2077,7 @@ function MyGroupsContent() {
       activeRequests: 0,
       isAdmin: false,
     };
-    setMyGroups((prev) => [newGroup, ...prev]);
+    setJoinedGroups((prev) => [newGroup, ...prev]);
     setJoinModalVisible(false);
     console.log("[MyGroups] Joined group:", group.name);
   }, []);

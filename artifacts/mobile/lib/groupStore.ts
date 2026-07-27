@@ -100,35 +100,49 @@ export interface CreatedGroupPayload {
   safeSpace: boolean;
 }
 
-type CreatedListener = (group: CreatedGroupPayload) => void;
+type CreatedListener = () => void;
 
-// Permanent log of all groups created this session — never cleared.
-// MyGroupsContent reads this on every mount so it always has the full list,
-// regardless of whether the component was mounted when emit() fired.
-const _allCreated: CreatedGroupPayload[] = [];
-const _createdListeners = new Set<CreatedListener>();
+// Immutable snapshot — replaced (never mutated) on each emit so
+// useSyncExternalStore detects the change via reference equality.
+let _createdSnapshot: CreatedGroupPayload[] = [];
+const _createdSubscribers = new Set<CreatedListener>();
 
 export const groupCreatedStore = {
-  /** Subscribe to future creates. Returns an unsubscribe function. */
-  register(fn: CreatedListener): () => void {
-    _createdListeners.add(fn);
-    return () => _createdListeners.delete(fn);
+  /**
+   * useSyncExternalStore-compatible subscribe.
+   * Returns an unsubscribe function.
+   */
+  subscribe(fn: CreatedListener): () => void {
+    _createdSubscribers.add(fn);
+    return () => _createdSubscribers.delete(fn);
   },
 
-  /** @deprecated — kept for backward compatibility; use register() return value instead. */
-  unregister() {
-    // no-op: callers now use the returned cleanup function
-  },
-
-  /** All groups created this session, newest first. */
-  getAll(): CreatedGroupPayload[] {
-    return [..._allCreated];
+  /**
+   * useSyncExternalStore-compatible snapshot getter.
+   * Always returns the same reference unless emit() was called.
+   */
+  getSnapshot(): CreatedGroupPayload[] {
+    return _createdSnapshot;
   },
 
   emit(group: CreatedGroupPayload) {
-    // Guard against duplicate emits
-    if (_allCreated.some((g) => g.id === group.id)) return;
-    _allCreated.unshift(group);
-    _createdListeners.forEach((fn) => fn(group));
+    if (_createdSnapshot.some((g) => g.id === group.id)) return;
+    // Replace the array (new reference) so subscribers are notified
+    _createdSnapshot = [group, ..._createdSnapshot];
+    _createdSubscribers.forEach((fn) => fn());
   },
+
+  // ── kept for call-sites that haven't been updated ─────────────────────────
+  /** @deprecated Use the returned cleanup from subscribe() instead. */
+  register(fn: (group: CreatedGroupPayload) => void): () => void {
+    // Wrap so the stored subscriber matches the CreatedListener signature
+    const wrapped: CreatedListener = () => {
+      const latest = _createdSnapshot[0];
+      if (latest) fn(latest);
+    };
+    _createdSubscribers.add(wrapped);
+    return () => _createdSubscribers.delete(wrapped);
+  },
+  /** @deprecated No-op — cleanup is handled by the return value of subscribe(). */
+  unregister() {},
 };
