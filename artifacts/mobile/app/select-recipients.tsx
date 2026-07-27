@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   View,
   Text,
@@ -29,8 +29,9 @@ import {
   ALL_RECIPIENTS,
   type Recipient,
 } from "@/providers/SelectedRecipientsProvider";
+import { groupCreatedStore } from "@/lib/groupStore";
 
-type MainTab = "contacts" | "communities";
+type MainTab = "contacts" | "communities" | "groups";
 type FilterTab = "all" | "on_app" | "not_on_app" | "whatsapp" | "sim";
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
@@ -64,6 +65,13 @@ export default function SelectRecipientsScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [mainTab, setMainTab] = useState<MainTab>("contacts");
   const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+
+  const prayerGroupPayloads = useSyncExternalStore(
+    groupCreatedStore.subscribe,
+    groupCreatedStore.getSnapshot,
+    groupCreatedStore.getSnapshot,
+  );
 
   const frequentlyUsed = useMemo(
     () => ALL_RECIPIENTS.filter((r) => FREQUENTLY_USED_IDS.includes(r.id)),
@@ -86,14 +94,18 @@ export default function SelectRecipientsScreen() {
   const onAppContacts = filtered.filter((r) => r.onApp);
   const otherContacts = filtered.filter((r) => !r.onApp);
 
-  const totalSelected = selectedIds.length + selectedCommunities.length;
+  const totalSelected = selectedIds.length + selectedCommunities.length + selectedGroupIds.length;
 
   const handleContinue = useCallback(() => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (selectedGroupIds.length > 0) {
+      // Navigate to the first selected group's chat; in a full implementation
+      // you'd loop through all selected groups.
+      router.push(`/group/${selectedGroupIds[0]}`);
+    } else {
+      router.back();
     }
-    router.back();
-  }, [router]);
+  }, [router, selectedGroupIds]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -110,10 +122,18 @@ export default function SelectRecipientsScreen() {
     );
   }, []);
 
+  const handleGroupToggle = useCallback((id: string) => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    setSelectedGroupIds((prev) =>
+      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]
+    );
+  }, []);
+
   const handleClearAll = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     clearAll();
     setSelectedCommunities([]);
+    setSelectedGroupIds([]);
   }, [clearAll]);
 
   const renderRecipient = (item: Recipient, inGroup?: boolean) => {
@@ -263,6 +283,53 @@ export default function SelectRecipientsScreen() {
     </View>
   );
 
+  const renderGroupsTab = () => (
+    <View style={styles.listContent}>
+      {prayerGroupPayloads.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Users size={32} color={colors.mutedForeground} style={{ marginBottom: 12, opacity: 0.5 }} />
+          <Text style={styles.emptyText}>No prayer groups yet</Text>
+          <Text style={[styles.emptyText, { fontSize: 13, marginTop: 4, opacity: 0.7 }]}>
+            Create a prayer group first, then share prayers directly into the group chat.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <Text style={styles.sectionLabel}>Your Prayer Groups</Text>
+          <View style={styles.groupCard}>
+            {prayerGroupPayloads.map((group, index) => {
+              const isSelected = selectedGroupIds.includes(group.id);
+              const avatarUri = group.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(group.name)}&background=random&color=fff&size=128`;
+              return (
+                <View key={group.id}>
+                  {index > 0 && <View style={styles.divider} />}
+                  <Pressable
+                    style={styles.contactRow}
+                    onPress={() => handleGroupToggle(group.id)}
+                  >
+                    <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                    <View style={styles.contactInfo}>
+                      <Text style={styles.contactName}>{group.name}</Text>
+                      <View style={styles.subtitleRow}>
+                        <Users size={11} color={colors.mutedForeground} />
+                        <Text style={styles.contactSubtitle}>
+                          {group.privacy} · {group.focus ?? "Prayer"}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
+                      {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
+                    </View>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </>
+      )}
+    </View>
+  );
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -280,7 +347,7 @@ export default function SelectRecipientsScreen() {
           style={[styles.mainTabBtn, mainTab === "contacts" && styles.mainTabBtnActive]}
           onPress={() => setMainTab("contacts")}
         >
-          <Text style={[styles.mainTabLabel, mainTab === "contacts" && styles.mainTabLabelActive]}>
+          <Text style={[styles.mainTabLabel, mainTab === "contacts" && styles.mainTabLabelActive]} numberOfLines={1}>
             Contacts
           </Text>
         </Pressable>
@@ -288,8 +355,16 @@ export default function SelectRecipientsScreen() {
           style={[styles.mainTabBtn, mainTab === "communities" && styles.mainTabBtnActive]}
           onPress={() => setMainTab("communities")}
         >
-          <Text style={[styles.mainTabLabel, mainTab === "communities" && styles.mainTabLabelActive]}>
+          <Text style={[styles.mainTabLabel, mainTab === "communities" && styles.mainTabLabelActive]} numberOfLines={1}>
             Communities
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.mainTabBtn, mainTab === "groups" && styles.mainTabBtnActive]}
+          onPress={() => setMainTab("groups")}
+        >
+          <Text style={[styles.mainTabLabel, mainTab === "groups" && styles.mainTabLabelActive]} numberOfLines={1}>
+            Prayer Groups
           </Text>
         </Pressable>
       </View>
@@ -344,7 +419,11 @@ export default function SelectRecipientsScreen() {
         data={[]}
         renderItem={null}
         ListHeaderComponent={
-          mainTab === "contacts" ? renderContactsTab() : renderCommunitiesTab()
+          mainTab === "contacts"
+            ? renderContactsTab()
+            : mainTab === "communities"
+            ? renderCommunitiesTab()
+            : renderGroupsTab()
         }
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}

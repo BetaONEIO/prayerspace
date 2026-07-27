@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useRef,
   useEffect,
+  useSyncExternalStore,
 } from "react";
 import {
   View,
@@ -31,6 +32,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { groupCreatedStore } from "@/lib/groupStore";
 
 interface MyGroup {
   id: string;
@@ -41,9 +43,6 @@ interface MyGroup {
   activeRequests: number;
 }
 
-// Groups are populated from the user's actual prayer groups.
-// No placeholder data — an empty state is shown when the user hasn't joined any.
-const USER_GROUPS: MyGroup[] = [];
 
 const getUpdateTagLabels = (colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> => ({
   still_need_prayer: { label: "Still need prayer", bg: colors.accent, color: colors.primary },
@@ -77,15 +76,34 @@ export default function SendToGroupScreen() {
   const successOpacity = useRef(new Animated.Value(0)).current;
   const listFade = useRef(new Animated.Value(1)).current;
 
+  // Live list of prayer groups created this session
+  const createdPayloads = useSyncExternalStore(
+    groupCreatedStore.subscribe,
+    groupCreatedStore.getSnapshot,
+    groupCreatedStore.getSnapshot,
+  );
+
+  const liveGroups = useMemo<MyGroup[]>(() =>
+    createdPayloads.map((g) => ({
+      id: g.id,
+      name: g.name,
+      memberCount: 1,
+      lastActivity: "Just now",
+      avatar: g.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(g.name)}&background=random&color=fff&size=128`,
+      activeRequests: 0,
+    })),
+    [createdPayloads],
+  );
+
   useEffect(() => {
     console.log("[SendToGroup] Screen mounted, postId:", params.postId ?? "none");
   }, []);
 
   const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return USER_GROUPS;
+    if (!searchQuery.trim()) return liveGroups;
     const q = searchQuery.toLowerCase();
-    return USER_GROUPS.filter((g) => g.name.toLowerCase().includes(q));
-  }, [searchQuery]);
+    return liveGroups.filter((g) => g.name.toLowerCase().includes(q));
+  }, [searchQuery, liveGroups]);
 
   const handleSelectGroup = useCallback((group: MyGroup) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
