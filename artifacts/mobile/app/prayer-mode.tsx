@@ -11,6 +11,8 @@ import {
   LayoutAnimation,
   UIManager,
   KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
   StatusBar,
   Alert,
 } from "react-native";
@@ -180,6 +182,7 @@ export default function PrayerModeScreen() {
   }, []);
 
   const handleTagsToggle = useCallback(() => {
+    Keyboard.dismiss();
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTagsExpanded((prev) => !prev);
@@ -191,6 +194,7 @@ export default function PrayerModeScreen() {
   }, [tagsExpanded, tagRotate]);
 
   const handleTagToggle = useCallback((tagId: string) => {
+    Keyboard.dismiss();
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setSelectedTags((prev) =>
       prev.includes(tagId) ? prev.filter((t) => t !== tagId) : [...prev, tagId]
@@ -198,6 +202,7 @@ export default function PrayerModeScreen() {
   }, []);
 
   const handleAttachPhoto = useCallback(() => {
+    Keyboard.dismiss();
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setIsPhotoPickerVisible(true);
   }, []);
@@ -284,6 +289,7 @@ export default function PrayerModeScreen() {
   }, [toggleRecipient]);
 
   const handleOpenEditModal = useCallback(() => {
+    Keyboard.dismiss();
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setDraftTranscript(voiceTranscript);
     setIsEditModalVisible(true);
@@ -312,7 +318,7 @@ export default function PrayerModeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable style={styles.backBtn} onPress={() => { Keyboard.dismiss(); router.back(); }}>
           <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Pray</Text>
@@ -323,14 +329,14 @@ export default function PrayerModeScreen() {
         <View style={styles.tabTrack}>
           <Pressable
             style={[styles.tabButton, activeTab === "text" && styles.tabButtonActive]}
-            onPress={() => toggleTab("text")}
+            onPress={() => { Keyboard.dismiss(); toggleTab("text"); }}
           >
             <PenLine size={18} color={activeTab === "text" ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.tabLabel, activeTab === "text" && styles.tabLabelActive]}>Text</Text>
           </Pressable>
           <Pressable
             style={[styles.tabButton, activeTab === "voice" && styles.tabButtonActive]}
-            onPress={() => toggleTab("voice")}
+            onPress={() => { Keyboard.dismiss(); toggleTab("voice"); }}
           >
             <Mic size={18} color={activeTab === "voice" ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.tabLabel, activeTab === "voice" && styles.tabLabelActive]}>Voice</Text>
@@ -341,6 +347,7 @@ export default function PrayerModeScreen() {
         </Text>
       </View>
 
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <AutoScrollView
         style={styles.scrollArea}
         contentContainerStyle={styles.scrollContent}
@@ -699,6 +706,7 @@ export default function PrayerModeScreen() {
           </View>
         </View>
       </AutoScrollView>
+      </TouchableWithoutFeedback>
       {isPhotoPickerVisible && (
         <Pressable style={styles.photoPickerOverlay} onPress={() => setIsPhotoPickerVisible(false)}>
           <Pressable

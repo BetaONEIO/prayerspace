@@ -1,0 +1,1 @@
+- [Keyboard dismissal pattern](keyboard-dismissal.md) — keep keyboard-aware scrolling, outside-tap dismissal, control dismissal, and focus cleanup consistent across mobile forms.

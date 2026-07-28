@@ -14,6 +14,10 @@ export const AutoScrollView = forwardRef<ScrollView, AutoScrollViewProps>(
     useFocusEffect(
       useCallback(() => {
         innerRef.current?.scrollTo({ y: 0, animated: false });
+        return () => {
+          Keyboard.dismiss();
+          innerRef.current?.scrollTo({ y: 0, animated: false });
+        };
       }, [])
     );
 

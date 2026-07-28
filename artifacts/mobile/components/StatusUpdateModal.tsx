@@ -13,6 +13,8 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   ScrollView,
   LayoutAnimation,
   UIManager,
@@ -247,6 +249,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               <View style={styles.headerSpacer} />
             </View>
 
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -261,7 +264,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   </Text>
                   <Pressable
                     style={styles.audienceBtn}
-                    onPress={() => setAudienceOpen((v) => !v)}
+                    onPress={() => { Keyboard.dismiss(); setAudienceOpen((v) => !v); }}
                   >
                     {selectedAudience.type === "everyone" ? (
                       <Globe size={10} color={colors.primary} />
@@ -412,7 +415,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 ) : (
                   <Pressable
                     style={styles.optionChip}
-                    onPress={() => setShowVoiceRecorder(true)}
+                    onPress={() => { Keyboard.dismiss(); setShowVoiceRecorder(true); }}
                   >
                     <Mic size={14} color={colors.mutedForeground} />
                     <Text style={styles.optionChipText}>Voice</Text>
@@ -421,7 +424,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
                 <Pressable
                   style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
-                  onPress={() => setIsTimeSensitive((v) => !v)}
+                  onPress={() => { Keyboard.dismiss(); setIsTimeSensitive((v) => !v); }}
                 >
                   <Zap size={14} color={isTimeSensitive ? "#B87A00" : colors.mutedForeground} />
                   <Text style={[styles.optionChipText, isTimeSensitive && styles.optionChipTextTimeSensitive]}>
@@ -431,7 +434,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
                 <Pressable
                   style={[styles.optionChip, isAnonymous && styles.optionChipAnonymous]}
-                  onPress={() => setIsAnonymous((v) => !v)}
+                  onPress={() => { Keyboard.dismiss(); setIsAnonymous((v) => !v); }}
                 >
                   <Ghost size={14} color={isAnonymous ? colors.primary : colors.mutedForeground} />
                   <Text style={[styles.optionChipText, isAnonymous && styles.optionChipTextAnonymous]}>
@@ -441,7 +444,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               </ScrollView>
 
               <View style={styles.tagsSection}>
-                <Pressable style={styles.tagsToggleRow} onPress={handleTagsToggle}>
+                <Pressable style={styles.tagsToggleRow} onPress={() => { Keyboard.dismiss(); handleTagsToggle(); }}>
                   <View style={styles.tagsToggleLeft}>
                     <View style={styles.tagsToggleIcon}>
                       <Tag size={14} color={colors.primary} />
@@ -479,7 +482,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               <View style={styles.dateSection}>
                 <Pressable
                   style={styles.dateSectionToggle}
-                  onPress={() => setDateExpanded((v) => !v)}
+                  onPress={() => { Keyboard.dismiss(); setDateExpanded((v) => !v); }}
                 >
                   <View style={styles.dateSectionIcon}>
                     <CalendarDays size={14} color={eventDate ? colors.primary : colors.mutedForeground} />
@@ -529,6 +532,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 </Pressable>
               </View>
             </ScrollView>
+            </TouchableWithoutFeedback>
           </Animated.View>
         </Animated.View>
       </KeyboardAvoidingView>

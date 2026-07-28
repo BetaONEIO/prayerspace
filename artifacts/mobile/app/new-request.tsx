@@ -300,7 +300,7 @@ export default function NewRequestScreen() {
             />
             <Pressable
               style={[styles.optionChip, isTimeSensitive && styles.optionChipTimeSensitive]}
-              onPress={() => setIsTimeSensitive((v) => !v)}
+              onPress={() => { Keyboard.dismiss(); setIsTimeSensitive((v) => !v); }}
             >
               <Zap size={14} color={isTimeSensitive ? "#B87A00" : colors.mutedForeground} />
               <Text style={[styles.optionChipText, isTimeSensitive && styles.optionChipTextTimeSensitive]}>
@@ -310,7 +310,7 @@ export default function NewRequestScreen() {
 
             <Pressable
               style={[styles.optionChip, isAnonymous && styles.optionChipAnonymous]}
-              onPress={() => setIsAnonymous((v) => !v)}
+              onPress={() => { Keyboard.dismiss(); setIsAnonymous((v) => !v); }}
             >
               <Ghost size={14} color={isAnonymous ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.optionChipText, isAnonymous && styles.optionChipTextAnonymous]}>
@@ -322,7 +322,7 @@ export default function NewRequestScreen() {
           <View style={styles.dateSection}>
             <Pressable
               style={styles.dateSectionToggle}
-              onPress={() => setDateExpanded((v) => !v)}
+              onPress={() => { Keyboard.dismiss(); setDateExpanded((v) => !v); }}
             >
               <CalendarDays
                 size={15}
@@ -372,7 +372,7 @@ export default function NewRequestScreen() {
           <View style={styles.tagsSection}>
             <Pressable
               style={styles.tagsToggleRow}
-              onPress={() => setTagsExpanded((v) => !v)}
+              onPress={() => { Keyboard.dismiss(); setTagsExpanded((v) => !v); }}
             >
               <Text style={styles.tagsLabel}>Add tags</Text>
               <View style={styles.tagsToggleRight}>
