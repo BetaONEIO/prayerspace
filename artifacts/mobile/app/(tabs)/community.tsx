@@ -1431,7 +1431,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
             <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
           </View>
           <View style={styles.createCommunityRowBadge}>
-            <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
+            <Text style={styles.createCommunityRowBadgeText}>PLUS</Text>
           </View>
         </Pressable>
       )}
@@ -1827,7 +1827,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                   <Text style={styles.createCommunityRowSub}>Launch your own prayer space</Text>
                 </View>
                 <View style={styles.createCommunityRowBadge}>
-                  <Text style={styles.createCommunityRowBadgeText}>PRO</Text>
+                  <Text style={styles.createCommunityRowBadgeText}>PLUS</Text>
                 </View>
               </Pressable>
             )}
@@ -4037,7 +4037,7 @@ function CreateCommunityPaywallModal({ visible, onClose }: CreateCommunityPaywal
                       <Text style={styles.createTypeCardName}>Private Community</Text>
                       <View style={[styles.createTypeBadge, { backgroundColor: "#FFF4E0", flexDirection: "row" as const, alignItems: "center" as const, gap: 3 }]}>
                         <Crown size={8} color="#B5820A" />
-                        <Text style={[styles.createTypeBadgeText, { color: "#B5820A" }]}>PRO</Text>
+                        <Text style={[styles.createTypeBadgeText, { color: "#B5820A" }]}>PLUS</Text>
                       </View>
                     </View>
                     <Text style={styles.createTypeCardSub}>Password protected · Full admin controls</Text>
