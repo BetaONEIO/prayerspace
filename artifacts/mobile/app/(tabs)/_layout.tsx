@@ -1,9 +1,14 @@
 import { Tabs } from "expo-router";
-import { Home, Sun, Users, MessageCircle } from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import {
+  HomeTabIcon,
+  PrayTabIcon,
+  PeopleTabIcon,
+  MessageTabIcon,
+} from "@/components/TabIcons";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -34,28 +39,28 @@ export default function TabLayout() {
         name="(home)"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <HomeTabIcon color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="pray"
         options={{
           title: "Pray",
-          tabBarIcon: ({ color, size }) => <Sun size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <PrayTabIcon color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="community"
         options={{
           title: "Community",
-          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <PeopleTabIcon color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="activity"
         options={{
           title: "Messages",
-          tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MessageTabIcon color={color} size={size} />,
         }}
       />
     </Tabs>
