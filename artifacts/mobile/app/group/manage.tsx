@@ -347,7 +347,7 @@ export default function ManageGroupScreen() {
                 <Switch
                   value={safeSpace}
                   onValueChange={(v) => { setSafeSpace(v); markChanged(); if (Platform.OS !== "web") void Haptics.selectionAsync(); }}
-                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  trackColor={{ false: colors.muted, true: "#B85A1A" }}
                   thumbColor={colors.card}
                 />
               </View>

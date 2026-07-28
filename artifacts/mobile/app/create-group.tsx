@@ -302,7 +302,7 @@ export default function CreateGroupScreen() {
                     if (Platform.OS !== "web") void Haptics.selectionAsync();
                     setSafeSpaceEnabled(val);
                   }}
-                  trackColor={{ false: colors.muted, true: colors.primary }}
+                  trackColor={{ false: colors.muted, true: "#B85A1A" }}
                   thumbColor={colors.card}
                 />
               </View>
