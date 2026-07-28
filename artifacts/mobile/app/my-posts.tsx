@@ -18,6 +18,7 @@ import {
 import { Image } from "expo-image";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import {
   ChevronLeft,
   Repeat2,
@@ -635,10 +636,9 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
               </View>
             )}
 
-            <ScrollView
+            <AutoScrollView
               style={styles.composerScroll}
               contentContainerStyle={styles.composerScrollContent}
-              keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.originalPreview}>
@@ -708,7 +708,7 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                   </View>
                 </>
               )}
-            </ScrollView>
+            </AutoScrollView>
 
             <View style={[styles.composerFooter, { paddingBottom: insets.bottom + 16 }]}>
               <Pressable

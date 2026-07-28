@@ -6,7 +6,6 @@ import {
   Pressable,
   TextInput,
   KeyboardAvoidingView,
-  ScrollView,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +14,7 @@ import { Building2 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
+import { AutoScrollView } from "@/components/AutoScrollView";
 
 export default function OnboardingChurchCommunity() {
   const router = useRouter();
@@ -47,11 +47,10 @@ export default function OnboardingChurchCommunity() {
             </Text>
           </View>
 
-          <ScrollView
+          <AutoScrollView
             style={styles.formScroll}
             contentContainerStyle={styles.form}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
           >
             <View style={styles.field}>
               <Text style={styles.label}>Church or organisation name</Text>
@@ -83,7 +82,7 @@ export default function OnboardingChurchCommunity() {
                 testID="church-description-input"
               />
             </View>
-          </ScrollView>
+          </AutoScrollView>
 
           <View style={styles.actions}>
             <Pressable

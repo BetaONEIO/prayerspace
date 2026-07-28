@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Alert,
 } from "react-native";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Stack } from "expo-router";
@@ -240,11 +241,10 @@ export default function RecordPrayerScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={100}
       >
-        <ScrollView
+        <AutoScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.recorderSection}>
             <Text style={styles.sectionLabel}>VOICE RECORDING</Text>
@@ -445,7 +445,7 @@ export default function RecordPrayerScreen() {
           )}
 
           <View style={{ height: 40 }} />
-        </ScrollView>
+        </AutoScrollView>
       </KeyboardAvoidingView>
 
       <ImageViewer

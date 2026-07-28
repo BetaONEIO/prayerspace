@@ -21,6 +21,7 @@ import {
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import {
   ChevronLeft,
   Search,
@@ -309,10 +310,9 @@ export default function SendToGroupScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
               >
-                <ScrollView
+                <AutoScrollView
                   style={{ flex: 1 }}
                   contentContainerStyle={styles.composeContent}
-                  keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
                   {selectedGroup && (
@@ -395,7 +395,7 @@ export default function SendToGroupScreen() {
                       </View>
                     </View>
                   </View>
-                </ScrollView>
+                </AutoScrollView>
 
                 <SafeAreaView edges={["bottom"]} style={styles.composeFooter}>
                   <Pressable

@@ -20,6 +20,7 @@ import {
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter, useLocalSearchParams } from "expo-router";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import {
   ChevronLeft,
   Search,
@@ -400,10 +401,9 @@ export default function SendToChatScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
               >
-                <ScrollView
+                <AutoScrollView
                   style={{ flex: 1 }}
                   contentContainerStyle={styles.confirmContent}
-                  keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
                   <View style={styles.recipientRow}>
@@ -482,7 +482,7 @@ export default function SendToChatScreen() {
                       />
                     </View>
                   </View>
-                </ScrollView>
+                </AutoScrollView>
 
                 <SafeAreaView edges={["bottom"]} style={styles.confirmFooter}>
                   <Pressable

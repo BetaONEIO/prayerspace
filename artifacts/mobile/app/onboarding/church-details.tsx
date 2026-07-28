@@ -7,12 +7,14 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
   ScrollView,
   Modal,
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { ChevronDown, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -80,11 +82,10 @@ export default function ChurchDetails() {
             </Text>
           </View>
 
-          <ScrollView
+          <AutoScrollView
             style={styles.scroll}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
           >
             <View style={styles.field}>
               <Text style={styles.label}>Community name</Text>
@@ -155,7 +156,7 @@ export default function ChurchDetails() {
                 <ChevronDown size={18} color={colors.mutedForeground} />
               </Pressable>
             </View>
-          </ScrollView>
+          </AutoScrollView>
 
           <View style={styles.actions}>
             <Pressable

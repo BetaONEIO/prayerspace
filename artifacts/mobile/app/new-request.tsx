@@ -18,6 +18,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { Stack, useRouter } from "expo-router";
 import {
   X,
@@ -191,11 +192,9 @@ export default function NewRequestScreen() {
         </View>
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <ScrollView
+        <AutoScrollView
           style={styles.flex}
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.userRow}>
@@ -423,7 +422,7 @@ export default function NewRequestScreen() {
               })}
             </View>
           )}
-        </ScrollView>
+        </AutoScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       <ImageViewer

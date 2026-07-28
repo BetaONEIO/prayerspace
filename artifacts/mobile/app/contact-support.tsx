@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { Stack, useRouter } from "expo-router";
 import { ChevronLeft, ChevronDown, Send, CheckCircle } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -74,7 +75,7 @@ export default function ContactSupportScreen() {
             <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.formCard}>
               {[
                 { key: "name" as const, label: "Your name", value: name, setter: setName, placeholder: "Enter your name", type: "default" as const },
@@ -138,7 +139,7 @@ export default function ContactSupportScreen() {
               )}
             </Pressable>
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </AutoScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </>

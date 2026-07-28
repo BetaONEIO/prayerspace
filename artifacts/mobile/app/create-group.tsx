@@ -225,9 +225,7 @@ export default function CreateGroupScreen() {
             </View>
           </View>
 
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
+          <View style={{ width: 40 }} />
         </View>
 
         <AutoScrollView

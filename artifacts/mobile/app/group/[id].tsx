@@ -544,6 +544,8 @@ export default function GroupDetailScreen() {
             ref={chatScrollRef}
             contentContainerStyle={styles.chatScroll}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             <View style={styles.dateDivider}>
               <Text style={styles.dateDividerText}>Today</Text>

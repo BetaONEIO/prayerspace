@@ -6,11 +6,11 @@ import {
   Pressable,
   TextInput,
   KeyboardAvoidingView,
-  ScrollView,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
@@ -53,11 +53,10 @@ export default function ChurchSetup() {
             </Text>
           </View>
 
-          <ScrollView
+          <AutoScrollView
             style={styles.formScroll}
             contentContainerStyle={styles.form}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
           >
             <View style={styles.field}>
               <Text style={styles.label}>Community name</Text>
@@ -109,7 +108,7 @@ export default function ChurchSetup() {
                 testID="church-location-input"
               />
             </View>
-          </ScrollView>
+          </AutoScrollView>
 
           <View style={styles.actions}>
             <Pressable

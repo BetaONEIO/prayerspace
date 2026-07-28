@@ -14,6 +14,7 @@ import {
   ChevronLeft, ChevronDown, Search, HelpCircle, Shield, CreditCard,
   HeartHandshake, Mail, MessageCircle, X, ArrowRight,
 } from "lucide-react-native";
+import { AutoScrollView } from "@/components/AutoScrollView";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
@@ -159,7 +160,7 @@ export default function HelpCentreScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {!hasResults && (
             <View style={styles.emptyState}>
               <MessageCircle size={40} color={colors.mutedForeground} strokeWidth={1.2} />
@@ -189,7 +190,7 @@ export default function HelpCentreScreen() {
           </View>
 
           <View style={{ height: 40 }} />
-        </ScrollView>
+        </AutoScrollView>
       </SafeAreaView>
     </>
   );

@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { ScrollView, ScrollViewProps } from 'react-native';
+import { Keyboard, ScrollView, ScrollViewProps } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { KeyboardAwareScrollView, type KeyboardAwareScrollViewProps } from 'react-native-keyboard-controller';
 
@@ -22,7 +22,12 @@ export const AutoScrollView = forwardRef<ScrollView, AutoScrollViewProps>(
         ref={innerRef}
         bottomOffset={bottomOffset}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         {...props}
+        onScrollBeginDrag={(event) => {
+          Keyboard.dismiss();
+          props.onScrollBeginDrag?.(event);
+        }}
       />
     );
   }
