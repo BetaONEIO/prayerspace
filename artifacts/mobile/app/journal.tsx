@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   View,
   Text,
@@ -38,13 +37,12 @@ import {
 } from "lucide-react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
+import * as Contacts from "expo-contacts";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, YourPerson } from "@/providers/PrayerProvider";
-import { useAuth } from "@/providers/AuthProvider";
-import { supabase } from "@/lib/supabase";
 import { stripMarkdown } from "@/components/FormattedText";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { shouldShowReminderBadge } from "@/lib/prayerReminders";
@@ -108,52 +106,82 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const addStyles = useMemo(() => createAddStyles(colors), [colors]);
-  const { user } = useAuth();
   const [search, setSearch] = useState<string>("");
+  const [addressBookContacts, setAddressBookContacts] = useState<JournalContact[]>([]);
+  const [addressBookLoading, setAddressBookLoading] = useState(false);
+  const [addressBookPermissionDenied, setAddressBookPermissionDenied] = useState(false);
   const [customName, setCustomName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<"search" | "custom">("search");
   const [prayerFocuses, setPrayerFocuses] = useState<Record<string, string>>({});
   const [step, setStep] = useState<"select" | "focus">("select");
 
-  const contactsQuery = useQuery<JournalContact[]>({
-    queryKey: ["journal_contacts", user?.id],
-    enabled: !!user?.id && visible,
-    queryFn: async () => {
-      const { data: accepted, error: requestsError } = await supabase
-        .from("friend_requests")
-        .select("sender_id, receiver_id")
-        .eq("status", "accepted")
-        .or(`sender_id.eq.${user!.id},receiver_id.eq.${user!.id}`);
+  useEffect(() => {
+    if (!visible || mode !== "search") return;
 
-      if (requestsError || !accepted?.length) return [];
+    let cancelled = false;
+    setAddressBookLoading(true);
+    setAddressBookPermissionDenied(false);
 
-      const friendIds = [...new Set(
-        accepted.map((request: { sender_id: string; receiver_id: string }) =>
-          request.sender_id === user!.id ? request.receiver_id : request.sender_id
-        )
-      )];
+    const loadAddressBook = async () => {
+      if (Platform.OS === "web") {
+        if (!cancelled) {
+          setAddressBookContacts([]);
+          setAddressBookPermissionDenied(true);
+          setAddressBookLoading(false);
+        }
+        return;
+      }
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", friendIds);
+      try {
+        const { status } = await Contacts.requestPermissionsAsync();
+        if (status !== "granted") {
+          if (!cancelled) {
+            setAddressBookContacts([]);
+            setAddressBookPermissionDenied(true);
+            setAddressBookLoading(false);
+          }
+          return;
+        }
 
-      if (profilesError) return [];
+        const { data } = await Contacts.getContactsAsync({
+          fields: [
+            Contacts.Fields.Name,
+            Contacts.Fields.PhoneNumbers,
+            Contacts.Fields.Emails,
+            Contacts.Fields.Image,
+          ],
+        });
 
-      return (profiles ?? [])
-        .filter((profile: { id: string; full_name: string | null }) => !!profile.full_name?.trim())
-        .map((profile: { id: string; full_name: string; avatar_url: string | null }) => ({
-          id: profile.id,
-          name: profile.full_name.trim(),
-          avatar: profile.avatar_url ?? undefined,
-          initials: profile.full_name.trim().charAt(0).toUpperCase(),
-          subtitle: "Connected contact",
-        }));
-    },
-  });
+        const contacts = data
+          .filter((contact) => !!contact.id && !!contact.name?.trim())
+          .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+          .map((contact) => ({
+            id: contact.id!,
+            name: contact.name!.trim(),
+            avatar: contact.image?.uri,
+            initials: contact.name!.trim().charAt(0).toUpperCase(),
+            subtitle: "From your address book",
+          }));
 
-  const availableContacts = contactsQuery.data ?? [];
+        if (!cancelled) setAddressBookContacts(contacts);
+      } catch {
+        if (!cancelled) {
+          setAddressBookContacts([]);
+          setAddressBookPermissionDenied(true);
+        }
+      } finally {
+        if (!cancelled) setAddressBookLoading(false);
+      }
+    };
+
+    void loadAddressBook();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, mode]);
+
+  const availableContacts = addressBookContacts;
   const filteredRecipients = useMemo(() =>
     availableContacts.filter(
       (contact) =>
@@ -269,10 +297,22 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
                     autoFocus
                   />
                 </View>
-                {filteredRecipients.length === 0 ? (
+                {addressBookLoading ? (
+                  <View style={addStyles.emptyState}>
+                    <Text style={addStyles.emptyText}>Loading your contacts…</Text>
+                  </View>
+                ) : filteredRecipients.length === 0 ? (
                   <View style={addStyles.emptyState}>
                     <Users size={36} color={colors.border} />
-                    <Text style={addStyles.emptyText}>{search ? "No contacts found" : "All contacts already added"}</Text>
+                    <Text style={addStyles.emptyText}>
+                      {addressBookPermissionDenied
+                        ? "Allow Contacts access to choose people from your address book"
+                        : search
+                          ? "No contacts found"
+                          : addressBookContacts.length === 0
+                            ? "No contacts found in your address book"
+                            : "All contacts already added"}
+                    </Text>
                   </View>
                 ) : (
                   <ScrollView contentContainerStyle={addStyles.list} showsVerticalScrollIndicator={false}>
