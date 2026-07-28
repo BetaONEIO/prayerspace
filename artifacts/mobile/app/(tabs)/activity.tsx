@@ -566,37 +566,28 @@ export default function MessagesScreen() {
   const connectionsQuery = useQuery<Profile[]>({
     queryKey: ["connections", currentUserId],
     queryFn: async () => {
-      const { data: convParticipants, error: cpErr } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", currentUserId);
-      if (cpErr || !convParticipants?.length) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .neq("id", currentUserId)
-          .limit(50);
-        return (profiles ?? []) as Profile[];
-      }
-      const convIds = convParticipants.map((c: { conversation_id: string }) => c.conversation_id);
-      const { data: others } = await supabase
-        .from("conversation_participants")
-        .select("user_id")
-        .in("conversation_id", convIds)
-        .neq("user_id", currentUserId);
-      const otherIds = [...new Set((others ?? []).map((o: { user_id: string }) => o.user_id))];
-      if (!otherIds.length) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .neq("id", currentUserId)
-          .limit(50);
-        return (profiles ?? []) as Profile[];
-      }
+      // Only show users who have an accepted friend-request with the current user.
+      // Never fall back to all profiles — that exposes test accounts and causes
+      // "Could not load conversation" errors.
+      const { data: accepted } = await supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id")
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+
+      if (!accepted?.length) return [];
+
+      const friendIds = [...new Set(
+        accepted.map((r: { sender_id: string; receiver_id: string }) =>
+          r.sender_id === currentUserId ? r.receiver_id : r.sender_id
+        )
+      )];
+
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
-        .in("id", otherIds);
+        .in("id", friendIds);
+
       return (profiles ?? []) as Profile[];
     },
     enabled: !!currentUserId && newConvVisible,
