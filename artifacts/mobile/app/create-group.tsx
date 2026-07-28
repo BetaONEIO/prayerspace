@@ -27,6 +27,10 @@ import {
   Globe,
   CheckCircle,
   Users,
+  HandHeart,
+  BookOpen,
+  HeartHandshake,
+  Sparkles,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
@@ -40,15 +44,15 @@ type PrivacyType = "Private" | "Public";
 
 interface FocusOption {
   id: FocusCategory;
-  emoji: string;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
   label: string;
 }
 
 const FOCUS_OPTIONS: FocusOption[] = [
-  { id: "Prayer", emoji: "🙏", label: "Prayer" },
-  { id: "Bible Study", emoji: "📖", label: "Bible Study" },
-  { id: "Support", emoji: "🤝", label: "Support" },
-  { id: "Testimony", emoji: "✨", label: "Testimony" },
+  { id: "Prayer", icon: HandHeart, label: "Prayer" },
+  { id: "Bible Study", icon: BookOpen, label: "Bible Study" },
+  { id: "Support", icon: HeartHandshake, label: "Support" },
+  { id: "Testimony", icon: Sparkles, label: "Testimony" },
 ];
 
 export default function CreateGroupScreen() {
@@ -276,7 +280,7 @@ export default function CreateGroupScreen() {
                         style={[styles.focusOption, isSelected && styles.focusOptionSelected]}
                         onPress={() => handleFocusSelect(option.id)}
                       >
-                        <Text style={styles.focusEmoji}>{option.emoji}</Text>
+                        <option.icon size={22} color={isSelected ? colors.primary : colors.mutedForeground} strokeWidth={1.8} />
                         <Text style={[styles.focusLabel, isSelected && styles.focusLabelSelected]}>
                           {option.label}
                         </Text>

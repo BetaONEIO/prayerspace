@@ -34,6 +34,10 @@ import {
   UserMinus,
   X,
   ChevronRight,
+  HandHeart,
+  BookOpen,
+  HeartHandshake,
+  Sparkles,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
@@ -42,11 +46,15 @@ import PhotoUploadModal from "@/components/PhotoUploadModal";
 import { groupStore, GroupMember, FocusCategory, PrivacyType } from "@/lib/groupStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
-const FOCUS_OPTIONS: { id: FocusCategory; emoji: string; label: string }[] = [
-  { id: "Prayer", emoji: "🙏", label: "Prayer" },
-  { id: "Bible Study", emoji: "📖", label: "Bible Study" },
-  { id: "Support", emoji: "🤝", label: "Support" },
-  { id: "Testimony", emoji: "✨", label: "Testimony" },
+const FOCUS_OPTIONS: {
+  id: FocusCategory;
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  label: string;
+}[] = [
+  { id: "Prayer", icon: HandHeart, label: "Prayer" },
+  { id: "Bible Study", icon: BookOpen, label: "Bible Study" },
+  { id: "Support", icon: HeartHandshake, label: "Support" },
+  { id: "Testimony", icon: Sparkles, label: "Testimony" },
 ];
 
 const CURRENT_USER_ID = "me";
@@ -290,7 +298,7 @@ export default function ManageGroupScreen() {
                         markChanged();
                       }}
                     >
-                      <Text style={styles.focusEmoji}>{opt.emoji}</Text>
+                      <opt.icon size={22} color={sel ? colors.primary : colors.mutedForeground} strokeWidth={1.8} />
                       <Text style={[styles.focusLabel, { color: sel ? colors.primary : colors.foreground }]}>
                         {opt.label}
                       </Text>
