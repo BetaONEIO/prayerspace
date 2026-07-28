@@ -39,6 +39,7 @@ import { currentUser } from "@/mocks/data";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
+import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { scheduleOwnPrayerReminders } from "@/lib/prayerReminders";
 
@@ -46,6 +47,16 @@ export default function NewRequestScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const { addNotification } = useNotifications();
+  const communities = useCommunityStore();
+  const audienceOptions = useMemo<AudienceOption[]>(() => [
+    ...AUDIENCE_OPTIONS,
+    ...communities.map((community) => ({
+      key: `community-${community.id}`,
+      label: community.name,
+      sublabel: `${community.memberCount} members`,
+      type: "community" as const,
+    })),
+  ], [communities]);
   const [content, setContent] = useState("");
   const [requestImageUri, setRequestImageUri] = useState<string | null>(null);
   const [viewingRequestImage, setViewingRequestImage] = useState<string | null>(null);
@@ -219,7 +230,7 @@ export default function NewRequestScreen() {
           {audienceOpen && (
             <View style={styles.audienceDropdown}>
               <Text style={styles.audienceDropdownLabel}>Share with</Text>
-              {AUDIENCE_OPTIONS.map((option) => {
+              {audienceOptions.map((option) => {
                 const isSelected = selectedAudience.key === option.key;
                 return (
                   <Pressable

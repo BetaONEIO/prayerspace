@@ -28,7 +28,4 @@ export interface AudienceOption {
 
 export const AUDIENCE_OPTIONS: AudienceOption[] = [
   { key: "everyone", label: "Feed", sublabel: "Visible to all members", type: "everyone" },
-  { key: "grace-community", label: "Grace Community", sublabel: "24 members", type: "community" },
-  { key: "morning-prayer", label: "Morning Prayer Circle", sublabel: "11 members", type: "group" },
-  { key: "family-first", label: "Family First", sublabel: "6 members", type: "group" },
 ];

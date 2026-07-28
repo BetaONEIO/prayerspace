@@ -35,7 +35,8 @@ import {
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
-import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
+import { PRAYER_TAGS, type AudienceOption } from "@/constants/prayerContent";
+import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -43,6 +44,12 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const MAX_CHARS = 280;
+const FEED_AUDIENCE: AudienceOption = {
+  key: "everyone",
+  label: "Feed",
+  sublabel: "Visible to all members",
+  type: "everyone",
+};
 
 interface Props {
   visible: boolean;
@@ -55,13 +62,23 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useAuth();
+  const communities = useCommunityStore();
+  const audienceOptions = useMemo<AudienceOption[]>(() => {
+    const existingCommunities = communities.map((community) => ({
+      key: `community-${community.id}`,
+      label: community.name,
+      sublabel: `${community.memberCount} members`,
+      type: "community" as const,
+    }));
+    return [FEED_AUDIENCE, ...existingCommunities];
+  }, [communities]);
   const [text, setText] = useState<string>("");
   const [statusImageUri, setStatusImageUri] = useState<string | null>(null);
   const [viewingStatusImage, setViewingStatusImage] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagsExpanded, setTagsExpanded] = useState<boolean>(false);
   const [audienceOpen, setAudienceOpen] = useState<boolean>(false);
-  const [selectedAudience, setSelectedAudience] = useState<AudienceOption>(AUDIENCE_OPTIONS[0]);
+  const [selectedAudience, setSelectedAudience] = useState<AudienceOption>(FEED_AUDIENCE);
   const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
   const [isTimeSensitive, setIsTimeSensitive] = useState<boolean>(false);
   const [dateExpanded, setDateExpanded] = useState<boolean>(false);
@@ -83,7 +100,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       if (communityName) {
         setSelectedAudience({ key: "active-community", label: communityName, sublabel: "Community members", type: "community" });
       } else {
-        setSelectedAudience(AUDIENCE_OPTIONS[0]);
+        setSelectedAudience(FEED_AUDIENCE);
       }
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -129,7 +146,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setSelectedTags([]);
       setTagsExpanded(false);
       setAudienceOpen(false);
-      setSelectedAudience(communityName ? { key: "active-community", label: communityName, sublabel: "Community members", type: "community" } : AUDIENCE_OPTIONS[0]);
+       setSelectedAudience(communityName ? { key: "active-community", label: communityName, sublabel: "Community members", type: "community" } : FEED_AUDIENCE);
       setIsAnonymous(false);
       setIsTimeSensitive(false);
       setStatusImageUri(null);
@@ -143,7 +160,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setVoiceNoteTranscription(undefined);
       Animated.timing(tagRotate, { toValue: 0, duration: 0, useNativeDriver: true }).start();
     }, 300);
-  }, [onClose, tagRotate]);
+  }, [onClose, tagRotate, communityName]);
 
   const [isPosting, setIsPosting] = useState(false);
 
@@ -260,7 +277,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
               {audienceOpen && (
                 <View style={styles.audienceDropdown}>
                   <Text style={styles.audienceDropdownLabel}>Share with</Text>
-                  {AUDIENCE_OPTIONS.map((option) => {
+                   {audienceOptions.map((option) => {
                     const isSelected = selectedAudience.key === option.key;
                     return (
                       <Pressable
