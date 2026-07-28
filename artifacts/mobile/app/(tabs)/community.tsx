@@ -5805,7 +5805,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   joinPasswordInputWrap: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: colors.background,
+    backgroundColor: "#FFFFFF",
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: colors.border,
