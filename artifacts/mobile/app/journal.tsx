@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   View,
   Text,
@@ -42,10 +43,11 @@ import { ThemeColors } from "@/constants/colors";
 import NavigationDrawer from "@/components/NavigationDrawer";
 import { usePrayer } from "@/providers/PrayerProvider";
 import type { JournalEntry, YourPerson } from "@/providers/PrayerProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "@/lib/supabase";
 import { stripMarkdown } from "@/components/FormattedText";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { shouldShowReminderBadge } from "@/lib/prayerReminders";
-import { ALL_RECIPIENTS } from "@/providers/SelectedRecipientsProvider";
 
 const FILTERS = ["My Prayers", "Your People", "Prayer Requests"] as const;
 
@@ -94,10 +96,19 @@ interface AddPersonModalProps {
   existingPeople: YourPerson[];
 }
 
+interface JournalContact {
+  id: string;
+  name: string;
+  avatar?: string;
+  initials?: string;
+  subtitle: string;
+}
+
 function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonModalProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const addStyles = useMemo(() => createAddStyles(colors), [colors]);
+  const { user } = useAuth();
   const [search, setSearch] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -105,18 +116,56 @@ function AddPersonModal({ visible, onClose, onAdd, existingPeople }: AddPersonMo
   const [prayerFocuses, setPrayerFocuses] = useState<Record<string, string>>({});
   const [step, setStep] = useState<"select" | "focus">("select");
 
+  const contactsQuery = useQuery<JournalContact[]>({
+    queryKey: ["journal_contacts", user?.id],
+    enabled: !!user?.id && visible,
+    queryFn: async () => {
+      const { data: accepted, error: requestsError } = await supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id")
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${user!.id},receiver_id.eq.${user!.id}`);
+
+      if (requestsError || !accepted?.length) return [];
+
+      const friendIds = [...new Set(
+        accepted.map((request: { sender_id: string; receiver_id: string }) =>
+          request.sender_id === user!.id ? request.receiver_id : request.sender_id
+        )
+      )];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", friendIds);
+
+      if (profilesError) return [];
+
+      return (profiles ?? [])
+        .filter((profile: { id: string; full_name: string | null }) => !!profile.full_name?.trim())
+        .map((profile: { id: string; full_name: string; avatar_url: string | null }) => ({
+          id: profile.id,
+          name: profile.full_name.trim(),
+          avatar: profile.avatar_url ?? undefined,
+          initials: profile.full_name.trim().charAt(0).toUpperCase(),
+          subtitle: "Connected contact",
+        }));
+    },
+  });
+
+  const availableContacts = contactsQuery.data ?? [];
   const filteredRecipients = useMemo(() =>
-    ALL_RECIPIENTS.filter(
-      (r) =>
-        r.name.toLowerCase().includes(search.toLowerCase()) &&
-        !existingPeople.find((p) => p.name.toLowerCase() === r.name.toLowerCase())
+    availableContacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(search.toLowerCase()) &&
+        !existingPeople.find((person) => person.name.toLowerCase() === contact.name.toLowerCase())
     ),
-    [search, existingPeople]
+    [availableContacts, search, existingPeople]
   );
 
   const selectedContacts = useMemo(() =>
-    ALL_RECIPIENTS.filter((r) => selectedIds.has(r.id)),
-    [selectedIds]
+    availableContacts.filter((contact) => selectedIds.has(contact.id)),
+    [availableContacts, selectedIds]
   );
 
   const handleClose = useCallback(() => {
