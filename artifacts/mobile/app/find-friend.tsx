@@ -499,6 +499,19 @@ export default function FindFriendScreen() {
           <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>
           <Text style={styles.headerTitle}>Find Friends</Text>
           <View style={styles.headerRight}>
+            <Pressable
+              style={({ pressed }) => [styles.addAddressBookBtn, pressed && { opacity: 0.75 }]}
+              onPress={handleRequestContactsPermission}
+              disabled={requestingPermission}
+              accessibilityRole="button"
+              accessibilityLabel="Add contacts from your address book"
+            >
+              {requestingPermission ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.addAddressBookText}>Add</Text>
+              )}
+            </Pressable>
             <Pressable style={styles.inviteBtn} onPress={() => openInviteSheet()}>
               <Share2 size={18} color={colors.primary} />
             </Pressable>
@@ -692,6 +705,8 @@ function createStyles(colors: ThemeColors) {
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, alignItems: "center" as const, justifyContent: "center" as const },
     headerTitle: { fontSize: 20, fontWeight: "700" as const, color: colors.foreground },
     headerRight: { flexDirection: "row" as const, alignItems: "center" as const, gap: 8 },
+    addAddressBookBtn: { minWidth: 44, height: 40, paddingHorizontal: 8, alignItems: "center" as const, justifyContent: "center" as const },
+    addAddressBookText: { fontSize: 16, fontWeight: "700" as const, color: colors.mutedForeground },
     inviteBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "14", alignItems: "center" as const, justifyContent: "center" as const },
     requestsBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "14", alignItems: "center" as const, justifyContent: "center" as const },
     requestsBadge: { position: "absolute" as const, top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.primary, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 3, borderWidth: 1.5, borderColor: colors.background },
