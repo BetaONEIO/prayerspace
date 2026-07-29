@@ -3,6 +3,7 @@ type PostListener = (post: PostShape) => void;
 
 let _listener: PostListener | null = null;
 const _queue: PostShape[] = [];
+const _posts: PostShape[] = [];
 
 export const feedStore = {
   register(fn: PostListener) {
@@ -16,11 +17,15 @@ export const feedStore = {
     _listener = null;
   },
   addPost(post: PostShape) {
+    _posts.unshift(post);
     if (_listener) {
       _listener(post);
     } else {
       _queue.push(post);
     }
+  },
+  getPosts() {
+    return [..._posts];
   },
 };
 

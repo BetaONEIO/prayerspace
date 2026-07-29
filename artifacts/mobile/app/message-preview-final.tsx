@@ -381,7 +381,9 @@ export default function MessagePreviewFinalScreen() {
 
       feedStore.addPost({
         id: `prayer_${Date.now()}`,
-        communityId: "",
+        // Feed posts need a concrete community ID so the Feed filter can
+        // display them after the Community screen remounts.
+        communityId: "default",
         authorId: isAnon ? "anonymous" : (user?.id ?? "current_user"),
         authorName,
         authorAvatar: isAnon ? "" : (profile?.avatar_url ?? ""),

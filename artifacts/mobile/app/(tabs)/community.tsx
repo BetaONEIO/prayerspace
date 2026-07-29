@@ -220,8 +220,14 @@ export default function CommunityScreen() {
   }, [tabParam]);
   const [prayedPosts, setPrayedPosts] = useState<Set<string>>(new Set());
   const [commentPost, setCommentPost] = useState<FeedPost | null>(null);
-  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(ALL_FEED_POSTS);
-  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(ALL_COMMUNITY_POSTS);
+  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(() => [
+    ...feedStore.getPosts(),
+    ...ALL_FEED_POSTS,
+  ] as FeedPost[]);
+  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(() => [
+    ...feedStore.getPosts(),
+    ...ALL_COMMUNITY_POSTS,
+  ] as FeedPost[]);
   const [repostTarget, setRepostTarget] = useState<FeedPost | null>(null);
   const [postActionsTarget, setPostActionsTarget] = useState<FeedPost | null>(null);
   const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
