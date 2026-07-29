@@ -2,14 +2,15 @@ import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Building2, Network, Sprout, UsersRound } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
 const SIZES = [
-  { id: "1-50", label: "1 – 50", sublabel: "Small group or new community", emoji: "🌱" },
-  { id: "51-150", label: "51 – 150", sublabel: "Growing congregation or group", emoji: "🌿" },
-  { id: "151-300", label: "151 – 300", sublabel: "Established community", emoji: "🌳" },
-  { id: "300+", label: "300+", sublabel: "Large church or organisation", emoji: "⛪" },
+  { id: "1-50", label: "1 – 50", sublabel: "Small group or new community", icon: Sprout },
+  { id: "51-150", label: "51 – 150", sublabel: "Growing congregation or group", icon: UsersRound },
+  { id: "151-300", label: "151 – 300", sublabel: "Established community", icon: Network },
+  { id: "300+", label: "300+", sublabel: "Large church or organisation", icon: Building2 },
 ];
 
 export default function ChurchSize() {
@@ -36,6 +37,7 @@ export default function ChurchSize() {
         <View style={styles.list}>
           {SIZES.map((opt) => {
             const isSelected = selected === opt.id;
+            const Icon = opt.icon;
             return (
               <Pressable
                 key={opt.id}
@@ -43,7 +45,13 @@ export default function ChurchSize() {
                 onPress={() => setSelected(opt.id)}
                 testID={`community-size-${opt.id}`}
               >
-                <Text style={styles.cardEmoji}>{opt.emoji}</Text>
+                <View style={[styles.cardIcon, isSelected && styles.cardIconSelected]}>
+                  <Icon
+                    size={25}
+                    color={isSelected ? colors.primaryForeground : colors.primary}
+                    strokeWidth={2}
+                  />
+                </View>
                 <View style={styles.cardText}>
                   <Text style={[styles.cardLabel, isSelected && styles.cardLabelSelected]}>
                     {opt.label}
@@ -116,7 +124,16 @@ function createStyles(colors: ThemeColors) {
       borderColor: colors.border,
     },
     cardSelected: { borderColor: colors.primary, backgroundColor: colors.accent },
-    cardEmoji: { fontSize: 28 },
+    cardIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: colors.primary + "14",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    cardIconSelected: { backgroundColor: colors.primary },
     cardText: { flex: 1, gap: 3 },
     cardLabel: { fontSize: 20, fontWeight: "800" as const, color: colors.foreground },
     cardLabelSelected: { color: colors.foreground },
