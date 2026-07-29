@@ -97,7 +97,15 @@ export default function PrayerModeScreen() {
   const tagRotate = useRef(new Animated.Value(0)).current;
   const dateAnim = useRef(new Animated.Value(0)).current;
 
-  const { selectedRecipients, selectedIds, toggleRecipient, setDraftPrayerText, setFeedPostMeta } = useSelectedRecipients();
+  const {
+    selectedRecipients,
+    selectedIds,
+    selectedCommunityIds,
+    selectedGroupIds,
+    toggleRecipient,
+    setDraftPrayerText,
+    setFeedPostMeta,
+  } = useSelectedRecipients();
   const { isRecording, duration, startRecording: startAudioRecording, stopRecording: stopAudioRecording } = useAudioRecording();
 
   const insets = useSafeAreaInsets();
@@ -271,6 +279,8 @@ export default function PrayerModeScreen() {
       pathname: "/delivery-explanation" as never,
       params: {
         contacts: JSON.stringify(selectedIds),
+        communities: JSON.stringify(selectedCommunityIds),
+        groups: JSON.stringify(selectedGroupIds),
         tags: JSON.stringify(selectedTags),
         sendToFeed: String(sendToFeed),
         isTimeSensitive: String(isTimeSensitive),
@@ -281,7 +291,7 @@ export default function PrayerModeScreen() {
         includeTranscription: String(isVoice && !!voiceTranscript),
       },
     });
-  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, includeAudio, router, setDraftPrayerText, setFeedPostMeta, incomingAudioUri, incomingDurationMs]);
+  }, [textPrayer, voiceTranscript, activeTab, selectedIds, selectedCommunityIds, selectedGroupIds, selectedTags, sendToFeed, isTimeSensitive, isAnonymous, eventDate, includeAudio, router, setDraftPrayerText, setFeedPostMeta, incomingAudioUri, incomingDurationMs]);
 
   const handleRemoveRecipient = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -309,7 +319,7 @@ export default function PrayerModeScreen() {
   const rippleScale = rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.5] });
   const rippleOpacity = rippleAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0] });
 
-  const hasSelected = selectedIds.length > 0;
+  const hasSelected = selectedIds.length > 0 || selectedCommunityIds.length > 0 || selectedGroupIds.length > 0;
   const voiceSelectionValid = activeTab !== "voice" || !hasRecorded || !!voiceTranscript || includeAudio;
   const canConfirm = (hasSelected || sendToFeed) && voiceSelectionValid;
 

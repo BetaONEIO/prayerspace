@@ -26,8 +26,10 @@ export default function DeliveryExplanationScreen() {
   const [hideChannels, setHideChannels] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const channelOpacity = useRef(new Animated.Value(1)).current;
-  const { contacts, sendToFeed, isTimeSensitive, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
+  const { contacts, communities, groups, sendToFeed, isTimeSensitive, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
     contacts: string;
+    communities?: string;
+    groups?: string;
     sendToFeed?: string;
     isTimeSensitive?: string;
     isAnonymous?: string;
@@ -82,6 +84,8 @@ export default function DeliveryExplanationScreen() {
       pathname: "/message-preview-final" as never,
       params: {
         contacts,
+        communities: communities ?? "[]",
+        groups: groups ?? "[]",
         sendToFeed: String(isSendToFeed),
         isTimeSensitive: isTimeSensitive ?? "false",
         isAnonymous: isAnonymousParam ?? "false",

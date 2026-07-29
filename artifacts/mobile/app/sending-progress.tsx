@@ -9,8 +9,10 @@ export default function SendingProgressScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { sendToFeed, recipientCount: recipientCountParam } = useLocalSearchParams<{ sendToFeed?: string; recipientCount?: string }>();
-  const isFeedOnly = sendToFeed === "true" && (recipientCountParam === "0" || !recipientCountParam);
+  const { sendToFeed, recipientCount: recipientCountParam, communityCount: communityCountParam, groupCount: groupCountParam } = useLocalSearchParams<{ sendToFeed?: string; recipientCount?: string; communityCount?: string; groupCount?: string }>();
+  const communityCount = parseInt(communityCountParam ?? "0", 10);
+  const groupCount = parseInt(groupCountParam ?? "0", 10);
+  const isFeedOnly = sendToFeed === "true" && (recipientCountParam === "0" || !recipientCountParam) && communityCount === 0 && groupCount === 0;
   const recipientCount = parseInt(recipientCountParam ?? "0", 10);
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
@@ -24,7 +26,7 @@ export default function SendingProgressScreen() {
     ])).start();
     Animated.timing(progressAnim, { toValue: 1, duration: 2500, useNativeDriver: false }).start(() => {
       setTimeout(() => {
-        router.replace(`/sent-confirmation?sendToFeed=${sendToFeed ?? "false"}&recipientCount=${recipientCountParam ?? "0"}` as never);
+         router.replace(`/sent-confirmation?sendToFeed=${sendToFeed ?? "false"}&recipientCount=${recipientCountParam ?? "0"}&communityCount=${communityCount}&groupCount=${groupCount}` as never);
       }, 400);
     });
   }, [spinAnim, pulseAnim, progressAnim, router]);
@@ -50,7 +52,7 @@ export default function SendingProgressScreen() {
           <View style={styles.progressDot} />
           <View style={styles.progressInfo}>
             <Text style={styles.progressLabel}>
-              {isFeedOnly ? "Sharing to Feed" : `Sending to ${recipientCount} ${recipientCount === 1 ? "person" : "people"}`}
+              {isFeedOnly ? "Sharing to Feed" : `Sending to ${recipientCount + communityCount + groupCount} ${recipientCount + communityCount + groupCount === 1 ? "destination" : "destinations"}`}
             </Text>
             <View style={styles.progressTrack}>
               <Animated.View style={[styles.progressBar, { width: progressWidth }]} />

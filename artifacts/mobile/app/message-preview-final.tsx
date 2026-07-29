@@ -232,8 +232,10 @@ export default function MessagePreviewFinalScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const CHANNEL_META = useMemo(() => getChannelMeta(colors), [colors]);
   const router = useRouter();
-  const { sendToFeed: sendToFeedParam, isTimeSensitive: isTimeSensitiveParam, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
+  const { sendToFeed: sendToFeedParam, communities: communitiesParam, groups: groupsParam, isTimeSensitive: isTimeSensitiveParam, isAnonymous: isAnonymousParam, eventDate: eventDateParam, tags: tagsParam, photoUrls: photoUrlsParam } = useLocalSearchParams<{
     sendToFeed?: string;
+    communities?: string;
+    groups?: string;
     isTimeSensitive?: string;
     isAnonymous?: string;
     eventDate?: string;
@@ -241,7 +243,7 @@ export default function MessagePreviewFinalScreen() {
     photoUrls?: string;
   }>();
   const isSendToFeed = sendToFeedParam === "true";
-  const { selectedRecipients, draftPrayerText, feedPostMeta } = useSelectedRecipients();
+  const { selectedRecipients, selectedCommunityIds, selectedGroupIds, draftPrayerText, feedPostMeta } = useSelectedRecipients();
   const { user, profile } = useAuth();
   const [selectedIdx, setSelectedIdx] = useState(0);
 
@@ -262,6 +264,23 @@ export default function MessagePreviewFinalScreen() {
     }));
   }, [selectedRecipients]);
 
+  const selectedCommunityDestinationIds = useMemo(() => {
+    try {
+      const parsed = JSON.parse(communitiesParam ?? "[]") as string[];
+      return parsed.length > 0 ? parsed : selectedCommunityIds;
+    } catch {
+      return selectedCommunityIds;
+    }
+  }, [communitiesParam, selectedCommunityIds]);
+  const selectedGroupDestinationIds = useMemo(() => {
+    try {
+      const parsed = JSON.parse(groupsParam ?? "[]") as string[];
+      return parsed.length > 0 ? parsed : selectedGroupIds;
+    } catch {
+      return selectedGroupIds;
+    }
+  }, [groupsParam, selectedGroupIds]);
+  const hasDestinations = recipients.length > 0 || selectedCommunityDestinationIds.length > 0 || selectedGroupDestinationIds.length > 0;
   const hasRecipients = recipients.length > 0;
   const feedOnly = isSendToFeed && !hasRecipients;
 
@@ -290,11 +309,17 @@ export default function MessagePreviewFinalScreen() {
     if (hasRecipients) {
       parts.push(`${recipients.length} ${recipients.length === 1 ? "person" : "people"}`);
     }
+    if (selectedCommunityDestinationIds.length > 0) {
+      parts.push(`${selectedCommunityDestinationIds.length} ${selectedCommunityDestinationIds.length === 1 ? "community" : "communities"}`);
+    }
+    if (selectedGroupDestinationIds.length > 0) {
+      parts.push(`${selectedGroupDestinationIds.length} ${selectedGroupDestinationIds.length === 1 ? "prayer group" : "prayer groups"}`);
+    }
     if (isSendToFeed) {
       parts.push("Feed");
     }
     return parts.join(" + ");
-  }, [hasRecipients, recipients.length, isSendToFeed]);
+  }, [hasRecipients, recipients.length, selectedCommunityDestinationIds, selectedGroupDestinationIds, isSendToFeed]);
 
   const handleSend = useCallback(async () => {
     if (Platform.OS !== "web") {
@@ -408,8 +433,8 @@ export default function MessagePreviewFinalScreen() {
       });
       console.log("[MessagePreviewFinal] Prayer queued to feed, anonymous:", isAnon, "tags:", tags, "includeAudio:", shouldIncludeAudio);
     }
-    router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}`) as never);
-  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);
+    router.push((`/sending-progress?sendToFeed=${isSendToFeed}&recipientCount=${recipients.length}&communityCount=${selectedCommunityDestinationIds.length}&groupCount=${selectedGroupDestinationIds.length}`) as never);
+  }, [router, isSendToFeed, feedPostMeta, prayerMessage, profile, user, recipients, selectedCommunityDestinationIds, selectedGroupDestinationIds, isAnonymousParam, isTimeSensitiveParam, eventDateParam, tagsParam, photoUrls]);
 
   return (
     <>

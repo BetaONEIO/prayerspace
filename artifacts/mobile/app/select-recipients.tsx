@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useSyncExternalStore } from "react";
+import React, { useState, useCallback, useMemo, useSyncExternalStore, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,17 +19,19 @@ import {
   ArrowRight,
   X,
   Users,
-  Star,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import * as Contacts from "expo-contacts";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import {
   useSelectedRecipients,
-  ALL_RECIPIENTS,
   type Recipient,
 } from "@/providers/SelectedRecipientsProvider";
 import { groupCreatedStore } from "@/lib/groupStore";
+import { useCommunityStore } from "@/lib/communityStore";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 type MainTab = "contacts" | "communities" | "groups";
 type FilterTab = "all" | "on_app" | "not_on_app" | "whatsapp" | "sim";
@@ -41,12 +43,6 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "whatsapp", label: "WhatsApp" },
   { key: "sim", label: "SIM" },
 ];
-
-// Communities are populated from the user's actual joined communities.
-// No placeholder data — an empty state is shown when the user hasn't joined any.
-const COMMUNITIES: { id: string; name: string; members: number; avatar: string }[] = [];
-
-const FREQUENTLY_USED_IDS = ["r1", "r2", "r3"];
 
 const getSourceColors = (colors: ThemeColors): Record<string, string> => ({
   whatsapp: "#25D366",
@@ -60,12 +56,24 @@ export default function SelectRecipientsScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const SOURCE_COLORS = getSourceColors(colors);
   const router = useRouter();
-  const { selectedIds, toggleRecipient, clearAll } = useSelectedRecipients();
+  const { user } = useAuth();
+  const communities = useCommunityStore();
+  const {
+    recipients,
+    setRecipients,
+    selectedIds,
+    toggleRecipient,
+    clearAll,
+    selectedCommunityIds,
+    setSelectedCommunityIds,
+    selectedGroupIds,
+    setSelectedGroupIds,
+  } = useSelectedRecipients();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [mainTab, setMainTab] = useState<MainTab>("contacts");
-  const [selectedCommunities, setSelectedCommunities] = useState<string[]>([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(true);
+  const [contactsPermissionDenied, setContactsPermissionDenied] = useState(false);
 
   const prayerGroupPayloads = useSyncExternalStore(
     groupCreatedStore.subscribe,
@@ -73,13 +81,82 @@ export default function SelectRecipientsScreen() {
     groupCreatedStore.getSnapshot,
   );
 
-  const frequentlyUsed = useMemo(
-    () => ALL_RECIPIENTS.filter((r) => FREQUENTLY_USED_IDS.includes(r.id)),
-    []
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const loadContacts = async () => {
+      if (Platform.OS === "web") {
+        setContactsPermissionDenied(true);
+        setContactsLoading(false);
+        return;
+      }
+      try {
+        const permission = await Contacts.requestPermissionsAsync();
+        if (permission.status !== "granted") {
+          if (!cancelled) setContactsPermissionDenied(true);
+          return;
+        }
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails, Contacts.Fields.Image],
+          sort: Contacts.SortTypes.FirstName,
+        });
+        const valid = data.filter((contact) =>
+          !!contact.id &&
+          !!contact.name?.trim() &&
+          ((contact.phoneNumbers?.some((phone) => !!phone.number?.trim())) ||
+            (contact.emails?.some((email) => !!email.email?.trim())))
+        );
+        const emails = [...new Set(valid.flatMap((contact) =>
+          (contact.emails ?? []).map((email) => email.email?.trim().toLowerCase()).filter((email): email is string => !!email)
+        ))];
+        const profilesByEmail = new Map<string, { id: string; name: string; avatar?: string }>();
+        if (emails.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, email")
+            .in("email", emails)
+            .neq("id", user?.id ?? "");
+          for (const profile of profiles ?? []) {
+            if (profile.email && profile.full_name) {
+              profilesByEmail.set(profile.email.toLowerCase(), {
+                id: profile.id,
+                name: profile.full_name,
+                avatar: profile.avatar_url ?? undefined,
+              });
+            }
+          }
+        }
+        const seen = new Set<string>();
+        const mapped: Recipient[] = [];
+        for (const contact of valid) {
+            const email = contact.emails?.find((item) => item.email)?.email?.trim().toLowerCase();
+            const profile = email ? profilesByEmail.get(email) : undefined;
+            const phone = contact.phoneNumbers?.find((item) => item.number)?.number?.trim();
+            const id = profile?.id ?? `device-${contact.id}`;
+            if (seen.has(id)) continue;
+            seen.add(id);
+            mapped.push({
+              id,
+              name: profile?.name ?? contact.name!.trim(),
+              avatar: profile?.avatar ?? contact.image?.uri,
+              initials: (profile?.name ?? contact.name!.trim()).charAt(0).toUpperCase(),
+              subtitle: profile ? "On Prayer Space" : (phone ?? email ?? "Address book contact"),
+              onApp: !!profile,
+              source: profile ? "app" : (email ? "whatsapp" : "sim"),
+            });
+        }
+        if (!cancelled) setRecipients(mapped);
+      } catch {
+        if (!cancelled) setContactsPermissionDenied(true);
+      } finally {
+        if (!cancelled) setContactsLoading(false);
+      }
+    };
+    void loadContacts();
+    return () => { cancelled = true; };
+  }, [setRecipients, user?.id]);
 
   const filtered = useMemo(() => {
-    return ALL_RECIPIENTS.filter((r) => {
+    return recipients.filter((r) => {
       const matchesSearch = r.name.toLowerCase().includes(search.toLowerCase());
       const matchesFilter =
         activeFilter === "all" ||
@@ -89,23 +166,17 @@ export default function SelectRecipientsScreen() {
         (activeFilter === "sim" && r.source === "sim");
       return matchesSearch && matchesFilter;
     });
-  }, [search, activeFilter]);
+  }, [recipients, search, activeFilter]);
 
   const onAppContacts = filtered.filter((r) => r.onApp);
   const otherContacts = filtered.filter((r) => !r.onApp);
 
-  const totalSelected = selectedIds.length + selectedCommunities.length + selectedGroupIds.length;
+  const totalSelected = selectedIds.length + selectedCommunityIds.length + selectedGroupIds.length;
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (selectedGroupIds.length > 0) {
-      // Navigate to the first selected group's chat; in a full implementation
-      // you'd loop through all selected groups.
-      router.push(`/group/${selectedGroupIds[0]}`);
-    } else {
-      router.back();
-    }
-  }, [router, selectedGroupIds]);
+    router.back();
+  }, [router]);
 
   const handleToggle = useCallback(
     (id: string) => {
@@ -117,7 +188,7 @@ export default function SelectRecipientsScreen() {
 
   const handleCommunityToggle = useCallback((id: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
-    setSelectedCommunities((prev) =>
+    setSelectedCommunityIds((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
     );
   }, []);
@@ -132,8 +203,6 @@ export default function SelectRecipientsScreen() {
   const handleClearAll = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     clearAll();
-    setSelectedCommunities([]);
-    setSelectedGroupIds([]);
   }, [clearAll]);
 
   const renderRecipient = (item: Recipient, inGroup?: boolean) => {
@@ -185,23 +254,6 @@ export default function SelectRecipientsScreen() {
 
   const renderContactsTab = () => (
     <View style={styles.listContent}>
-      {frequentlyUsed.length > 0 && (
-        <>
-          <View style={styles.sectionLabelRow}>
-            <Star size={12} color={colors.primary} fill={colors.primary} />
-            <Text style={styles.sectionLabel}>Frequently Used</Text>
-          </View>
-          <View style={styles.groupCard}>
-            {frequentlyUsed.map((item, index) => (
-              <View key={item.id}>
-                {index > 0 && <View style={styles.divider} />}
-                {renderRecipient(item, true)}
-              </View>
-            ))}
-          </View>
-        </>
-      )}
-
       {onAppContacts.length > 0 && (
         <>
           <Text style={[styles.sectionLabel, { marginTop: 24 }]}>On Prayer Space</Text>
@@ -229,9 +281,11 @@ export default function SelectRecipientsScreen() {
         </>
       )}
 
-      {filtered.length === 0 && (
+       {filtered.length === 0 && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No contacts found</Text>
+          <Text style={styles.emptyText}>
+            {contactsLoading ? "Loading your contacts…" : contactsPermissionDenied ? "Allow Contacts access to choose people" : "No contacts found"}
+          </Text>
         </View>
       )}
     </View>
@@ -239,7 +293,7 @@ export default function SelectRecipientsScreen() {
 
   const renderCommunitiesTab = () => (
     <View style={styles.listContent}>
-      {COMMUNITIES.length === 0 ? (
+      {communities.length === 0 ? (
         <View style={styles.emptyState}>
           <Users size={32} color={colors.mutedForeground} style={{ marginBottom: 12, opacity: 0.5 }} />
           <Text style={styles.emptyText}>No communities yet</Text>
@@ -251,8 +305,8 @@ export default function SelectRecipientsScreen() {
         <>
           <Text style={styles.sectionLabel}>Your Communities</Text>
           <View style={styles.groupCard}>
-            {COMMUNITIES.map((community, index) => {
-              const isSelected = selectedCommunities.includes(community.id);
+            {communities.map((community, index) => {
+              const isSelected = selectedCommunityIds.includes(community.id);
               return (
                 <View key={community.id}>
                   {index > 0 && <View style={styles.divider} />}
@@ -260,18 +314,20 @@ export default function SelectRecipientsScreen() {
                     style={styles.contactRow}
                     onPress={() => handleCommunityToggle(community.id)}
                   >
-                    <Image source={{ uri: community.avatar }} style={styles.avatar} />
+                    {community.bannerImage ? <Image source={{ uri: community.bannerImage }} style={styles.avatar} /> : (
+                      <View style={styles.initialsAvatar}><Text style={styles.initialsText}>{community.iconLetter}</Text></View>
+                    )}
                     <View style={styles.contactInfo}>
                       <Text style={styles.contactName}>{community.name}</Text>
                       <View style={styles.subtitleRow}>
                         <Users size={11} color={colors.mutedForeground} />
                         <Text style={styles.contactSubtitle}>
-                          {community.members} members
+                          {community.memberCount} members
                         </Text>
                       </View>
                     </View>
                     <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
-                      {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
+                    {isSelected && <Check size={12} color={colors.primaryForeground} strokeWidth={3} />}
                     </View>
                   </Pressable>
                 </View>

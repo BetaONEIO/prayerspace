@@ -26,7 +26,10 @@ export type FeedPostMeta = {
 };
 
 export const [SelectedRecipientsProvider, useSelectedRecipients] = createContextHook(() => {
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedCommunityIds, setSelectedCommunityIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [draftPrayerText, setDraftPrayerText] = useState<string>("");
   const [feedPostMeta, setFeedPostMeta] = useState<FeedPostMeta | null>(null);
 
@@ -38,16 +41,24 @@ export const [SelectedRecipientsProvider, useSelectedRecipients] = createContext
 
   const clearAll = useCallback(() => {
     setSelectedIds([]);
+    setSelectedCommunityIds([]);
+    setSelectedGroupIds([]);
   }, []);
 
   return useMemo(() => ({
+    recipients,
+    setRecipients,
     selectedIds,
-    selectedRecipients: ALL_RECIPIENTS.filter((r) => selectedIds.includes(r.id)),
+    selectedRecipients: recipients.filter((r) => selectedIds.includes(r.id)),
     toggleRecipient,
     clearAll,
+    selectedCommunityIds,
+    setSelectedCommunityIds,
+    selectedGroupIds,
+    setSelectedGroupIds,
     draftPrayerText,
     setDraftPrayerText,
     feedPostMeta,
     setFeedPostMeta,
-  }), [selectedIds, toggleRecipient, clearAll, draftPrayerText, feedPostMeta]);
+  }), [recipients, selectedIds, toggleRecipient, clearAll, selectedCommunityIds, selectedGroupIds, draftPrayerText, feedPostMeta]);
 });

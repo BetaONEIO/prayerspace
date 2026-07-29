@@ -12,9 +12,11 @@ export default function SentConfirmationScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { sendToFeed, recipientCount: recipientCountParam } = useLocalSearchParams<{ sendToFeed?: string; recipientCount?: string }>();
-  const isFeedOnly = sendToFeed === "true" && (recipientCountParam === "0" || !recipientCountParam);
-  const { selectedRecipients } = useSelectedRecipients();
+  const { sendToFeed, recipientCount: recipientCountParam, communityCount: communityCountParam, groupCount: groupCountParam } = useLocalSearchParams<{ sendToFeed?: string; recipientCount?: string; communityCount?: string; groupCount?: string }>();
+  const communityCount = parseInt(communityCountParam ?? "0", 10);
+  const groupCount = parseInt(groupCountParam ?? "0", 10);
+  const isFeedOnly = sendToFeed === "true" && (recipientCountParam === "0" || !recipientCountParam) && communityCount === 0 && groupCount === 0;
+  const { selectedRecipients, clearAll } = useSelectedRecipients();
 
   const deliveryItems = useMemo(() => {
     const appCount = selectedRecipients.filter((r) => r.onApp).length;
@@ -24,8 +26,10 @@ export default function SentConfirmationScreen() {
     if (appCount > 0) items.push({ id: "app", label: "In Prayer Space", count: `${appCount} sent`, icon: Home, color: colors.primary, bg: colors.primary + "18" });
     if (whatsappCount > 0) items.push({ id: "whatsapp", label: "WhatsApp", count: `${whatsappCount} prepared`, emoji: "💬", color: "#25D366", bg: "#25D36618" });
     if (smsCount > 0) items.push({ id: "sms", label: "SMS", count: `${smsCount} sent`, icon: MessageCircle, color: colors.mutedForeground, bg: colors.muted });
+    if (communityCount > 0) items.push({ id: "communities", label: "Communities", count: `${communityCount} shared`, icon: Globe, color: colors.primary, bg: colors.primary + "18" });
+    if (groupCount > 0) items.push({ id: "groups", label: "Prayer groups", count: `${groupCount} shared`, icon: MessageCircle, color: colors.primary, bg: colors.primary + "18" });
     return items;
-  }, [selectedRecipients, colors]);
+  }, [selectedRecipients, communityCount, groupCount, colors]);
 
   const totalCount = isFeedOnly ? 0 : selectedRecipients.length;
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -33,13 +37,14 @@ export default function SentConfirmationScreen() {
 
   useEffect(() => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    clearAll();
     Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
     Animated.loop(Animated.sequence([
       Animated.timing(pingAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
       Animated.timing(pingAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
       Animated.delay(1000),
     ])).start();
-  }, [scaleAnim, pingAnim]);
+  }, [scaleAnim, pingAnim, clearAll]);
 
   const pingScale = pingAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] });
   const pingOpacity = pingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.1, 0] });
