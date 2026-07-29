@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo} from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,91 +9,110 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { X, Music, Pause, Play, BookOpen, PenLine, Loader } from "lucide-react-native";
+import { useRouter, Stack, useFocusEffect } from "expo-router";
+import { X, Settings, Music, Pause, Play, BookOpen, PenLine, Loader } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 
-interface Track {
-  name: string;
-  subtitle: string;
-  url: string | null;
-  attribution: string;
-}
-
-const TRACK: Track = {
-  name: "Christian Worship",
-  subtitle: "Instrumental worship",
-  url: null,
-  attribution: "",
-};
 const WORSHIP_TRACK = require("@/assets/christian-worship.mp3");
 
 export default function MeditativePrayerSessionScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [seconds, setSeconds] = useState<number>(0);
-  const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
-  const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
-  const [audioError, setAudioError] = useState<boolean>(false);
-  const [audioPosition, setAudioPosition] = useState<number>(0);
-  const [audioDuration, setAudioDuration] = useState<number>(1);
 
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const loadGenRef = useRef(0);
-  const modalSlide = useRef(new Animated.Value(300)).current;
+  const [isPlaying, setIsPlaying]           = useState(true);
+  const [seconds, setSeconds]               = useState(0);
+  const [showFinishModal, setShowFinishModal] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio]  = useState(false);
+  const [audioError, setAudioError]          = useState(false);
+  const [audioPosition, setAudioPosition]    = useState(0);
+  const [audioDuration, setAudioDuration]    = useState(1);
+
+  const soundRef     = useRef<Audio.Sound | null>(null);
+  const loadGenRef   = useRef(0);
+  const isPlayingRef = useRef(true);
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Animated values ──────────────────────────────────────────────────────
+  const modalSlide   = useRef(new Animated.Value(300)).current;
   const modalOverlay = useRef(new Animated.Value(0)).current;
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const waveOpacity  = useRef(new Animated.Value(1)).current;
+
+  // Ripple rings (3 concentric, staggered)
+  const ring1Scale   = useRef(new Animated.Value(1)).current;
+  const ring1Opacity = useRef(new Animated.Value(0.22)).current;
+  const ring2Scale   = useRef(new Animated.Value(1)).current;
+  const ring2Opacity = useRef(new Animated.Value(0.18)).current;
+  const ring3Scale   = useRef(new Animated.Value(1)).current;
+  const ring3Opacity = useRef(new Animated.Value(0.12)).current;
+
+  // Waveform bars (6 columns)
   const pulse1 = useRef(new Animated.Value(0.4)).current;
   const pulse2 = useRef(new Animated.Value(0.6)).current;
-  const pulse3 = useRef(new Animated.Value(1)).current;
+  const pulse3 = useRef(new Animated.Value(1  )).current;
   const pulse4 = useRef(new Animated.Value(0.8)).current;
   const pulse5 = useRef(new Animated.Value(0.5)).current;
   const pulse6 = useRef(new Animated.Value(0.7)).current;
-  const waveOpacity = useRef(new Animated.Value(1)).current;
-  const isPlayingRef = useRef<boolean>(true);
 
-  const formatTime = (totalSeconds: number): string => {
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
-    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  };
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const formatTime = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-  const startWaveAnimation = useCallback(() => {
+  // ── Ripple background animation ───────────────────────────────────────────
+  useEffect(() => {
+    const makeRipple = (
+      scale: Animated.Value,
+      opacity: Animated.Value,
+      delay: number,
+    ) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.parallel([
+            Animated.timing(scale,   { toValue: 1.55, duration: 3600, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0,    duration: 3600, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(scale,   { toValue: 1, duration: 0, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0.22 - delay * 0.00002, duration: 0, useNativeDriver: true }),
+          ]),
+        ]),
+      );
+
+    const a1 = makeRipple(ring1Scale, ring1Opacity, 0);
+    const a2 = makeRipple(ring2Scale, ring2Opacity, 1200);
+    const a3 = makeRipple(ring3Scale, ring3Opacity, 2400);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
+
+  // ── Waveform animation ────────────────────────────────────────────────────
+  useEffect(() => {
     const makeWave = (anim: Animated.Value, duration: number, delay: number) =>
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.2,
-            duration,
-            useNativeDriver: true,
-          }),
-        ])
+          Animated.timing(anim, { toValue: 1,   duration, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0.2, duration, useNativeDriver: true }),
+        ]),
       );
+    const anims = [
+      makeWave(pulse1, 1200, 0),
+      makeWave(pulse2, 1500, 200),
+      makeWave(pulse3, 1000, 400),
+      makeWave(pulse4, 1800, 100),
+      makeWave(pulse5, 1300, 300),
+      makeWave(pulse6, 1600, 500),
+    ];
+    anims.forEach((a) => a.start());
+    return () => anims.forEach((a) => a.stop());
+  }, []);
 
-    makeWave(pulse1, 1200, 0).start();
-    makeWave(pulse2, 1500, 200).start();
-    makeWave(pulse3, 1000, 400).start();
-    makeWave(pulse4, 1800, 100).start();
-    makeWave(pulse5, 1300, 300).start();
-    makeWave(pulse6, 1600, 500).start();
-  }, [pulse1, pulse2, pulse3, pulse4, pulse5, pulse6]);
-
-  useEffect(() => {
-    startWaveAnimation();
-  }, [startWaveAnimation]);
-
+  // Dim waveform when paused
   useEffect(() => {
     Animated.timing(waveOpacity, {
       toValue: isPlaying ? 1 : 0.3,
@@ -102,150 +121,115 @@ export default function MeditativePrayerSessionScreen() {
     }).start();
   }, [isPlaying, waveOpacity]);
 
+  // ── Audio playback status ─────────────────────────────────────────────────
   const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       setAudioPosition(status.positionMillis);
-      if (status.durationMillis && status.durationMillis > 0) {
+      if (status.durationMillis && status.durationMillis > 0)
         setAudioDuration(status.durationMillis);
-      }
     }
   }, []);
 
-  const loadAndPlayTrack = useCallback(async (shouldPlay: boolean = true) => {
+  // ── Load audio ────────────────────────────────────────────────────────────
+  const loadAndPlay = useCallback(async () => {
     const myGen = ++loadGenRef.current;
     setAudioError(false);
     setAudioPosition(0);
-
     if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch (e) {
-        console.log("[MeditativeSession] Error unloading previous sound:", e);
-      }
+      try { await soundRef.current.stopAsync(); await soundRef.current.unloadAsync(); } catch {}
       soundRef.current = null;
     }
-
     if (myGen !== loadGenRef.current) return;
     setIsLoadingAudio(true);
     try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        // IMPORTANT: do NOT stay active in background — stops when user leaves
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
       const { sound } = await Audio.Sound.createAsync(
         WORSHIP_TRACK,
-        { shouldPlay, isLooping: true, progressUpdateIntervalMillis: 500 },
-        onPlaybackStatusUpdate
+        { shouldPlay: true, isLooping: true, progressUpdateIntervalMillis: 500 },
+        onPlaybackStatusUpdate,
       );
-      if (myGen !== loadGenRef.current) {
-        sound.unloadAsync().catch(() => {});
-        return;
-      }
+      if (myGen !== loadGenRef.current) { sound.unloadAsync().catch(() => {}); return; }
       soundRef.current = sound;
-    } catch (error) {
-      if (myGen !== loadGenRef.current) return;
-      console.log("[MeditativeSession] Audio load error:", error);
-      setAudioError(true);
+    } catch (e) {
+      if (myGen === loadGenRef.current) setAudioError(true);
     } finally {
       if (myGen === loadGenRef.current) setIsLoadingAudio(false);
     }
   }, [onPlaybackStatusUpdate]);
 
+  // ── Mount: load audio / Unmount: stop + unload ────────────────────────────
   useEffect(() => {
-    const setup = async () => {
-      if (Platform.OS !== "web") {
-        try {
-          await Audio.setAudioModeAsync({
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: true,
-            shouldDuckAndroid: true,
-          });
-        } catch (e) {
-          console.log("[MeditativeSession] Audio mode setup error:", e);
-        }
-      }
-      await loadAndPlayTrack(true);
-    };
-
-    setup();
-
+    void loadAndPlay();
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
+      ++loadGenRef.current; // invalidate any in-flight load
+      soundRef.current?.stopAsync().then(() => soundRef.current?.unloadAsync()).catch(() => {});
+      soundRef.current = null;
     };
   }, []);
 
+  // ── Focus / blur: pause when navigating away, resume when returning ───────
+  useFocusEffect(
+    useCallback(() => {
+      // Screen gained focus — resume if we were playing before
+      if (isPlayingRef.current && soundRef.current) {
+        soundRef.current.playAsync().catch(() => {});
+      }
+      return () => {
+        // Screen lost focus — pause (not stop) so position is preserved
+        if (soundRef.current) {
+          soundRef.current.pauseAsync().catch(() => {});
+        }
+      };
+    }, []),
+  );
+
+  // ── Progress bar animation ────────────────────────────────────────────────
   useEffect(() => {
     if (audioDuration > 0) {
-      const progress = Math.min(audioPosition / audioDuration, 1);
       Animated.timing(progressAnim, {
-        toValue: progress,
+        toValue: Math.min(audioPosition / audioDuration, 1),
         duration: 500,
         useNativeDriver: false,
       }).start();
     }
   }, [audioPosition, audioDuration, progressAnim]);
 
+  // ── Timer ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isPlaying) {
-      intervalRef.current = setInterval(() => {
-        setSeconds((s) => s + 1);
-      }, 1000);
+      intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isPlaying]);
 
+  // ── Controls ──────────────────────────────────────────────────────────────
   const handlePlayPause = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-
-    const nowPlaying = !isPlaying;
-    setIsPlaying(nowPlaying);
-    isPlayingRef.current = nowPlaying;
-
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = !isPlaying;
+    setIsPlaying(next);
+    isPlayingRef.current = next;
     if (soundRef.current) {
-      try {
-        if (nowPlaying) {
-          await soundRef.current.playAsync();
-        } else {
-          await soundRef.current.pauseAsync();
-        }
-      } catch (e) {
-        console.log("[MeditativeSession] Play/pause error:", e);
-      }
+      try { next ? await soundRef.current.playAsync() : await soundRef.current.pauseAsync(); } catch {}
     }
   }, [isPlaying]);
 
   const handleClose = useCallback(async () => {
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch (e) {}
-      soundRef.current = null;
-    }
+    try { await soundRef.current?.stopAsync(); await soundRef.current?.unloadAsync(); } catch {}
+    soundRef.current = null;
     router.back();
   }, [router]);
 
   const handleFinish = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    if (soundRef.current) {
-      try {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
-      } catch (e) {}
-      soundRef.current = null;
-    }
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { await soundRef.current?.stopAsync(); await soundRef.current?.unloadAsync(); } catch {}
+    soundRef.current = null;
     setShowFinishModal(true);
     Animated.parallel([
       Animated.timing(modalOverlay, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -263,17 +247,17 @@ export default function MeditativePrayerSessionScreen() {
     router.replace("/");
   }, [router]);
 
-  const currentTrack = TRACK;
-  const isSilence = false;
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.gradientTop} />
-      <View style={styles.gradientBottom} />
+
+      {/* Subtle glow blob */}
       <View style={styles.glowCenter} />
 
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+
+        {/* Header */}
         <View style={styles.header}>
           <Pressable style={styles.headerBtn} onPress={handleClose}>
             <X size={20} color={colors.foreground} />
@@ -282,19 +266,41 @@ export default function MeditativePrayerSessionScreen() {
             <Text style={styles.headerTag}>WITH GOD</Text>
             <Text style={styles.headerSub}>Quiet Session</Text>
           </View>
-          <View style={styles.headerBtn} />
+          {/* Settings icon — orange so it's always visible in dark mode */}
+          <View style={styles.headerBtn}>
+            <Settings size={18} color={colors.primary} />
+          </View>
         </View>
 
+        {/* Main content — ripple rings + timer + waveform */}
         <View style={styles.mainContent}>
+
+          {/* Ripple rings centred behind the timer */}
           <View style={styles.timerWrap}>
-            <View style={styles.timerRing}>
-              <View style={styles.timerInner}>
-                <Text style={styles.timerText}>{formatTime(seconds)}</Text>
-                <Text style={styles.timerLabel}>MINUTES IN PRAYER</Text>
-              </View>
+            {/* Ring 3 — outermost */}
+            <Animated.View style={[
+              styles.rippleRing,
+              { transform: [{ scale: ring3Scale }], opacity: ring3Opacity, borderColor: colors.primary },
+            ]} />
+            {/* Ring 2 */}
+            <Animated.View style={[
+              styles.rippleRing,
+              { transform: [{ scale: ring2Scale }], opacity: ring2Opacity, borderColor: colors.primary },
+            ]} />
+            {/* Ring 1 — innermost, closest to number */}
+            <Animated.View style={[
+              styles.rippleRing,
+              { transform: [{ scale: ring1Scale }], opacity: ring1Opacity, borderColor: colors.primary },
+            ]} />
+
+            {/* Timer sits on top */}
+            <View style={styles.timerInner}>
+              <Text style={styles.timerText}>{formatTime(seconds)}</Text>
+              <Text style={styles.timerLabel}>MINUTES IN PRAYER</Text>
             </View>
           </View>
 
+          {/* Animated waveform bars */}
           <Animated.View style={[styles.waveWrap, { opacity: waveOpacity }]}>
             {[
               { anim: pulse1, height: 24 },
@@ -312,11 +318,9 @@ export default function MeditativePrayerSessionScreen() {
                     height,
                     opacity: anim,
                     backgroundColor:
-                      i === 3
-                        ? colors.primary
-                        : i === 2 || i === 5
-                        ? colors.primary + "CC"
-                        : colors.primary + "80",
+                      i === 3 ? colors.primary
+                      : i === 2 || i === 5 ? colors.primary + "CC"
+                      : colors.primary + "80",
                   },
                 ]}
               />
@@ -324,41 +328,30 @@ export default function MeditativePrayerSessionScreen() {
           </Animated.View>
         </View>
 
+        {/* Player card */}
         <View style={styles.playerCard}>
           <View style={styles.trackRow}>
             <View style={styles.trackIconWrap}>
-              {isLoadingAudio ? (
-                <Loader size={18} color={colors.primary} />
-              ) : (
-                <Music size={18} color={colors.primary} />
-              )}
+              {isLoadingAudio
+                ? <Loader size={18} color={colors.primary} />
+                : <Music  size={18} color={colors.primary} />}
             </View>
             <View style={styles.trackInfo}>
-              <Text style={styles.trackName} numberOfLines={1}>
-                {currentTrack.name}
-              </Text>
+              <Text style={styles.trackName} numberOfLines={1}>Christian Worship</Text>
               <Text style={styles.trackSub}>
-                {isLoadingAudio
-                  ? "Loading..."
-                  : audioError
-                  ? "Unavailable"
-                  : currentTrack.subtitle}
+                {isLoadingAudio ? "Loading…" : audioError ? "Unavailable" : "Instrumental worship"}
               </Text>
             </View>
             <View style={styles.trackBadge}>
-              <Text style={styles.trackBadgeText}>
-                Worship
-              </Text>
+              <Text style={styles.trackBadgeText}>Worship</Text>
             </View>
           </View>
 
           <View style={styles.controlsRow}>
             <Pressable style={styles.playBtn} onPress={handlePlayPause}>
-              {isPlaying ? (
-                <Pause size={28} color="#fff" />
-              ) : (
-                <Play size={28} color="#fff" />
-              )}
+              {isPlaying
+                ? <Pause size={28} color="#fff" />
+                : <Play  size={28} color="#fff" />}
             </Pressable>
           </View>
 
@@ -376,22 +369,11 @@ export default function MeditativePrayerSessionScreen() {
                 ]}
               />
             </View>
-            <View style={[styles.progressTimes, isSilence && { opacity: 0 }]}>
-              <Text style={styles.progressTimeText}>
-                {formatTime(Math.floor(audioPosition / 1000))}
-              </Text>
-              <Text style={styles.progressTimeText}>
-                {formatTime(Math.floor(audioDuration / 1000))}
-              </Text>
+            <View style={styles.progressTimes}>
+              <Text style={styles.progressTimeText}>{formatTime(Math.floor(audioPosition / 1000))}</Text>
+              <Text style={styles.progressTimeText}>{formatTime(Math.floor(audioDuration / 1000))}</Text>
             </View>
           </View>
-
-          <Text
-            style={[styles.attributionText, (!currentTrack.attribution || isSilence) && { opacity: 0 }]}
-            numberOfLines={1}
-          >
-            {currentTrack.attribution || " "}
-          </Text>
         </View>
 
         <Pressable style={styles.finishBtn} onPress={handleFinish}>
@@ -399,6 +381,7 @@ export default function MeditativePrayerSessionScreen() {
         </Pressable>
       </SafeAreaView>
 
+      {/* Finish modal */}
       <Modal transparent visible={showFinishModal} animationType="none" statusBarTranslucent>
         <Animated.View style={[styles.modalOverlay, { opacity: modalOverlay }]}>
           <Animated.View style={[styles.modalSheet, { transform: [{ translateY: modalSlide }] }]}>
@@ -428,27 +411,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  gradientTop: {
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: colors.background,
-    opacity: 0.28,
-  },
-  gradientBottom: {
-    position: "absolute" as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    backgroundColor: colors.background,
-    opacity: 0.18,
-  },
   glowCenter: {
     position: "absolute" as const,
-    top: "20%",
+    top: "18%",
     left: "10%",
     width: 300,
     height: 300,
@@ -457,7 +422,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    backgroundColor: colors.background,
   },
+
+  // Header
   header: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -467,278 +435,190 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 8,
   },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.card + "CC",
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  headerCenter: {
-    alignItems: "center" as const,
-  },
+  headerCenter: { alignItems: "center" as const },
   headerTag: {
-    fontSize: 10,
-    fontWeight: "800" as const,
-    letterSpacing: 2,
-    color: colors.primary,
+    fontSize: 10, fontWeight: "800" as const,
+    letterSpacing: 2, color: colors.primary,
   },
   headerSub: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: colors.foreground,
+    fontSize: 14, fontWeight: "700" as const, color: colors.foreground,
   },
+
+  // Main area
   mainContent: {
     flex: 1,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     paddingHorizontal: 32,
-    gap: 28,
+    gap: 32,
   },
+
+  // Timer + ripple rings
   timerWrap: {
+    width: 240,
+    height: 240,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
-  timerRing: {
+  rippleRing: {
+    position: "absolute" as const,
     width: 240,
     height: 240,
     borderRadius: 120,
-    borderWidth: 2,
-    borderColor: colors.primary + "18",
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    borderWidth: 1.5,
   },
-  timerInner: {
-    alignItems: "center" as const,
-  },
+  timerInner: { alignItems: "center" as const },
   timerText: {
-    fontSize: 52,
-    fontWeight: "800" as const,
+    fontSize: 52, fontWeight: "800" as const,
     color: colors.foreground,
     letterSpacing: -2,
     fontVariant: ["tabular-nums"] as const,
   },
   timerLabel: {
-    fontSize: 9,
-    fontWeight: "800" as const,
-    letterSpacing: 2,
-    color: colors.mutedForeground + "80",
-    marginTop: 4,
+    fontSize: 9, fontWeight: "800" as const, letterSpacing: 2,
+    color: colors.mutedForeground + "80", marginTop: 4,
   },
+
+  // Waveform
   waveWrap: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    gap: 5,
-    height: 48,
+    gap: 5, height: 48,
   },
-  waveBar: {
-    width: 5,
-    borderRadius: 3,
-  },
+  waveBar: { width: 5, borderRadius: 3 },
+
+  // Player card
   playerCard: {
     backgroundColor: colors.card,
     borderRadius: 40,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginHorizontal: 20, marginBottom: 12,
     padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1, borderColor: colors.border,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 32,
-    elevation: 4,
-    gap: 16,
+    shadowOpacity: 0.06, shadowRadius: 32,
+    elevation: 4, gap: 16,
   },
   trackRow: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    gap: 12,
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 12,
   },
   trackIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 44, height: 44, borderRadius: 14,
     backgroundColor: colors.accent,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    alignItems: "center" as const, justifyContent: "center" as const,
   },
-  trackInfo: {
-    flex: 1,
-  },
+  trackInfo: { flex: 1 },
   trackName: {
-    fontSize: 13,
-    fontWeight: "800" as const,
-    color: colors.foreground,
-    letterSpacing: 0.5,
+    fontSize: 13, fontWeight: "800" as const,
+    color: colors.foreground, letterSpacing: 0.5,
     textTransform: "uppercase" as const,
   },
   trackSub: {
-    fontSize: 11,
-    color: colors.mutedForeground,
-    fontWeight: "500" as const,
-    marginTop: 2,
+    fontSize: 11, color: colors.mutedForeground,
+    fontWeight: "500" as const, marginTop: 2,
   },
   trackBadge: {
     backgroundColor: colors.primary + "15",
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
   },
   trackBadgeText: {
-    fontSize: 10,
-    fontWeight: "700" as const,
-    color: colors.primary,
+    fontSize: 10, fontWeight: "700" as const, color: colors.primary,
   },
   controlsRow: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    gap: 0,
-  },
-  controlBtn: {
-    width: 56,
-    height: 56,
-    alignItems: "center" as const,
+    flexDirection: "row" as const, alignItems: "center" as const,
     justifyContent: "center" as const,
   },
   playBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 68, height: 68, borderRadius: 34,
     backgroundColor: colors.primary,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    marginHorizontal: 16,
+    alignItems: "center" as const, justifyContent: "center" as const,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOpacity: 0.35, shadowRadius: 20, elevation: 8,
   },
-  progressBarWrap: {
-    gap: 6,
-  },
+  progressBarWrap: { gap: 6 },
   progressTrack: {
-    height: 4,
-    backgroundColor: colors.primary + "18",
-    borderRadius: 2,
-    overflow: "hidden" as const,
+    height: 4, backgroundColor: colors.primary + "18",
+    borderRadius: 2, overflow: "hidden" as const,
   },
   progressFill: {
-    height: "100%",
-    backgroundColor: colors.primary,
-    borderRadius: 2,
+    height: "100%", backgroundColor: colors.primary, borderRadius: 2,
   },
   progressTimes: {
-    flexDirection: "row" as const,
-    justifyContent: "space-between" as const,
+    flexDirection: "row" as const, justifyContent: "space-between" as const,
   },
   progressTimeText: {
-    fontSize: 10,
-    color: colors.mutedForeground,
-    fontWeight: "600" as const,
-    fontVariant: ["tabular-nums"] as const,
+    fontSize: 10, color: colors.mutedForeground,
+    fontWeight: "600" as const, fontVariant: ["tabular-nums"] as const,
   },
-  attributionText: {
-    fontSize: 9,
-    color: colors.mutedForeground + "60",
-    textAlign: "center" as const,
-    fontStyle: "italic" as const,
-    fontWeight: "500" as const,
-  },
+
+  // Finish button
   finishBtn: {
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingVertical: 16,
-    alignItems: "center" as const,
+    marginHorizontal: 20, marginBottom: 12,
+    backgroundColor: colors.primary, borderRadius: 20,
+    paddingVertical: 16, alignItems: "center" as const,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
   },
   finishBtnText: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: "#fff",
-    letterSpacing: 0.5,
+    fontSize: 14, fontWeight: "800" as const, color: "#fff", letterSpacing: 0.5,
   },
+
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: colors.background + "B8",
     justifyContent: "flex-end" as const,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingHorizontal: 16, paddingBottom: 32,
   },
   modalSheet: {
     backgroundColor: colors.card,
-    borderRadius: 40,
-    padding: 32,
+    borderRadius: 40, padding: 32,
     alignItems: "center" as const,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 12,
-    gap: 12,
+    shadowOpacity: 0.08, shadowRadius: 24,
+    elevation: 12, gap: 12,
   },
   modalIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+    width: 80, height: 80, borderRadius: 24,
     backgroundColor: colors.accent,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
+    alignItems: "center" as const, justifyContent: "center" as const,
     marginBottom: 4,
   },
   modalTitle: {
-    fontSize: 28,
-    fontWeight: "800" as const,
-    color: colors.foreground,
+    fontSize: 28, fontWeight: "800" as const, color: colors.foreground,
   },
   modalDesc: {
-    fontSize: 14,
-    color: colors.mutedForeground,
-    textAlign: "center" as const,
-    lineHeight: 22,
-    paddingHorizontal: 16,
+    fontSize: 14, color: colors.mutedForeground,
+    textAlign: "center" as const, lineHeight: 22, paddingHorizontal: 16,
   },
   journalBtn: {
     flexDirection: "row" as const,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    gap: 8,
-    width: "100%",
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingVertical: 18,
-    marginTop: 8,
+    alignItems: "center" as const, justifyContent: "center" as const,
+    gap: 8, width: "100%",
+    backgroundColor: colors.primary, borderRadius: 20,
+    paddingVertical: 18, marginTop: 8,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOpacity: 0.28, shadowRadius: 16, elevation: 6,
   },
   journalBtnText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: "#fff",
+    fontSize: 15, fontWeight: "700" as const, color: "#fff",
   },
   laterBtn: {
     width: "100%",
     backgroundColor: colors.secondary,
-    borderRadius: 20,
-    paddingVertical: 18,
-    alignItems: "center" as const,
+    borderRadius: 20, paddingVertical: 18, alignItems: "center" as const,
   },
   laterBtnText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: colors.secondaryForeground,
+    fontSize: 15, fontWeight: "700" as const, color: colors.secondaryForeground,
   },
 });
