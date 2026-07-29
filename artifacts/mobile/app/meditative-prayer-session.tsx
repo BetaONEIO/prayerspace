@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, Stack } from "expo-router";
-import { X, Settings, Music, SkipBack, SkipForward, Pause, Play, List, BookOpen, PenLine, VolumeX, Loader } from "lucide-react-native";
+import { X, Music, Pause, Play, BookOpen, PenLine, Loader } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
@@ -23,58 +23,21 @@ interface Track {
   attribution: string;
 }
 
-const TRACKS: Track[] = [
-  {
-    name: "Deep Peace",
-    subtitle: "Instrumental Worship",
-    url: "https://archive.org/download/Time-Lapse_Volume_2_meditations-14215/Lee_Rosevere_-_01_-_Ataraxia.mp3",
-    attribution: "Lee Rosevere – Ataraxia (CC BY)",
-  },
-  {
-    name: "Soft Piano",
-    subtitle: "Piano Meditations",
-    url: "https://archive.org/download/interpretations-and-meditations-for-solo-piano-pynjgd/Harmonic%20Illusion%20-%20Interpretations%20and%20Meditations%20for%20Solo%20Piano%20-%2001%20Lost%20in%20Color%20-Piano%20Version-.mp3",
-    attribution: "Harmonic Illusion – Piano Meditations (CC BY)",
-  },
-  {
-    name: "Morning Forest",
-    subtitle: "Nature Ambience",
-    url: "https://archive.org/download/Time-Lapse_Volume_2_meditations-14215/Lee_Rosevere_-_04_-_Squinting_at_the_Sun.mp3",
-    attribution: "Lee Rosevere – Squinting at the Sun (CC BY)",
-  },
-  {
-    name: "Acoustic Reflection",
-    subtitle: "Acoustic Instrumental",
-    url: "https://archive.org/download/Time-Lapse_Volume_2_meditations-14215/Lee_Rosevere_-_02_-_The_Ambient_Ukulele.mp3",
-    attribution: "Lee Rosevere – The Ambient Ukulele (CC BY)",
-  },
-  {
-    name: "Ambient Presence",
-    subtitle: "Ambient Sounds",
-    url: "https://archive.org/download/Time-Lapse_Volume_2_meditations-14215/Lee_Rosevere_-_03_-_Illuminations.mp3",
-    attribution: "Lee Rosevere – Illuminations (CC BY)",
-  },
-  {
-    name: "Silence",
-    subtitle: "No Music",
-    url: null,
-    attribution: "",
-  },
-];
+const TRACK: Track = {
+  name: "Christian Worship",
+  subtitle: "Instrumental worship",
+  url: null,
+  attribution: "",
+};
+const WORSHIP_TRACK = require("@/assets/christian-worship.mp3");
 
 export default function MeditativePrayerSessionScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const params = useLocalSearchParams<{ atmosphere?: string }>();
-  const initialAtmosphere = parseInt(params.atmosphere ?? "0", 10);
-
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [seconds, setSeconds] = useState<number>(0);
   const [showFinishModal, setShowFinishModal] = useState<boolean>(false);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(
-    isNaN(initialAtmosphere) ? 0 : Math.min(initialAtmosphere, TRACKS.length - 1)
-  );
   const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
   const [audioError, setAudioError] = useState<boolean>(false);
   const [audioPosition, setAudioPosition] = useState<number>(0);
@@ -148,7 +111,7 @@ export default function MeditativePrayerSessionScreen() {
     }
   }, []);
 
-  const loadAndPlayTrack = useCallback(async (trackIndex: number, shouldPlay: boolean = true) => {
+  const loadAndPlayTrack = useCallback(async (shouldPlay: boolean = true) => {
     const myGen = ++loadGenRef.current;
     setAudioError(false);
     setAudioPosition(0);
@@ -163,17 +126,11 @@ export default function MeditativePrayerSessionScreen() {
       soundRef.current = null;
     }
 
-    const track = TRACKS[trackIndex];
-    if (!track.url) {
-      if (myGen === loadGenRef.current) setIsLoadingAudio(false);
-      return;
-    }
-
     if (myGen !== loadGenRef.current) return;
     setIsLoadingAudio(true);
     try {
       const { sound } = await Audio.Sound.createAsync(
-        { uri: track.url },
+        WORSHIP_TRACK,
         { shouldPlay, isLooping: true, progressUpdateIntervalMillis: 500 },
         onPlaybackStatusUpdate
       );
@@ -204,7 +161,7 @@ export default function MeditativePrayerSessionScreen() {
           console.log("[MeditativeSession] Audio mode setup error:", e);
         }
       }
-      await loadAndPlayTrack(currentTrackIndex, true);
+      await loadAndPlayTrack(true);
     };
 
     setup();
@@ -267,24 +224,6 @@ export default function MeditativePrayerSessionScreen() {
     }
   }, [isPlaying]);
 
-  const handleSkipNext = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    const nextIndex = (currentTrackIndex + 1) % TRACKS.length;
-    setCurrentTrackIndex(nextIndex);
-    await loadAndPlayTrack(nextIndex, isPlayingRef.current);
-  }, [currentTrackIndex, loadAndPlayTrack]);
-
-  const handleSkipPrev = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    const prevIndex = (currentTrackIndex - 1 + TRACKS.length) % TRACKS.length;
-    setCurrentTrackIndex(prevIndex);
-    await loadAndPlayTrack(prevIndex, isPlayingRef.current);
-  }, [currentTrackIndex, loadAndPlayTrack]);
-
   const handleClose = useCallback(async () => {
     if (soundRef.current) {
       try {
@@ -324,8 +263,8 @@ export default function MeditativePrayerSessionScreen() {
     router.replace("/");
   }, [router]);
 
-  const currentTrack = TRACKS[currentTrackIndex];
-  const isSilence = currentTrack.url === null;
+  const currentTrack = TRACK;
+  const isSilence = false;
 
   return (
     <View style={styles.container}>
@@ -343,9 +282,7 @@ export default function MeditativePrayerSessionScreen() {
             <Text style={styles.headerTag}>WITH GOD</Text>
             <Text style={styles.headerSub}>Quiet Session</Text>
           </View>
-          <Pressable style={styles.headerBtn}>
-            <Settings size={18} color={colors.primary} />
-          </Pressable>
+          <View style={styles.headerBtn} />
         </View>
 
         <View style={styles.mainContent}>
@@ -390,9 +327,7 @@ export default function MeditativePrayerSessionScreen() {
         <View style={styles.playerCard}>
           <View style={styles.trackRow}>
             <View style={styles.trackIconWrap}>
-              {isSilence ? (
-                <VolumeX size={18} color={colors.primary} />
-              ) : isLoadingAudio ? (
+              {isLoadingAudio ? (
                 <Loader size={18} color={colors.primary} />
               ) : (
                 <Music size={18} color={colors.primary} />
@@ -412,24 +347,18 @@ export default function MeditativePrayerSessionScreen() {
             </View>
             <View style={styles.trackBadge}>
               <Text style={styles.trackBadgeText}>
-                {currentTrackIndex + 1}/{TRACKS.length}
+                Worship
               </Text>
             </View>
           </View>
 
           <View style={styles.controlsRow}>
-            <Pressable style={styles.controlBtn} onPress={handleSkipPrev}>
-              <SkipBack size={24} color={colors.mutedForeground} />
-            </Pressable>
             <Pressable style={styles.playBtn} onPress={handlePlayPause}>
               {isPlaying ? (
                 <Pause size={28} color="#fff" />
               ) : (
                 <Play size={28} color="#fff" />
               )}
-            </Pressable>
-            <Pressable style={styles.controlBtn} onPress={handleSkipNext}>
-              <SkipForward size={24} color={colors.mutedForeground} />
             </Pressable>
           </View>
 
