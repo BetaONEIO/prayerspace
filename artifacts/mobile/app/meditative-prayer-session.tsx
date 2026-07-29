@@ -9,8 +9,8 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, Stack, useFocusEffect } from "expo-router";
-import { X, Settings, Music, Pause, Play, BookOpen, PenLine, Loader } from "lucide-react-native";
+import { useRouter, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { X, Settings, Music, Pause, Play, BookOpen, PenLine, Loader, Volume2, VolumeX } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
@@ -22,8 +22,11 @@ export default function MeditativePrayerSessionScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
+  const { muted: mutedParam } = useLocalSearchParams<{ muted?: string }>();
+  const initiallyMuted = mutedParam === "true";
 
   const [isPlaying, setIsPlaying]           = useState(true);
+  const [isMuted, setIsMuted]               = useState(initiallyMuted);
   const [seconds, setSeconds]               = useState(0);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio]  = useState(false);
@@ -34,6 +37,7 @@ export default function MeditativePrayerSessionScreen() {
   const soundRef     = useRef<Audio.Sound | null>(null);
   const loadGenRef   = useRef(0);
   const isPlayingRef = useRef(true);
+  const isMutedRef   = useRef(initiallyMuted);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Animated values ──────────────────────────────────────────────────────
@@ -150,7 +154,12 @@ export default function MeditativePrayerSessionScreen() {
       });
       const { sound } = await Audio.Sound.createAsync(
         WORSHIP_TRACK,
-        { shouldPlay: true, isLooping: true, progressUpdateIntervalMillis: 500 },
+        {
+          shouldPlay: true,
+          isMuted: isMutedRef.current,
+          isLooping: true,
+          progressUpdateIntervalMillis: 500,
+        },
         onPlaybackStatusUpdate,
       );
       if (myGen !== loadGenRef.current) { sound.unloadAsync().catch(() => {}); return; }
@@ -220,6 +229,16 @@ export default function MeditativePrayerSessionScreen() {
     }
   }, [isPlaying]);
 
+  const handleToggleMute = useCallback(async () => {
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    isMutedRef.current = nextMuted;
+    try {
+      await soundRef.current?.setIsMutedAsync(nextMuted);
+    } catch {}
+  }, [isMuted]);
+
   const handleClose = useCallback(async () => {
     try { await soundRef.current?.stopAsync(); await soundRef.current?.unloadAsync(); } catch {}
     soundRef.current = null;
@@ -266,9 +285,20 @@ export default function MeditativePrayerSessionScreen() {
             <Text style={styles.headerTag}>WITH GOD</Text>
             <Text style={styles.headerSub}>Quiet Session</Text>
           </View>
-          {/* Settings icon — orange so it's always visible in dark mode */}
-          <View style={styles.headerBtn}>
-            <Settings size={18} color={colors.primary} />
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerBtn}
+              onPress={() => { void handleToggleMute(); }}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? "Turn prayer music on" : "Mute prayer music"}
+            >
+              {isMuted
+                ? <VolumeX size={18} color={colors.primary} />
+                : <Volume2 size={18} color={colors.primary} />}
+            </Pressable>
+            <View style={styles.headerBtn}>
+              <Settings size={18} color={colors.primary} />
+            </View>
           </View>
         </View>
 
@@ -433,6 +463,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 8,
+  },
+  headerActions: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
   },
   headerBtn: {
     width: 40, height: 40, borderRadius: 20,

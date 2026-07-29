@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useMemo } from "react";
+import React, { useRef, useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack } from "expo-router";
-import { ChevronLeft, Play } from "lucide-react-native";
+import { ChevronLeft, Play, Volume2, VolumeX } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -19,6 +19,7 @@ export default function MeditativePrayerScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const btnScale = useRef(new Animated.Value(1)).current;
+  const [isMuted, setIsMuted] = useState(false);
 
   const handlePressIn = useCallback(() => {
     Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
@@ -30,8 +31,8 @@ export default function MeditativePrayerScreen() {
 
   const handleBegin = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push("/meditative-prayer-session");
-  }, [router]);
+    router.push(`/meditative-prayer-session?muted=${isMuted}`);
+  }, [router, isMuted]);
 
   return (
     <View style={styles.container}>
@@ -45,7 +46,16 @@ export default function MeditativePrayerScreen() {
             <ChevronLeft size={24} color={colors.secondaryForeground} />
           </Pressable>
           <Text style={styles.headerTitle}>Quiet Time</Text>
-          <View style={styles.headerPlaceholder} />
+          <Pressable
+            style={styles.volumeBtn}
+            onPress={() => setIsMuted((muted) => !muted)}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? "Turn prayer music on" : "Mute prayer music"}
+          >
+            {isMuted
+              ? <VolumeX size={20} color={colors.primary} />
+              : <Volume2 size={20} color={colors.primary} />}
+          </Pressable>
         </View>
 
         <View style={styles.mainContent}>
@@ -96,6 +106,10 @@ function createStyles(colors: ThemeColors) {
     },
     headerTitle: { fontSize: 18, fontWeight: "700" as const, color: colors.foreground, letterSpacing: -0.3 },
     headerPlaceholder: { width: 40 },
+    volumeBtn: {
+      width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary,
+      alignItems: "center" as const, justifyContent: "center" as const,
+    },
     mainContent: { flex: 1, alignItems: "center" as const, justifyContent: "center" as const, paddingHorizontal: 40 },
     title: {
       fontSize: 28, fontWeight: "800" as const, color: colors.foreground,
