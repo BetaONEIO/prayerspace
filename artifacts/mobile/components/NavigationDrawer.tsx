@@ -35,6 +35,7 @@ import {
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
+import { useNotifications } from "@/providers/NotificationsProvider";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
@@ -79,7 +80,7 @@ const navGroups: NavGroup[] = [
     label: "Connect",
     items: [
       { label: "Find Friends", route: "/find-friend", icon: UserSearch },
-      { label: "Notifications", route: "/notifications", icon: Bell, badge: 3 },
+      { label: "Notifications", route: "/notifications", icon: Bell },
       { label: "Favourites", route: "/top-hearts", icon: Heart },
     ],
   },
@@ -96,6 +97,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, profile, signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const { isPremiumCommunity } = useChurchEntitlements();
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -331,6 +333,7 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                 {group.items.map((item) => {
                   const isActive = activeRoute === item.route;
                   const Icon = item.icon;
+                  const badge = item.label === "Notifications" ? unreadCount : item.badge;
                   return (
                     <Pressable
                       key={item.label}
@@ -345,9 +348,9 @@ export default function NavigationDrawer({ visible, onClose, activeRoute }: Navi
                       <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
                         {item.label}
                       </Text>
-                      {item.badge ? (
+                      {badge ? (
                         <View style={styles.badge}>
-                          <Text style={styles.badgeText}>{item.badge}</Text>
+                          <Text style={styles.badgeText}>{badge}</Text>
                         </View>
                       ) : null}
                     </Pressable>
