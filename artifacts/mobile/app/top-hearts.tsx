@@ -270,9 +270,20 @@ export default function TopHeartsScreen() {
             </View>
 
             {favourites.length === 0 ? (
-              <Pressable style={styles.emptySection} onPress={() => setShowAddModal(true)}>
-                <Text style={styles.emptySectionText}>No favourites yet — tap to add people you pray for</Text>
-              </Pressable>
+              <View style={styles.emptySection}>
+                <Text style={styles.emptySectionText}>
+                  Add family and friends you pray for regularly.
+                </Text>
+                <Pressable
+                  style={styles.emptyAddButton}
+                  onPress={() => setShowAddModal(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add people to favourites"
+                >
+                  <Plus size={17} color={colors.primaryForeground} />
+                  <Text style={styles.emptyAddButtonText}>Add people</Text>
+                </Pressable>
+              </View>
             ) : (
               <View style={styles.favouritesGrid}>
                 {favourites.map((contact) => (
@@ -654,12 +665,30 @@ const createStyles = (colors: ThemeColors) =>
     emptySection: {
       paddingVertical: 20,
       paddingHorizontal: 4,
+      alignItems: "center",
+      gap: 14,
     },
     emptySectionText: {
       fontSize: 14,
       color: colors.mutedForeground,
       textAlign: "center" as const,
       lineHeight: 20,
+    },
+    emptyAddButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.primary,
+      borderRadius: 999,
+      paddingVertical: 12,
+      paddingHorizontal: 22,
+    },
+    emptyAddButtonText: {
+      color: colors.primaryForeground,
+      fontSize: 13,
+      fontWeight: "800" as const,
+      letterSpacing: 0.2,
     },
     listCard: {
       backgroundColor: colors.card,
