@@ -69,6 +69,7 @@ import {
   Crown,
   Award,
   Bell,
+  UserCheck,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
@@ -88,6 +89,8 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { communityStore, StoredCommunity } from "@/lib/communityStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useDiscoverCommunities, DiscoverCommunity } from "@/lib/useDiscoverCommunities";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 type Tab = "Feed" | "Community" | "Groups";
 
@@ -253,6 +256,27 @@ export default function CommunityScreen() {
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
   const [feedFilter, setFeedFilter] = useState<"all" | "mine">("all");
   const [lastAddedPostId, setLastAddedPostId] = useState<string | null>(null);
+
+  // Fetch accepted friend IDs so the Feed tab can surface posts from friends
+  // regardless of which community they posted to.
+  const { data: friendIds = new Set<string>() } = useQuery<Set<string>>({
+    queryKey: ["friendIds", currentUserId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id")
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`);
+      if (!data?.length) return new Set<string>();
+      return new Set<string>(
+        data.map((r: { sender_id: string; receiver_id: string }) =>
+          r.sender_id === currentUserId ? r.receiver_id : r.sender_id
+        )
+      );
+    },
+    enabled: !!currentUserId,
+    staleTime: 60_000,
+  });
 
   // Animation refs
   const tabContentAnim = useRef(new Animated.Value(1)).current;
@@ -628,7 +652,12 @@ export default function CommunityScreen() {
     }).start();
   }, [feedFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredFeedPosts = allFeedPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
+  // Feed tab: show posts from the active community AND posts by friends from any community.
+  const filteredFeedPosts = allFeedPosts.filter((p) =>
+    (p.communityId === activeCommunity.id || (friendIds.has(p.authorId) && p.authorId !== currentUserId))
+    && !archivedPostIds.has(p.id)
+    && !hiddenPostIds.has(p.id)
+  );
   const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
   const posts = activeTab === "Feed"
     ? (feedFilter === "mine" ? filteredFeedPosts.filter((p) => p.authorId === currentUserId) : filteredFeedPosts)
@@ -835,6 +864,7 @@ export default function CommunityScreen() {
                       onAddUpdate={handleRepostWithUpdate}
                       onMarkAnswered={handleMarkAnswered}
                       isNew={post.id === lastAddedPostId}
+                      isFriend={friendIds.has(post.authorId) && post.authorId !== currentUserId}
                     />
                   ))}
                 </Animated.View>
@@ -1873,6 +1903,8 @@ function CommunitySwitcherModal({
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(500)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [switcherSearch, setSwitcherSearch] = useState<string>("");
+  const { communities: discoverResults, loading: discoverLoading } = useDiscoverCommunities(switcherSearch);
 
   useEffect(() => {
     if (visible) {
@@ -1927,45 +1959,120 @@ function CommunitySwitcherModal({
             </Pressable>
           </View>
 
+          {/* Inline community search */}
+          <View style={styles.switcherSearchWrap}>
+            <Search size={14} color={colors.mutedForeground} />
+            <TextInput
+              style={styles.switcherSearchInput}
+              placeholder="Search communities..."
+              placeholderTextColor={colors.mutedForeground + "80"}
+              value={switcherSearch}
+              onChangeText={setSwitcherSearch}
+              autoCorrect={false}
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {switcherSearch.length > 0 && (
+              <Pressable onPress={() => setSwitcherSearch("")}>
+                <X size={13} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+
           <View style={styles.switcherDivider} />
 
-          {communities.map((community) => {
-            const isActive = community.id === activeCommunity.id;
-            return (
-              <Pressable
-                key={community.id}
-                style={[styles.switcherItem, isActive && styles.switcherItemActive]}
-                onPress={() => onSelect(community)}
-              >
-                <View style={[styles.switcherItemIcon, { backgroundColor: community.accentColor + "18" }]}>
-                  <Text style={[styles.switcherItemLetter, { color: community.accentColor }]}>
-                    {community.iconLetter}
-                  </Text>
-                </View>
-                <View style={styles.switcherItemText}>
-                  <Text style={[styles.switcherItemName, isActive && { color: community.accentColor }]}>
-                    {community.name}
-                  </Text>
-                  <Text style={styles.switcherItemMeta}>{community.memberCount} members</Text>
-                </View>
-                {isActive ? (
-                  <View style={[styles.activeCheck, { backgroundColor: community.accentColor }]}>
-                    <Check size={12} color="#fff" />
+          {switcherSearch.trim().length === 0 ? (
+            /* Default view: joined communities */
+            communities.map((community) => {
+              const isActive = community.id === activeCommunity.id;
+              return (
+                <Pressable
+                  key={community.id}
+                  style={[styles.switcherItem, isActive && styles.switcherItemActive]}
+                  onPress={() => onSelect(community)}
+                >
+                  <View style={[styles.switcherItemIcon, { backgroundColor: community.accentColor + "18" }]}>
+                    <Text style={[styles.switcherItemLetter, { color: community.accentColor }]}>
+                      {community.iconLetter}
+                    </Text>
                   </View>
-                ) : (
-                  <ChevronRight size={16} color={colors.mutedForeground} />
-                )}
-              </Pressable>
-            );
-          })}
+                  <View style={styles.switcherItemText}>
+                    <Text style={[styles.switcherItemName, isActive && { color: community.accentColor }]}>
+                      {community.name}
+                    </Text>
+                    <Text style={styles.switcherItemMeta}>{community.memberCount} members</Text>
+                  </View>
+                  {isActive ? (
+                    <View style={[styles.activeCheck, { backgroundColor: community.accentColor }]}>
+                      <Check size={12} color="#fff" />
+                    </View>
+                  ) : (
+                    <ChevronRight size={16} color={colors.mutedForeground} />
+                  )}
+                </Pressable>
+              );
+            })
+          ) : discoverLoading ? (
+            <View style={styles.switcherDiscoverEmpty}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : discoverResults.length === 0 ? (
+            <View style={styles.switcherDiscoverEmpty}>
+              <Text style={styles.switcherDiscoverEmptyText}>No communities found</Text>
+            </View>
+          ) : (
+            /* Search results from DB */
+            discoverResults.slice(0, 8).map((community) => {
+              const isJoined = communities.some((c) => c.id === community.id);
+              return (
+                <Pressable
+                  key={community.id}
+                  style={[styles.switcherItem, isJoined && { opacity: 0.65 }]}
+                  onPress={() => { if (!isJoined) { onClose(); onBrowse(); } }}
+                >
+                  <LinearGradient
+                    colors={community.gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.switcherItemIcon}
+                  >
+                    <Text style={[styles.switcherItemLetter, { color: "#fff" }]}>
+                      {community.iconLetter}
+                    </Text>
+                  </LinearGradient>
+                  <View style={styles.switcherItemText}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Text style={styles.switcherItemName}>{community.name}</Text>
+                      {community.isOfficial && (
+                        <View style={styles.officialBadge}>
+                          <Award size={9} color="#B5820A" />
+                          <Text style={styles.officialBadgeText}>Official</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.switcherItemMeta}>{community.memberCount} members</Text>
+                  </View>
+                  {isJoined ? (
+                    <View style={[styles.activeCheck, { backgroundColor: "#34C759" }]}>
+                      <Check size={12} color="#fff" />
+                    </View>
+                  ) : (
+                    <View style={styles.browseCommunityJoinBtn}>
+                      <Text style={styles.browseCommunityJoinText}>View</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })
+          )}
 
           <Pressable style={styles.joinAnotherRow} onPress={onBrowse}>
             <View style={styles.joinAnotherIcon}>
-              <Plus size={18} color={colors.primary} />
+              <Globe size={18} color={colors.primary} />
             </View>
             <View style={styles.joinAnotherText}>
-              <Text style={styles.joinAnotherLabel}>Join another community</Text>
-              <Text style={styles.joinAnotherSub}>Browse and discover new communities</Text>
+              <Text style={styles.joinAnotherLabel}>Browse Communities</Text>
+              <Text style={styles.joinAnotherSub}>Discover and join public prayer communities</Text>
             </View>
             <ChevronRight size={16} color={colors.mutedForeground} />
           </Pressable>
@@ -2684,9 +2791,10 @@ interface FeedCardProps {
   onAddUpdate?: (post: FeedPost) => void;
   onMarkAnswered?: (post: FeedPost) => void;
   isNew?: boolean;
+  isFriend?: boolean;
 }
 
-function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew }: FeedCardProps) {
+function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew, isFriend }: FeedCardProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
@@ -2770,6 +2878,12 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
         <View style={styles.cardAuthorBlock}>
           <View style={styles.cardNameRow}>
             <Text style={styles.cardAuthorName}>{post.authorName}</Text>
+            {isFriend && (
+              <View style={styles.friendBadge}>
+                <UserCheck size={9} color="#1A7A52" />
+                <Text style={styles.friendBadgeText}>Friend</Text>
+              </View>
+            )}
             {post.isTimeSensitive && (
               <View style={styles.timeSensitiveBadge}>
                 <Text style={styles.timeSensitiveText}>TIME SENSITIVE</Text>
@@ -5324,6 +5438,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: 10,
   },
+  switcherSearchWrap: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: colors.muted,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  switcherSearchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.foreground,
+    padding: 0,
+  },
+  switcherDiscoverEmpty: {
+    alignItems: "center" as const,
+    paddingVertical: 20,
+  },
+  switcherDiscoverEmptyText: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+  },
   switcherItem: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
@@ -5461,6 +5602,23 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "800" as const,
     color: colors.primary,
     letterSpacing: 0.5,
+  },
+  friendBadge: {
+    backgroundColor: "#E8F5EE",
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: "#1A7A5230",
+  },
+  friendBadgeText: {
+    fontSize: 9,
+    fontWeight: "700" as const,
+    color: "#1A7A52",
+    letterSpacing: 0.3,
   },
   eventDateBadge: {
     backgroundColor: "#D4782F",
