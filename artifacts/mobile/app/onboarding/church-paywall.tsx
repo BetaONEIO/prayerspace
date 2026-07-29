@@ -151,7 +151,7 @@ export default function ChurchPaywall() {
 
   const completeOnboarding = (tierId: string) => {
     churchMembershipStore.setOwner(null, tierId);
-    router.push("/onboarding/church-group-type" as never);
+    router.push("/onboarding/plus-welcome" as never);
   };
 
   const handleSelectTier = async (tier: ChurchTier) => {
@@ -187,7 +187,8 @@ export default function ChurchPaywall() {
     if (purchasingTier) return;
     try {
       await restoreMutation.mutateAsync();
-      Alert.alert("Purchases restored", "Your previous purchase has been restored.");
+      churchMembershipStore.setOwner(null, "restored");
+      router.push("/onboarding/plus-welcome" as never);
     } catch {
       Alert.alert("Nothing to restore", "No previous purchase found for this account.");
     }

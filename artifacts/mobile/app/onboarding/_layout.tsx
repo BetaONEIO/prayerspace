@@ -14,6 +14,7 @@ export default function OnboardingLayout() {
       {/* Community flow */}
       <Stack.Screen name="community-intro" />
       <Stack.Screen name="church-paywall" />
+      <Stack.Screen name="plus-welcome" />
       <Stack.Screen name="church-group-type" />
       <Stack.Screen name="church-size" />
       <Stack.Screen name="church-details" />
