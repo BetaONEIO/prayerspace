@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform, TextInput, KeyboardAvoidingView, StatusBar, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, TextInput, KeyboardAvoidingView, StatusBar, ActivityIndicator, Alert, Modal } from "react-native";
 import { useMutation } from "@tanstack/react-query";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -136,26 +136,30 @@ export default function VoiceTranscriptReviewScreen() {
           </Pressable>
         </View>
 
-        {isEditModalVisible && (
-          <View style={styles.fullScreenOverlay}>
-            <SafeAreaView style={styles.modalSafeArea} edges={["top", "bottom"]}>
-              <KeyboardAvoidingView style={styles.modalKeyboard} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                <View style={styles.modalFullHeader}>
-                  <Pressable style={styles.modalCloseBtn} onPress={() => setIsEditModalVisible(false)}><X size={18} color={colors.mutedForeground} /></Pressable>
-                  <Text style={styles.modalTitle}>Edit Transcription</Text>
-                  <Pressable style={styles.modalSaveTopBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}><Text style={styles.modalSaveTopText}>Save</Text></Pressable>
-                </View>
-                <View style={styles.modalBody}>
-                  <TextInput ref={inputRef} style={styles.modalInput} value={draftText} onChangeText={setDraftText} multiline autoFocus textAlignVertical="top" placeholder="Your transcription..." placeholderTextColor={colors.mutedForeground + "60"} scrollEnabled />
-                  <Pressable style={styles.saveBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}>
-                    <Check size={18} color={colors.primaryForeground} />
-                    <Text style={styles.saveBtnText}>Save Changes</Text>
-                  </Pressable>
-                </View>
-              </KeyboardAvoidingView>
-            </SafeAreaView>
-          </View>
-        )}
+        <Modal
+          visible={isEditModalVisible}
+          transparent={false}
+          animationType="slide"
+          onRequestClose={() => setIsEditModalVisible(false)}
+          statusBarTranslucent
+        >
+          <SafeAreaView style={styles.modalSafeArea} edges={["top", "bottom"]}>
+            <KeyboardAvoidingView style={styles.modalKeyboard} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+              <View style={styles.modalFullHeader}>
+                <Pressable style={styles.modalCloseBtn} onPress={() => setIsEditModalVisible(false)}><X size={18} color={colors.mutedForeground} /></Pressable>
+                <Text style={styles.modalTitle}>Edit Transcription</Text>
+                <Pressable style={styles.modalSaveTopBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}><Text style={styles.modalSaveTopText}>Save</Text></Pressable>
+              </View>
+              <View style={styles.modalBody}>
+                <TextInput ref={inputRef} style={styles.modalInput} value={draftText} onChangeText={setDraftText} multiline autoFocus textAlignVertical="top" placeholder="Your transcription..." placeholderTextColor={colors.mutedForeground + "60"} scrollEnabled />
+                <Pressable style={styles.saveBtn} onPress={() => { setEditedText(draftText); setHasManuallyEdited(true); setIsEditModalVisible(false); }}>
+                  <Check size={18} color={colors.primaryForeground} />
+                  <Text style={styles.saveBtnText}>Save Changes</Text>
+                </Pressable>
+              </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </Modal>
       </SafeAreaView>
       {DiscardModal}
     </>
