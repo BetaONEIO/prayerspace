@@ -24,6 +24,10 @@ export default function VoiceTranscriptReviewScreen() {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [draftText, setDraftText] = useState("");
   const [hasManuallyEdited, setHasManuallyEdited] = useState(false);
+  // Separate state for the manual fallback input shown when transcription returns
+  // nothing. Using editedText directly caused the render branch to flip after
+  // the first character, hiding the TextInput while the user was still typing.
+  const [manualInputText, setManualInputText] = useState("");
   const inputRef = useRef<TextInput>(null);
 
   const { DiscardModal } = useUnsavedChangesWarning(hasManuallyEdited);
@@ -54,6 +58,8 @@ export default function VoiceTranscriptReviewScreen() {
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Use the manually typed fallback text when transcription returned nothing.
+    const finalText = editedText || manualInputText;
     // Clear the unsaved flag BEFORE navigating so usePreventRemove doesn't
     // intercept the intentional "save and continue" navigation.
     setHasManuallyEdited(false);
@@ -61,15 +67,15 @@ export default function VoiceTranscriptReviewScreen() {
       router.replace({
         pathname: "/journal-entry" as never,
         params: {
-          transcript: editedText,
+          transcript: finalText,
           pendingTitle: params.pendingTitle ?? "",
           pendingTag: params.pendingTag ?? "",
         },
       });
     } else {
-      router.replace({ pathname: "/prayer-mode" as never, params: { transcript: editedText, audioUri, duration: String(durationSeconds) } });
+      router.replace({ pathname: "/prayer-mode" as never, params: { transcript: finalText, audioUri, duration: String(durationSeconds) } });
     }
-  }, [router, editedText, returnTo, audioUri, durationSeconds, params.pendingTitle, params.pendingTag]);
+  }, [router, editedText, manualInputText, returnTo, audioUri, durationSeconds, params.pendingTitle, params.pendingTag]);
 
   const parts = editedText ? [{ text: editedText, highlight: false }] : [];
 
@@ -107,8 +113,8 @@ export default function VoiceTranscriptReviewScreen() {
                   placeholder="Type your transcription here (optional)…"
                   placeholderTextColor={colors.mutedForeground + "70"}
                   multiline
-                  value={editedText}
-                  onChangeText={setEditedText}
+                  value={manualInputText}
+                  onChangeText={setManualInputText}
                   maxLength={1000}
                   textAlignVertical="top"
                 />
