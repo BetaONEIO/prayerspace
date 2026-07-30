@@ -54,6 +54,9 @@ export default function VoiceTranscriptReviewScreen() {
 
   const handleContinue = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Clear the unsaved flag BEFORE navigating so usePreventRemove doesn't
+    // intercept the intentional "save and continue" navigation.
+    setHasManuallyEdited(false);
     if (returnTo === "journal") {
       router.replace({
         pathname: "/journal-entry" as never,

@@ -955,7 +955,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   stopBtnText: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: colors.primaryForeground,
+    color: colors.background,
   },
   recordedBanner: {
     flexDirection: "row" as const,
