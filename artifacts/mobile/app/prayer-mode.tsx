@@ -503,7 +503,7 @@ export default function PrayerModeScreen() {
                       )}
                     </Pressable>
                     <Pressable style={styles.stopBtn} onPress={handleStopRecording}>
-                      <Square size={22} color={colors.primaryForeground} fill={colors.primaryForeground} />
+                      <Square size={22} color={colors.background} fill={colors.background} />
                       <Text style={styles.stopBtnText}>Stop & Save</Text>
                     </Pressable>
                   </View>
