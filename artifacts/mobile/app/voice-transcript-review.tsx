@@ -118,6 +118,18 @@ export default function VoiceTranscriptReviewScreen() {
                   maxLength={1000}
                   textAlignVertical="top"
                 />
+                {manualInputText.trim().length > 0 && (
+                  <Pressable
+                    style={styles.manualSaveBtn}
+                    onPress={() => {
+                      setEditedText(manualInputText);
+                      setHasManuallyEdited(true);
+                    }}
+                  >
+                    <Check size={15} color={colors.primaryForeground} />
+                    <Text style={styles.manualSaveBtnText}>Save transcription</Text>
+                  </Pressable>
+                )}
               </View>
             ) : null}
             <View style={styles.transcriptMeta}>
@@ -210,5 +222,7 @@ function createStyles(colors: ThemeColors) {
     modalInput: { flex: 1, backgroundColor: colors.card, borderRadius: 20, padding: 18, fontSize: 16, lineHeight: 26, color: colors.foreground, fontWeight: "500" as const, borderWidth: 1.5, borderColor: colors.primary + "40", textAlignVertical: "top" as const },
     saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 999, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
     saveBtnText: { fontSize: 15, fontWeight: "700" as const, color: colors.primaryForeground },
+    manualSaveBtn: { flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const, gap: 8, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 999, marginTop: 4, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6 },
+    manualSaveBtnText: { fontSize: 14, fontWeight: "700" as const, color: colors.primaryForeground },
   });
 }
