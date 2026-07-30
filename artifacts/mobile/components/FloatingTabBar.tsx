@@ -1,9 +1,10 @@
 import React, { useContext, useEffect, useRef } from "react";
 import { View, Text, Pressable, StyleSheet, Platform, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 import { BottomTabBarHeightCallbackContext } from "@react-navigation/bottom-tabs";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useThemeColors } from "@/providers/ThemeProvider";
+import { useTheme, useThemeColors } from "@/providers/ThemeProvider";
 import type { ThemeColors } from "@/constants/colors";
 
 /**
@@ -14,7 +15,8 @@ import type { ThemeColors } from "@/constants/colors";
 export default function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const styles = createStyles(colors);
+  const { isDark } = useTheme();
+  const styles = createStyles(colors, isDark);
 
   // Web needs an explicit bottom inset (home indicator area isn't reported)
   const bottomOffset =
@@ -34,6 +36,15 @@ export default function FloatingTabBar({ state, descriptors, navigation }: Botto
       accessibilityRole={Platform.OS === "web" ? ("tablist" as const) : undefined}
     >
       <View style={styles.pill}>
+        {/* Frosted glass background — blurred content shows through the pill */}
+        <View style={styles.pillClip}>
+          <BlurView
+            intensity={50}
+            tint={isDark ? "dark" : "light"}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.pillTint} />
+        </View>
         {state.routes.map((route, index) => {
           const options = descriptors[route.key]?.options ?? {};
           const label =
@@ -135,7 +146,7 @@ function TabItem({
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     wrap: {
       position: "absolute" as const,
@@ -146,7 +157,6 @@ function createStyles(colors: ThemeColors) {
     pill: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
-      backgroundColor: colors.card,
       borderRadius: 999,
       paddingVertical: 8,
       paddingHorizontal: 10,
@@ -154,17 +164,38 @@ function createStyles(colors: ThemeColors) {
       alignSelf: "center" as const,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
+      // Frosted glass on web via backdrop blur (BlurView web support is partial);
+      // native platforms get a real BlurView underlay instead.
+      ...(Platform.OS === "web"
+        ? ({
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            backgroundColor: isDark ? "rgba(15,23,42,0.55)" : "rgba(255,255,255,0.55)",
+          } as object)
+        : {}),
       // Elevation / shadow
       ...(Platform.OS === "android"
         ? { elevation: 10 }
         : Platform.OS === "web"
-          ? ({ boxShadow: "0 8px 24px rgba(0,0,0,0.35)" } as object)
+          ? ({ boxShadow: isDark ? "0 8px 24px rgba(0,0,0,0.35)" : "0 8px 24px rgba(0,0,0,0.18)" } as object)
           : {
               shadowColor: "#000",
-              shadowOpacity: 0.25,
+              shadowOpacity: isDark ? 0.3 : 0.15,
               shadowRadius: 16,
               shadowOffset: { width: 0, height: 8 },
             }),
+    },
+    pillClip: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 999,
+      overflow: "hidden" as const,
+      // On web the pill itself carries the backdrop blur; skip the underlay
+      display: Platform.OS === "web" ? ("none" as const) : ("flex" as const),
+    },
+    pillTint: {
+      ...StyleSheet.absoluteFillObject,
+      // Soft theme-aware wash over the blur so icons/labels stay legible
+      backgroundColor: isDark ? "rgba(15,23,42,0.45)" : "rgba(255,255,255,0.45)",
     },
     item: {
       alignItems: "center" as const,
