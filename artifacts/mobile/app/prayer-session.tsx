@@ -8,9 +8,11 @@ import * as Haptics from "expo-haptics";
 import { Audio } from "expo-av";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { fadeOutAndPause } from "@/lib/audioFade";
 
 // Bundled worship track — loops continuously until paused or session ends
 const WORSHIP_TRACK = require("@/assets/christian-worship.mp3");
+const MUSIC_VOLUME = 0.55;
 
 export default function PrayerSessionScreen() {
   const router = useRouter();
@@ -23,6 +25,7 @@ export default function PrayerSessionScreen() {
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
+  const audioTransitionRef = useRef(false);
 
   // ── Timer ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function PrayerSessionScreen() {
 
         const { sound } = await Audio.Sound.createAsync(
           WORSHIP_TRACK,
-          { shouldPlay: true, isLooping: true, volume: 0.55 },
+          { shouldPlay: true, isLooping: true, volume: MUSIC_VOLUME },
         );
 
         if (!mounted) {
@@ -88,14 +91,23 @@ export default function PrayerSessionScreen() {
       setIsPaused((p) => !p);
       return;
     }
-    const status = await sound.getStatusAsync();
-    if (!status.isLoaded) return;
-    if (status.isPlaying) {
-      await sound.pauseAsync();
-      setIsPaused(true);
-    } else {
-      await sound.playAsync();
-      setIsPaused(false);
+    if (audioTransitionRef.current) return;
+
+    audioTransitionRef.current = true;
+    try {
+      const status = await sound.getStatusAsync();
+      if (!status.isLoaded) return;
+      if (status.isPlaying) {
+        await fadeOutAndPause(sound);
+        setIsPaused(true);
+      } else {
+        await sound.setVolumeAsync(MUSIC_VOLUME);
+        await sound.playAsync();
+        setIsPaused(false);
+      }
+    } catch {}
+    finally {
+      audioTransitionRef.current = false;
     }
   }, []);
 

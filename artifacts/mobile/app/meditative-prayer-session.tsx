@@ -15,8 +15,10 @@ import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { fadeOutAndPause } from "@/lib/audioFade";
 
 const WORSHIP_TRACK = require("@/assets/christian-worship.mp3");
+const MUSIC_VOLUME = 1;
 
 export default function MeditativePrayerSessionScreen() {
   const colors = useThemeColors();
@@ -39,6 +41,7 @@ export default function MeditativePrayerSessionScreen() {
   const isPlayingRef = useRef(true);
   const isMutedRef   = useRef(initiallyMuted);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioTransitionRef = useRef(false);
 
   // ── Animated values ──────────────────────────────────────────────────────
   const modalSlide   = useRef(new Animated.Value(300)).current;
@@ -158,6 +161,7 @@ export default function MeditativePrayerSessionScreen() {
           shouldPlay: true,
           isMuted: isMutedRef.current,
           isLooping: true,
+           volume: MUSIC_VOLUME,
           progressUpdateIntervalMillis: 500,
         },
         onPlaybackStatusUpdate,
@@ -221,11 +225,23 @@ export default function MeditativePrayerSessionScreen() {
   // ── Controls ──────────────────────────────────────────────────────────────
   const handlePlayPause = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (audioTransitionRef.current) return;
     const next = !isPlaying;
     setIsPlaying(next);
     isPlayingRef.current = next;
     if (soundRef.current) {
-      try { next ? await soundRef.current.playAsync() : await soundRef.current.pauseAsync(); } catch {}
+      audioTransitionRef.current = true;
+      try {
+        if (next) {
+          await soundRef.current.setVolumeAsync(MUSIC_VOLUME);
+          await soundRef.current.playAsync();
+        } else {
+          await fadeOutAndPause(soundRef.current);
+        }
+      } catch {}
+      finally {
+        audioTransitionRef.current = false;
+      }
     }
   }, [isPlaying]);
 
