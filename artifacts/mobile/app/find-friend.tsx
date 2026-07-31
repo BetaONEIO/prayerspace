@@ -489,6 +489,9 @@ export default function FindFriendScreen() {
     setInvitedIds((prev) => new Set([...prev, contactId]));
   }, []);
 
+  // Only show contacts who have a matching Prayer Space account
+  const onAppContacts = contactsList.filter((c) => !!c.existingUser);
+
   const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
 
   return (
@@ -605,21 +608,21 @@ export default function FindFriendScreen() {
 
           {showContactsList && (
             <View style={styles.contactsSection}>
-              <Text style={styles.contactsSectionTitle}>From Your Contacts</Text>
+              <Text style={styles.contactsSectionTitle}>Friends on Prayer Space</Text>
               {loadingContacts ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
-              ) : contactsList.length === 0 ? (
-                <Text style={styles.contactsEmpty}>No contacts found</Text>
+              ) : onAppContacts.length === 0 ? (
+                <Text style={styles.contactsEmpty}>
+                  None of your contacts are on Prayer Space yet.{"\n"}Search by name above or invite friends to join.
+                </Text>
               ) : (
-                contactsList.map((contact, index) => {
-                  const status = contact.existingUser ? getRequestStatus(contact.existingUser.id) : "none";
-                  const isLast = index === contactsList.length - 1;
-                  const hasPhone = contact.phones.length > 0;
-                  const isInvited = invitedIds.has(contact.id);
+                onAppContacts.map((contact, index) => {
+                  const status = getRequestStatus(contact.existingUser!.id);
+                  const isLast = index === onAppContacts.length - 1;
                   return (
                     <View key={contact.id} style={[styles.contactRow, !isLast && styles.contactRowBorder]}>
-                      {contact.existingUser?.avatar_url ? (
-                        <AvatarImage avatarPath={contact.existingUser.avatar_url} fallbackSeed={contact.name} style={styles.contactAvatar} />
+                      {contact.existingUser!.avatar_url ? (
+                        <AvatarImage avatarPath={contact.existingUser!.avatar_url} fallbackSeed={contact.name} style={styles.contactAvatar} />
                       ) : (
                         <View style={[styles.contactAvatar, styles.contactInitialsWrap]}>
                           <Text style={styles.contactInitials}>{contact.initials}</Text>
@@ -627,47 +630,25 @@ export default function FindFriendScreen() {
                       )}
                       <View style={styles.contactInfo}>
                         <Text style={styles.contactName} numberOfLines={1}>{contact.name}</Text>
-                        {contact.existingUser ? (
-                          <Text style={styles.contactOnApp}>On Prayer Space</Text>
-                        ) : (
-                          <Text style={styles.contactNotOnApp} numberOfLines={1}>
-                            {contact.phone ?? (contact.email ?? "Not on Prayer Space")}
-                          </Text>
-                        )}
+                        <Text style={styles.contactOnApp}>On Prayer Space</Text>
                       </View>
-                      {contact.existingUser ? (
-                        status === "accepted" ? (
-                          <View style={[styles.contactStatusBadge, styles.contactStatusFriends]}>
-                            <UserCheck size={12} color={colors.primary} />
-                            <Text style={styles.contactStatusTextPrimary}>Friends</Text>
-                          </View>
-                        ) : status === "pending" ? (
-                          <View style={[styles.contactStatusBadge, styles.contactStatusPending]}>
-                            <Clock size={12} color={colors.mutedForeground} />
-                            <Text style={styles.contactStatusTextMuted}>Requested</Text>
-                          </View>
-                        ) : (
-                          <Pressable style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]} onPress={() => { if (contact.existingUser) sendRequestMutation.mutate(contact.existingUser.id); }}>
-                            <UserPlus size={13} color={colors.primaryForeground} />
-                            <Text style={styles.contactAddBtnText}>Add</Text>
-                          </Pressable>
-                        )
-                      ) : isInvited ? (
-                        <View style={styles.invitedPill}>
-                          <Text style={styles.invitedPillText}>Invited ✓</Text>
+                      {status === "accepted" ? (
+                        <View style={[styles.contactStatusBadge, styles.contactStatusFriends]}>
+                          <UserCheck size={12} color={colors.primary} />
+                          <Text style={styles.contactStatusTextPrimary}>Friends</Text>
+                        </View>
+                      ) : status === "pending" ? (
+                        <View style={[styles.contactStatusBadge, styles.contactStatusPending]}>
+                          <Clock size={12} color={colors.mutedForeground} />
+                          <Text style={styles.contactStatusTextMuted}>Requested</Text>
                         </View>
                       ) : (
                         <Pressable
-                          style={({ pressed }) => [
-                            styles.contactInviteBtn,
-                            !hasPhone && styles.contactInviteBtnDisabled,
-                            pressed && hasPhone && { opacity: 0.75 },
-                          ]}
-                          onPress={() => hasPhone && handleInviteContact(contact)}
-                          disabled={!hasPhone}
+                          style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]}
+                          onPress={() => sendRequestMutation.mutate(contact.existingUser!.id)}
                         >
-                          <Share2 size={13} color={hasPhone ? colors.primary : colors.mutedForeground} />
-                          <Text style={[styles.contactInviteBtnText, !hasPhone && { color: colors.mutedForeground }]}>Invite</Text>
+                          <UserPlus size={13} color={colors.primaryForeground} />
+                          <Text style={styles.contactAddBtnText}>Add</Text>
                         </Pressable>
                       )}
                     </View>
