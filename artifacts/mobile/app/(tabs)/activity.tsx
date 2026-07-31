@@ -782,24 +782,33 @@ export default function MessagesScreen() {
                 keyExtractor={(p) => p.id}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.sheetList}
+                ItemSeparatorComponent={() => (
+                  <View style={styles.sheetSeparator} />
+                )}
                 renderItem={({ item }) => {
                   const initial = (item.full_name ?? "?").charAt(0).toUpperCase();
                   return (
-                    <Pressable style={styles.sheetPersonRow} onPress={() => handleStartConversation(item)}>
-                      <View style={styles.sheetAvatarWrap}>
-                        {item.avatar_url ? (
-                          <Image source={{ uri: item.avatar_url }} style={styles.sheetAvatar} />
-                        ) : (
-                          <View style={[styles.sheetAvatar, styles.sheetAvatarFallback]}>
-                            <Text style={styles.sheetAvatarInitial}>{initial}</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.sheetPersonInfo}>
-                        <Text style={styles.sheetPersonName}>{item.full_name ?? "Unknown"}</Text>
-                        <Text style={styles.sheetPersonSub}>Tap to send a message</Text>
-                      </View>
-                    </Pressable>
+                    <View style={styles.sheetPersonRow}>
+                      {/* Avatar */}
+                      {item.avatar_url ? (
+                        <Image source={{ uri: item.avatar_url }} style={styles.sheetAvatar} />
+                      ) : (
+                        <View style={[styles.sheetAvatar, styles.sheetAvatarFallback]}>
+                          <Text style={styles.sheetAvatarInitial}>{initial}</Text>
+                        </View>
+                      )}
+                      {/* Name */}
+                      <Text style={styles.sheetPersonName} numberOfLines={1}>
+                        {item.full_name ?? "Unknown"}
+                      </Text>
+                      {/* Message button */}
+                      <Pressable
+                        style={styles.sheetMsgBtn}
+                        onPress={() => handleStartConversation(item)}
+                      >
+                        <Text style={styles.sheetMsgBtnText}>Message</Text>
+                      </Pressable>
+                    </View>
                   );
                 }}
               />
@@ -1330,30 +1339,47 @@ function createStyles(colors: ThemeColors) {
       color: colors.mutedForeground,
       textAlign: "center" as const,
     },
-    sheetList: { paddingHorizontal: 16, paddingBottom: 8 },
+    sheetList: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
+    sheetSeparator: {
+      height: 1,
+      backgroundColor: colors.border + "35",
+      marginLeft: 62,
+    },
     sheetPersonRow: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       gap: 14,
-      paddingVertical: 12,
+      paddingVertical: 13,
       paddingHorizontal: 4,
-      borderRadius: 14,
     },
-    sheetAvatarWrap: {},
-    sheetAvatar: { width: 48, height: 48, borderRadius: 24 },
+    sheetAvatar: { width: 44, height: 44, borderRadius: 22 },
     sheetAvatarFallback: {
       backgroundColor: colors.accent,
       alignItems: "center" as const,
       justifyContent: "center" as const,
     },
     sheetAvatarInitial: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "700" as const,
       color: colors.primary,
     },
-    sheetPersonInfo: { flex: 1, gap: 2 },
-    sheetPersonName: { fontSize: 15, fontWeight: "600" as const, color: colors.foreground },
-    sheetPersonSub: { fontSize: 12, color: colors.mutedForeground },
+    sheetPersonName: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: "600" as const,
+      color: colors.foreground,
+    },
+    sheetMsgBtn: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+    },
+    sheetMsgBtnText: {
+      fontSize: 13,
+      fontWeight: "700" as const,
+      color: "#FFFFFF",
+    },
     actionSheet: {
       backgroundColor: colors.card,
       borderTopLeftRadius: 28,
