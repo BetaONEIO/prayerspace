@@ -15,11 +15,11 @@ import {
   Bell,
   ArrowRight,
   X,
+  Gift,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import { useOfferings } from "@/hooks/usePurchases";
 
 const BENEFITS = [
   {
@@ -30,12 +30,12 @@ const BENEFITS = [
   {
     icon: Users,
     title: "Member management",
-    desc: "Invite and manage your community with ease.",
+    desc: "Invite and manage your community members with ease.",
   },
   {
     icon: Bell,
     title: "Prayer requests and notifications",
-    desc: "Keep your group engaged and praying together.",
+    desc: "Keep your community engaged and praying together.",
   },
 ];
 
@@ -45,24 +45,6 @@ export default function CommunityIntro() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
-
-  const { data: offerings } = useOfferings();
-  const startingPrice = (() => {
-    const yearlyPkg = offerings?.all?.["church"]?.availablePackages?.find(
-      (p) => p.identifier === "church_small_yearly"
-    );
-    if (yearlyPkg?.product?.price) {
-      const monthly = yearlyPkg.product.price / 12;
-      const currency = yearlyPkg.product.currencyCode ?? "";
-      const symbol = currency === "GBP" ? "£" : currency === "EUR" ? "€" : "$";
-      return `${symbol}${monthly.toFixed(2)}`;
-    }
-    const monthlyPkg = offerings?.all?.["church"]?.availablePackages?.find(
-      (p) => p.identifier === "church_small"
-    );
-    if (monthlyPkg?.product?.priceString) return monthlyPkg.product.priceString;
-    return "£15.99";
-  })();
 
   useEffect(() => {
     Animated.parallel([
@@ -121,24 +103,21 @@ export default function CommunityIntro() {
           })}
         </View>
 
-        {/* Pricing row */}
-        <View style={[styles.pricingCard, { backgroundColor: colors.primary + "0C", borderColor: colors.primary + "25" }]}>
-          <View style={styles.pricingRow}>
-            <View style={styles.pricingLeft}>
-              <Text style={[styles.pricingLabel, { color: colors.mutedForeground }]}>Plans from</Text>
-              <View style={styles.pricingAmountRow}>
-                <Text style={[styles.pricingAmount, { color: colors.primary }]}>{startingPrice}</Text>
-                <Text style={[styles.pricingCycle, { color: colors.mutedForeground }]}>/mo</Text>
-              </View>
+        {/* Free tier highlight */}
+        <View style={styles.freeCard}>
+          <View style={styles.freeCardLeft}>
+            <View style={styles.freeIconWrap}>
+              <Gift size={16} color="#166534" />
             </View>
-            <View style={styles.pricingRight}>
-              <View style={styles.saveBadge}>
-                <Text style={styles.saveBadgeText}>Save 20% yearly</Text>
-              </View>
-              <Text style={[styles.trialNote, { color: colors.mutedForeground }]}>
-                7-day free trial · cancel anytime
+            <View style={styles.freeCardText}>
+              <Text style={styles.freeCardTitle}>Free to start</Text>
+              <Text style={styles.freeCardDesc}>
+                1 community · up to 10 members · no payment needed
               </Text>
             </View>
+          </View>
+          <View style={styles.freeBadge}>
+            <Text style={styles.freeBadgeText}>£0</Text>
           </View>
         </View>
 
@@ -155,12 +134,12 @@ export default function CommunityIntro() {
           }}
           testID="community-intro-view-plans"
         >
-          <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Start free trial</Text>
+          <Text style={[styles.primaryBtnText, { color: colors.primaryForeground }]}>Start Free</Text>
           <ArrowRight size={18} color={colors.primaryForeground} strokeWidth={2.5} />
         </Pressable>
 
         <Text style={[styles.disclaimer, { color: colors.mutedForeground }]}>
-          You'll choose a plan after setup. Cancel before trial ends to avoid charges.
+          Start free with up to 10 members. Upgrade anytime as your community grows.
         </Text>
       </Animated.View>
     </SafeAreaView>
@@ -187,7 +166,7 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 24,
       paddingTop: 28,
       paddingBottom: 20,
-      justifyContent: "center",
+      justifyContent: "center" as const,
       gap: 20,
     },
 
@@ -229,52 +208,58 @@ function createStyles(colors: ThemeColors) {
     benefitTitle: { fontSize: 14, fontWeight: "700" as const },
     benefitDesc: { fontSize: 12, lineHeight: 17 },
 
-    pricingCard: {
-      borderRadius: 18,
-      padding: 16,
-      borderWidth: 1,
-    },
-    pricingRow: {
+    // Free tier highlight card
+    freeCard: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       justifyContent: "space-between" as const,
+      backgroundColor: "#F0FDF4",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "#86EFAC",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
       gap: 12,
     },
-    pricingLeft: { gap: 2 },
-    pricingLabel: {
-      fontSize: 11,
-      fontWeight: "700" as const,
-      letterSpacing: 0.7,
-      textTransform: "uppercase" as const,
-    },
-    pricingAmountRow: {
+    freeCardLeft: {
       flexDirection: "row" as const,
-      alignItems: "baseline" as const,
-      gap: 3,
+      alignItems: "center" as const,
+      gap: 12,
+      flex: 1,
     },
-    pricingAmount: {
-      fontSize: 26,
-      fontWeight: "800" as const,
-      letterSpacing: -0.5,
-    },
-    pricingCycle: {
-      fontSize: 13,
-      fontWeight: "600" as const,
-    },
-    pricingRight: { alignItems: "flex-end" as const, gap: 6 },
-    saveBadge: {
+    freeIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       backgroundColor: "#DCFCE7",
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      flexShrink: 0,
+    },
+    freeCardText: { flex: 1, gap: 2 },
+    freeCardTitle: {
+      fontSize: 14,
+      fontWeight: "800" as const,
+      color: "#166534",
+    },
+    freeCardDesc: {
+      fontSize: 11,
+      color: "#166534",
+      opacity: 0.75,
+      lineHeight: 16,
+    },
+    freeBadge: {
+      backgroundColor: "#DCFCE7",
       borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
       borderWidth: 1,
       borderColor: "#86EFAC",
     },
-    saveBadgeText: { fontSize: 11, fontWeight: "800" as const, color: "#166534" },
-    trialNote: {
-      fontSize: 11,
-      fontWeight: "500" as const,
-      textAlign: "right" as const,
+    freeBadgeText: {
+      fontSize: 15,
+      fontWeight: "800" as const,
+      color: "#166534",
     },
 
     primaryBtn: {

@@ -1,0 +1,88 @@
+Please redesign this screen now that Prayer Communities include a Free plan.
+
+The purpose of this screen is no longer to sell a subscription immediately. Instead, it should introduce Prayer Communities, explain their benefits, and encourage users to start with the Free Community plan.
+
+## Page Content
+
+Heading:
+**Start a Prayer Community**
+
+Supporting text:
+
+Bring your church, ministry, family or prayer group together in one private space to pray, encourage one another, and stay connected through prayer.
+
+## Feature List
+
+Replace the existing feature section with something like:
+
+**Private Community**
+Only invited members can view your community, prayer requests and discussions.
+
+**Invite Members**
+Invite your church, Bible study, family or prayer group in seconds.
+
+**Prayer Requests**
+Share prayer requests, praise reports and answered prayers together.
+
+**Group Chat**
+Encourage one another through private conversations and prayer discussions.
+
+**Prayer Notifications**
+Receive notifications when new prayer requests, praise reports or important community updates are shared.
+
+## Start Free Section
+
+Replace the pricing summary with a Free Community message.
+
+Title:
+**Start Free**
+
+Supporting text:
+
+Create one Prayer Community with up to **10 members** completely free.
+
+Upgrade at any time as your community grows.
+
+## Buttons
+
+Primary button:
+
+**Create Free Community**
+
+Secondary action:
+
+**View Community Plans**
+
+Selecting "View Community Plans" should navigate to the existing Community pricing page where users can compare all paid Community plans.
+
+## User Experience
+
+This screen should feel like an introduction to the feature rather than a paywall.
+
+Users should be encouraged to experience Prayer Communities before making any purchasing decision.
+
+The Free Community should be the default recommendation.
+
+## Icons & Visual Style
+
+Do not use standard Unicode emojis anywhere on this screen.
+
+Instead, reuse Prayer Space's existing icon set and design language.
+
+Icons should:
+
+- Match the current Prayer Space icon style.
+- Use the existing colour palette.
+- Match the sizing, weight and spacing used throughout the app.
+- Feel clean, modern and premium.
+- Reuse existing Prayer Space icons wherever possible rather than creating new ones.
+
+The goal is for this screen to feel like a seamless extension of the existing Prayer Space design system.
+
+## Overall Goal
+
+This screen should answer one simple question:
+
+**"Why should I create a Prayer Community?"**
+
+The user should leave this screen understanding the value of Prayer Communities and feel confident creating one for free, with a clear upgrade path available later as their church, ministry or prayer group grows.
