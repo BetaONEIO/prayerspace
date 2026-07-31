@@ -70,7 +70,10 @@ import {
   Award,
   Bell,
   UserCheck,
+  Pin,
+  PinOff,
 } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { LightColors, ThemeColors } from "@/constants/colors";
@@ -235,6 +238,16 @@ export default function CommunityScreen() {
   const [postActionsTarget, setPostActionsTarget] = useState<FeedPost | null>(null);
   const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
   const [hiddenPostIds, setHiddenPostIds] = useState<Set<string>>(new Set());
+  const [pinnedPostIds, setPinnedPostIds] = useState<Set<string>>(new Set());
+
+  // Persist pinned posts across sessions
+  useEffect(() => {
+    AsyncStorage.getItem("pinned_posts_v1").then((val) => {
+      if (val) {
+        try { setPinnedPostIds(new Set(JSON.parse(val) as string[])); } catch {}
+      }
+    });
+  }, []);
   const [statusModalVisible, setStatusModalVisible] = useState<boolean>(false);
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [switcherVisible, setSwitcherVisible] = useState<boolean>(false);
@@ -596,6 +609,20 @@ export default function CommunityScreen() {
     setPostActionsTarget(post);
   }, []);
 
+  const handlePinPost = useCallback((post: FeedPost) => {
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setPinnedPostIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(post.id)) {
+        next.delete(post.id);
+      } else {
+        next.add(post.id);
+      }
+      void AsyncStorage.setItem("pinned_posts_v1", JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
   const handleMarkAnswered = useCallback((post: FeedPost) => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const updater = (all: FeedPost[]) =>
@@ -658,7 +685,16 @@ export default function CommunityScreen() {
     && !archivedPostIds.has(p.id)
     && !hiddenPostIds.has(p.id)
   );
-  const filteredCommunityPosts = allCommunityPosts.filter((p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id));
+  const filteredCommunityPosts = useMemo(() => {
+    const visible = allCommunityPosts.filter(
+      (p) => p.communityId === activeCommunity.id && !archivedPostIds.has(p.id) && !hiddenPostIds.has(p.id)
+    );
+    // Pinned posts float to the top
+    return [
+      ...visible.filter((p) => pinnedPostIds.has(p.id)),
+      ...visible.filter((p) => !pinnedPostIds.has(p.id)),
+    ];
+  }, [allCommunityPosts, activeCommunity.id, archivedPostIds, hiddenPostIds, pinnedPostIds]);
   const posts = activeTab === "Feed"
     ? (feedFilter === "mine" ? filteredFeedPosts.filter((p) => p.authorId === currentUserId) : filteredFeedPosts)
     : filteredCommunityPosts;
@@ -865,6 +901,7 @@ export default function CommunityScreen() {
                       onMarkAnswered={handleMarkAnswered}
                       isNew={post.id === lastAddedPostId}
                       isFriend={friendIds.has(post.authorId) && post.authorId !== currentUserId}
+                      isPinned={pinnedPostIds.has(post.id)}
                     />
                   ))}
                 </Animated.View>
@@ -955,6 +992,8 @@ export default function CommunityScreen() {
         <PostActionsModal
           post={postActionsTarget}
           isAuthor={postActionsTarget.authorId === currentUserId}
+          isAdmin={isActiveCommunityAdmin}
+          isPinned={pinnedPostIds.has(postActionsTarget.id)}
           onClose={() => setPostActionsTarget(null)}
           onArchive={handleArchivePost}
           onRepost={handleRepostWithUpdate}
@@ -962,6 +1001,7 @@ export default function CommunityScreen() {
           onHide={handleHidePost}
           onReport={handleReportPost}
           onShare={handleSharePost}
+          onPin={handlePinPost}
         />
       )}
 
@@ -2792,9 +2832,10 @@ interface FeedCardProps {
   onMarkAnswered?: (post: FeedPost) => void;
   isNew?: boolean;
   isFriend?: boolean;
+  isPinned?: boolean;
 }
 
-function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew, isFriend }: FeedCardProps) {
+function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew, isFriend, isPinned }: FeedCardProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
@@ -2851,6 +2892,12 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
       opacity: entryOpacity,
       transform: [{ scale: entryScale }, { translateY: entryTranslateY }, { scale: cardLongPressScale }],
     }]}>
+      {isPinned && (
+        <View style={styles.pinnedBanner}>
+          <Pin size={11} color="#3B82F6" />
+          <Text style={styles.pinnedBannerText}>Pinned post</Text>
+        </View>
+      )}
       {isUpdatePost && (
         <View style={styles.updateHeaderBanner}>
           <Repeat2 size={13} color={colors.primary} />
@@ -3616,6 +3663,8 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
 interface PostActionsModalProps {
   post: FeedPost;
   isAuthor: boolean;
+  isAdmin?: boolean;
+  isPinned?: boolean;
   onClose: () => void;
   onArchive: (post: FeedPost) => void;
   onRepost: (post: FeedPost) => void;
@@ -3623,9 +3672,10 @@ interface PostActionsModalProps {
   onHide: (post: FeedPost) => void;
   onReport: (post: FeedPost) => void;
   onShare: (post: FeedPost) => void;
+  onPin?: (post: FeedPost) => void;
 }
 
-function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDelete, onHide, onReport, onShare }: PostActionsModalProps) {
+function PostActionsModal({ post, isAuthor, isAdmin, isPinned, onClose, onArchive, onRepost, onDelete, onHide, onReport, onShare, onPin }: PostActionsModalProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
@@ -3765,6 +3815,26 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
           <>
             <Text style={styles.actionsTitle}>Your Prayer</Text>
 
+            {isAdmin && (
+              <Pressable
+                style={styles.actionItem}
+                onPress={() => { onPin?.(post); handleClose(); }}
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: isPinned ? "#FFF0EB" : "#EBF0FF" }]}>
+                  {isPinned
+                    ? <PinOff size={18} color="#E86F24" />
+                    : <Pin size={18} color="#3B82F6" />}
+                </View>
+                <View style={styles.actionTextWrap}>
+                  <Text style={styles.actionLabel}>{isPinned ? "Unpin Post" : "Pin to Top"}</Text>
+                  <Text style={styles.actionSub}>
+                    {isPinned ? "Remove from pinned position" : "Keep this at the top of the community"}
+                  </Text>
+                </View>
+                <ChevronRight size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+
             <Pressable style={styles.actionItem} onPress={handleShare}>
               <View style={[styles.actionIconWrap, { backgroundColor: colors.accent }]}>
                 <Share2 size={18} color={colors.primary} />
@@ -3805,6 +3875,26 @@ function PostActionsModal({ post, isAuthor, onClose, onArchive, onRepost, onDele
         ) : (
           <>
             <Text style={styles.actionsTitle}>Post Options</Text>
+
+            {isAdmin && (
+              <Pressable
+                style={styles.actionItem}
+                onPress={() => { onPin?.(post); handleClose(); }}
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: isPinned ? "#FFF0EB" : "#EBF0FF" }]}>
+                  {isPinned
+                    ? <PinOff size={18} color="#E86F24" />
+                    : <Pin size={18} color="#3B82F6" />}
+                </View>
+                <View style={styles.actionTextWrap}>
+                  <Text style={styles.actionLabel}>{isPinned ? "Unpin Post" : "Pin to Top"}</Text>
+                  <Text style={styles.actionSub}>
+                    {isPinned ? "Remove from pinned position" : "Keep this at the top of the community"}
+                  </Text>
+                </View>
+                <ChevronRight size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
 
             <Pressable style={styles.actionItem} onPress={handleHide}>
               <View style={[styles.actionIconWrap, { backgroundColor: colors.secondary }]}>
@@ -6461,6 +6551,18 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "700" as const,
     color: colors.mutedForeground,
     letterSpacing: -0.2,
+  },
+  pinnedBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 5,
+    paddingBottom: 6,
+  },
+  pinnedBannerText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: "#3B82F6",
+    letterSpacing: 0.1,
   },
   updateHeaderBanner: {
     flexDirection: "row" as const,
