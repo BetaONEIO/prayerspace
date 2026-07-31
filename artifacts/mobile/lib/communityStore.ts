@@ -79,7 +79,7 @@ export const communityStore = {
       gradientColors: palette.gradient,
       bannerImage: banner,
       isOwned: true,
-      isPremium: true,
+      isPremium: tier !== "church_free",
       tier,
       description: "Your prayer community — invite members to get started.",
     };

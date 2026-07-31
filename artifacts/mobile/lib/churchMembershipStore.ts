@@ -35,7 +35,7 @@ export const churchMembershipStore = {
   setOwner(churchName: string | null = null, tier: string | null = null) {
     _state = {
       isChurchMember: true,
-      isPremium: true,
+      isPremium: tier !== "church_free",
       role: "owner",
       tier,
       churchName,

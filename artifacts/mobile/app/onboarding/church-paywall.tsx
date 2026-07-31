@@ -167,7 +167,8 @@ export default function ChurchPaywall() {
 
   const handleSelectFree = () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    completeOnboarding("church_free");
+    churchMembershipStore.setOwner(null, "church_free");
+    router.replace("/onboarding/church-group-type" as never);
   };
 
   const handleSelectTier = async (tier: ChurchTier) => {
