@@ -1,0 +1,110 @@
+Please update the Community pricing page to better reflect the Community subscription model.
+
+## Important
+
+Prayer Space already has an existing **Prayer Space Pro** subscription for individual users.
+
+These Community plans are **completely separate** and should only provide features related to managing Prayer Communities.
+
+Do not mix or duplicate Prayer Space Pro features within these plans.
+
+A user should be able to have:
+- Prayer Space Pro (individual subscription)
+- A Free Community
+- Or a paid Community subscription
+
+These are independent products.
+
+## Rename the page
+
+Update the page title to something clearer, such as:
+
+**Community Plans**
+
+or
+
+**Choose a Community Plan**
+
+Add supporting text:
+
+> Choose the right Community plan for your family, church or ministry. Start free and upgrade as your community grows.
+
+This should make it obvious these subscriptions are for Community management rather than individual premium features.
+
+## Add a Free Community plan
+
+Add a new pricing card above the existing paid Community plans.
+
+Title:
+**Free**
+
+Subtitle:
+**Up to 10 members**
+
+Description:
+Perfect for families, home groups, Bible studies and small prayer teams.
+
+Includes:
+
+✓ 1 Prayer Community
+✓ Up to 10 members
+✓ Prayer requests
+✓ Community feed
+✓ Group chat
+✓ Basic notifications
+✓ 1 Community Administrator
+
+Price:
+**£0**
+
+Primary button:
+**Create Free Community**
+
+This is not a free trial. Users should be able to use this plan indefinitely.
+
+## Existing Community plans
+
+Keep all existing Community plans exactly as they are.
+
+Do not change:
+- Pricing
+- Member limits
+- Included features
+- Trial messaging
+- Layout
+
+Simply insert the new Free Community plan before the existing paid plans.
+
+## Upgrade behaviour
+
+Users should only be prompted to upgrade their Community plan when they:
+
+- Invite an 11th member.
+- Attempt to create an additional Prayer Community (if limited to one on Free).
+- Attempt to use a Community Premium feature.
+
+Do not display Community upgrade prompts for individual Prayer Space Pro features.
+
+## Improve wording
+
+Throughout this section, use Community-focused language.
+
+Examples:
+
+- Community Plans
+- Prayer Community
+- Community Members
+- Community Administrators
+- Grow your Prayer Community
+
+Avoid wording that could make users think these subscriptions replace or duplicate Prayer Space Pro.
+
+## Goal
+
+Prayer Space Pro remains the premium subscription for individual users.
+
+Community Plans are separate subscriptions designed for churches, ministries, organisations, families and prayer groups to manage their Prayer Communities.
+
+Users should immediately understand the difference between the two subscription types.
+
+The objective is to reduce friction for new users by allowing them to create one Prayer Community with up to 10 members for free, while keeping the existing paid Community plans unchanged and providing a natural upgrade path as communities grow.
