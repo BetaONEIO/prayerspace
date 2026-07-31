@@ -53,7 +53,10 @@ function AuthGuard() {
     const inAuthGroup =
       segments[0] === "login" ||
       segments[0] === "register" ||
-      segments[0] === "verify-otp";
+      segments[0] === "verify-otp" ||
+      segments[0] === "password-reset" ||
+      segments[0] === "password-reset-verify" ||
+      segments[0] === "password-reset-new";
 
     const inCompleteProfile = (segments[0] as string) === "complete-profile";
     const isOnboardingPreviewUser = ONBOARDING_PREVIEW_EMAILS.includes(user?.email ?? "");
@@ -123,6 +126,9 @@ function RootLayoutNav() {
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="verify-otp" options={{ headerShown: false }} />
+      <Stack.Screen name="password-reset" options={{ headerShown: false }} />
+      <Stack.Screen name="password-reset-verify" options={{ headerShown: false }} />
+      <Stack.Screen name="password-reset-new" options={{ headerShown: false }} />
       <Stack.Screen name="journal" options={{ headerShown: false }} />
       <Stack.Screen name="journal-entry" options={{ headerShown: false }} />
       <Stack.Screen name="prayer-mode" options={{ headerShown: false }} />

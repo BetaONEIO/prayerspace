@@ -13,12 +13,10 @@ import {
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Mail, CheckCircle, ArrowRight } from "lucide-react-native";
+import { ChevronLeft, Mail } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
-
-type ScreenState = "input" | "success";
 
 export default function PasswordResetScreen() {
   const router = useRouter();
@@ -27,12 +25,9 @@ export default function PasswordResetScreen() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [screenState, setScreenState] = useState<ScreenState>("input");
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const successScale = useRef(new Animated.Value(0)).current;
-  const successOpacity = useRef(new Animated.Value(0)).current;
   const errorShake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -41,15 +36,6 @@ export default function PasswordResetScreen() {
       Animated.spring(slideAnim, { toValue: 0, tension: 70, friction: 10, useNativeDriver: true }),
     ]).start();
   }, []);
-
-  useEffect(() => {
-    if (screenState === "success") {
-      Animated.parallel([
-        Animated.spring(successScale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
-        Animated.timing(successOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [screenState]);
 
   const shakeError = useCallback(() => {
     Animated.sequence([
@@ -92,7 +78,7 @@ export default function PasswordResetScreen() {
       }
 
       console.log("[PasswordReset] Reset email sent successfully");
-      setScreenState("success");
+      router.push({ pathname: "/password-reset-verify", params: { email: trimmed } } as never);
     } catch (err) {
       console.error("[PasswordReset] Unexpected error:", err);
       setError("Something went wrong. Please try again.");
@@ -101,42 +87,6 @@ export default function PasswordResetScreen() {
       setIsLoading(false);
     }
   }, [email, shakeError]);
-
-  if (screenState === "success") {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <Animated.View style={[styles.successContainer, { opacity: successOpacity, transform: [{ scale: successScale }] }]}>
-          <View style={styles.successIconWrap}>
-            <CheckCircle size={48} color={colors.primary} />
-          </View>
-          <Text style={styles.successTitle}>Check Your Inbox</Text>
-          <Text style={styles.successMessage}>
-            We've sent a password reset link to{"\n"}
-            <Text style={styles.successEmail}>{email.trim().toLowerCase()}</Text>
-          </Text>
-          <Text style={styles.successHint}>
-            Didn't receive it? Check your spam folder or try again with a different email.
-          </Text>
-
-          <Pressable style={styles.backToLoginBtn} onPress={() => router.push("/login")}>
-            <Text style={styles.backToLoginBtnText}>Back to Sign In</Text>
-            <ArrowRight size={18} color={colors.primaryForeground} />
-          </Pressable>
-
-          <Pressable
-            style={styles.resendLink}
-            onPress={() => {
-              successScale.setValue(0);
-              successOpacity.setValue(0);
-              setScreenState("input");
-            }}
-          >
-            <Text style={styles.resendLinkText}>Try a different email</Text>
-          </Pressable>
-        </Animated.View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -197,10 +147,7 @@ export default function PasswordResetScreen() {
               {isLoading ? (
                 <ActivityIndicator color={colors.primaryForeground} />
               ) : (
-                <>
-                  <Text style={styles.resetBtnText}>Send Reset Link</Text>
-                  <ArrowRight size={18} color={colors.primaryForeground} />
-                </>
+                <Text style={styles.resetBtnText}>Send Reset Link</Text>
               )}
             </Pressable>
 
@@ -341,80 +288,6 @@ function createStyles(colors: ThemeColors) {
       fontSize: 14,
       fontWeight: "700" as const,
       color: colors.primary,
-    },
-    successContainer: {
-      flex: 1,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      paddingHorizontal: 32,
-      paddingBottom: 40,
-    },
-    successIconWrap: {
-      width: 96,
-      height: 96,
-      borderRadius: 32,
-      backgroundColor: colors.accent,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      marginBottom: 28,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-    },
-    successTitle: {
-      fontSize: 28,
-      fontWeight: "800" as const,
-      color: colors.foreground,
-      letterSpacing: -0.5,
-      marginBottom: 14,
-      textAlign: "center" as const,
-    },
-    successMessage: {
-      fontSize: 15,
-      color: colors.mutedForeground,
-      textAlign: "center" as const,
-      lineHeight: 24,
-      marginBottom: 16,
-    },
-    successEmail: {
-      fontWeight: "700" as const,
-      color: colors.foreground,
-    },
-    successHint: {
-      fontSize: 13,
-      color: colors.mutedForeground,
-      textAlign: "center" as const,
-      lineHeight: 20,
-      marginBottom: 40,
-      maxWidth: 300,
-    },
-    backToLoginBtn: {
-      height: 56,
-      backgroundColor: colors.primary,
-      borderRadius: 18,
-      flexDirection: "row" as const,
-      alignItems: "center" as const,
-      justifyContent: "center" as const,
-      gap: 8,
-      width: "100%" as const,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 16,
-      elevation: 6,
-      marginBottom: 16,
-    },
-    backToLoginBtnText: {
-      fontSize: 16,
-      fontWeight: "700" as const,
-      color: colors.primaryForeground,
-    },
-    resendLink: {
-      paddingVertical: 10,
-    },
-    resendLinkText: {
-      fontSize: 14,
-      fontWeight: "600" as const,
-      color: colors.mutedForeground,
     },
   });
 }
