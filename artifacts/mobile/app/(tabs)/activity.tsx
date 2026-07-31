@@ -593,14 +593,26 @@ export default function MessagesScreen() {
     enabled: !!currentUserId && newConvVisible,
   });
 
+  const searchInputRef = useRef<TextInput | null>(null);
+
   const openNewConv = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setNewConvVisible(true);
+    // Reset animation values before showing the modal so a fast
+    // open-close-reopen doesn't start mid-slide.
+    sheetSlide.setValue(600);
+    sheetOpacity.setValue(0);
     setNewConvSearch("");
-    Animated.parallel([
-      Animated.spring(sheetSlide, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
-      Animated.timing(sheetOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
+    setNewConvVisible(true);
+    // Slight delay so the Modal has rendered before the spring starts;
+    // this also prevents autoFocus from firing before the sheet is on-screen.
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.spring(sheetSlide, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
+        Animated.timing(sheetOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start(() => {
+        searchInputRef.current?.focus();
+      });
+    }, 50);
   }, [sheetSlide, sheetOpacity]);
 
   const closeNewConv = useCallback(() => {
@@ -724,7 +736,7 @@ export default function MessagesScreen() {
                   <Text style={styles.emptySub}>Archived chats will appear here.</Text>
                 </View>
               ) : (
-                <EmptyState colors={colors} />
+                <EmptyState colors={colors} onCompose={openNewConv} />
               )
             }
           />
@@ -746,12 +758,12 @@ export default function MessagesScreen() {
             <View style={styles.sheetSearchWrap}>
               <Search size={14} color={colors.mutedForeground} />
               <TextInput
+                ref={searchInputRef}
                 style={styles.sheetSearchInput}
                 placeholder="Search people..."
                 placeholderTextColor={colors.mutedForeground + "80"}
                 value={newConvSearch}
                 onChangeText={setNewConvSearch}
-                autoFocus
               />
             </View>
             {connectionsQuery.isLoading ? (
@@ -953,7 +965,7 @@ export default function MessagesScreen() {
   );
 }
 
-function EmptyState({ colors }: { colors: ThemeColors }) {
+function EmptyState({ colors, onCompose }: { colors: ThemeColors; onCompose: () => void }) {
   const slideAnim = useRef(new Animated.Value(24)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -976,9 +988,9 @@ function EmptyState({ colors }: { colors: ThemeColors }) {
       <Text style={styles.emptySub}>
         When you connect with someone in Prayer Space, your conversations will appear here.
       </Text>
-      <View style={styles.emptyHint}>
+      <Pressable style={styles.emptyHint} onPress={onCompose}>
         <Text style={styles.emptyHintText}>🙏 Start by praying for a friend</Text>
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }
