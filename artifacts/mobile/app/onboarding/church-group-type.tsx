@@ -14,6 +14,7 @@ import {
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { onboardingStore, CommunityType } from "@/lib/onboardingStore";
+import { churchMembershipStore } from "@/lib/churchMembershipStore";
 
 const COMMUNITY_TYPES: {
   id: CommunityType;
@@ -64,15 +65,16 @@ export default function ChurchGroupType() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [selected, setSelected] = useState<CommunityType>(null);
+  const isFreePlan = churchMembershipStore.getState().tier === "church_free";
 
   const handleContinue = () => {
     onboardingStore.setCommunityType(selected);
-    router.push("/onboarding/church-size" as never);
+    router.push((isFreePlan ? "/onboarding/church-details" : "/onboarding/church-size") as never);
   };
 
   const handleSkip = () => {
     onboardingStore.setCommunityType(null);
-    router.push("/onboarding/church-size" as never);
+    router.push((isFreePlan ? "/onboarding/church-details" : "/onboarding/church-size") as never);
   };
 
   return (
@@ -80,9 +82,9 @@ export default function ChurchGroupType() {
       <View style={styles.inner}>
         <View style={styles.progressRow}>
           <View style={styles.progressBg}>
-            <View style={[styles.progressFill, { width: "33.3%" }]} />
+            <View style={[styles.progressFill, { width: isFreePlan ? "50%" : "33.3%" }]} />
           </View>
-          <Text style={styles.stepText}>Step 1 of 3</Text>
+          <Text style={styles.stepText}>{isFreePlan ? "Step 1 of 2" : "Step 1 of 3"}</Text>
         </View>
 
         <View style={styles.headingArea}>

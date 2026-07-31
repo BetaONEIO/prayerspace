@@ -43,6 +43,7 @@ export default function ChurchDetails() {
   const [location, setLocation] = useState("");
   const [denomination, setDenomination] = useState<string | null>(null);
   const [showDenomModal, setShowDenomModal] = useState(false);
+  const isFreePlan = churchMembershipStore.getState().tier === "church_free";
 
   const canContinue = name.trim().length > 0;
 
@@ -72,7 +73,7 @@ export default function ChurchDetails() {
             <View style={styles.progressBg}>
               <View style={[styles.progressFill, { width: "100%" }]} />
             </View>
-            <Text style={styles.stepText}>Step 3 of 3</Text>
+            <Text style={styles.stepText}>{isFreePlan ? "Step 2 of 2" : "Step 3 of 3"}</Text>
           </View>
 
           <View style={styles.headingArea}>

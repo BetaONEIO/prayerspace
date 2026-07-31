@@ -39,6 +39,7 @@ import {
   Search,
 } from "lucide-react-native";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
+import { useCommunityStore } from "@/lib/communityStore";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import {
   receivedPrayerRequests,
@@ -101,6 +102,7 @@ export default function HomeScreen() {
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   const { isPremiumCommunity } = useChurchEntitlements();
+  const ownedCommunities = useCommunityStore().filter((community) => community.isOwned);
   const [nudgeDismissed, setNudgeDismissed] = useState(true);
 
   useEffect(() => {
@@ -453,7 +455,7 @@ export default function HomeScreen() {
           </Pressable>
         )}
 
-        {!isPremiumCommunity && !nudgeDismissed && (
+        {!isPremiumCommunity && ownedCommunities.length === 0 && !nudgeDismissed && (
           <View style={styles.communityNudge} testID="community-nudge-card">
             <View style={styles.communityNudgeIconWrap}>
               <Users size={20} color={colors.primary} />

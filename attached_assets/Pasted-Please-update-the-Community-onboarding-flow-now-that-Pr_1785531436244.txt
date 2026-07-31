@@ -1,0 +1,67 @@
+Please update the Community onboarding flow now that Prayer Communities include a permanent Free plan.
+
+## Remove unnecessary friction
+
+If a user has already selected the **Free Community** plan, do not ask them how many people are in their community.
+
+The Free plan already has a fixed limit of **10 members**, so this question provides no additional value and interrupts the onboarding experience.
+
+Instead, the flow should be:
+
+Choose Community Plan
+↓
+Free Community
+↓
+Create Community
+↓
+Community Created
+
+The goal is to let users begin using Prayer Communities as quickly as possible.
+
+## Only show the member-size screen for paid plans
+
+The "How many people are in your community?" screen should only be shown if the user has selected one of the paid Community plans.
+
+In that case, the question helps personalise onboarding and ensures they are on the most appropriate plan.
+
+## If this screen must remain
+
+If there is a technical reason why this screen cannot be removed, redesign it specifically for Free users.
+
+Display a message such as:
+
+**You've chosen the Free Community plan.**
+You can invite up to **10 members** for free. You can upgrade at any time as your community grows.
+
+Replace the current options with:
+
+✅ **1–10 Members**
+Included with your Free Community.
+
+🔒 **11–50 Members**
+Requires Starter Community.
+
+🔒 **51–150 Members**
+Requires Church Community.
+
+🔒 **151+ Members**
+Requires Ministry Community.
+
+The locked options should:
+
+- Be slightly faded.
+- Include a small "Upgrade" or "Unlock" badge.
+- Not be selectable.
+- Clearly communicate that larger communities are available on paid Community plans.
+
+## User Experience
+
+The onboarding should never make users feel like they are repeatedly being sold to after selecting the Free plan.
+
+Instead, the experience should reinforce:
+
+- "You're all set."
+- "You can start for free today."
+- "Upgrade only when your community grows."
+
+The onboarding should feel fast, welcoming and focused on helping users create their first Prayer Community, with upgrade opportunities appearing naturally when they exceed the Free plan limits rather than before they've experienced the product.
