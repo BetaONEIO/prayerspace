@@ -29,11 +29,8 @@ export const feedStore = {
   },
 };
 
-export const FEED_COMMUNITIES = [
-  { id: "castle-church", name: "Castle Church", letter: "C", color: "#C4521A" },
-  { id: "hope-church", name: "Hope Church", letter: "H", color: "#2E6DB5" },
-  { id: "city-light", name: "City Light Church", letter: "L", color: "#B5820A" },
-  { id: "young-adults", name: "Young Adults", letter: "Y", color: "#6B3FA0" },
-] as const;
+// Community options are populated from the user's real owned communities at runtime.
+// This array is intentionally empty — do not add fake communities here.
+export const FEED_COMMUNITIES: Array<{ id: string; name: string; letter: string; color: string }> = [];
 
-export type FeedCommunityId = typeof FEED_COMMUNITIES[number]["id"];
+export type FeedCommunityId = string;

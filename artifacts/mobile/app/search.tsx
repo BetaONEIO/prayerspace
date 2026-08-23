@@ -1,18 +1,12 @@
 import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, TextInput } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
-import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ChevronLeft, Search as SearchIcon, X, Flame, Heart, Sun, Globe } from "lucide-react-native";
+import { ChevronLeft, Search as SearchIcon, Flame, Heart, Sun, Globe } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 
-const RECENT_SEARCHES = ["Morning Prayer", "Michael Scott", "Peace"];
-const PEOPLE = [
-  { id: "s1", name: "Sarah Miller", sub: "Joined 2 days ago", avatar: "https://randomuser.me/api/portraits/women/32.jpg" },
-  { id: "s2", name: "David Thompson", sub: "In Morning Prayer Circle", avatar: "https://randomuser.me/api/portraits/men/44.jpg" },
-];
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -38,30 +32,6 @@ export default function SearchScreen() {
       </View>
 
       <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
-          <View style={styles.chipRow}>
-            {RECENT_SEARCHES.map((s) => (
-              <Pressable key={s} style={styles.recentChip} onPress={() => setQuery(s)}>
-                <Text style={styles.recentText}>{s}</Text>
-                <X size={14} color={colors.mutedForeground} />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>DISCOVER PEOPLE</Text>
-          {PEOPLE.map((p) => (
-            <View key={p.id} style={styles.personRow}>
-              <View style={styles.personLeft}>
-                <Image source={{ uri: p.avatar }} style={styles.personAvatar} />
-                <View><Text style={styles.personName}>{p.name}</Text><Text style={styles.personSub}>{p.sub}</Text></View>
-              </View>
-              <Pressable style={styles.followBtn}><Text style={styles.followText}>FOLLOW</Text></Pressable>
-            </View>
-          ))}
-        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>POPULAR TOPICS</Text>

@@ -150,21 +150,18 @@ export default function PrayerSessionScreen() {
         {/* Content */}
         <View style={styles.content}>
           <View style={styles.avatarSection}>
-            <View style={styles.avatarBorder}>
-              <Image
-                source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }}
-                style={styles.avatar}
-              />
-            </View>
-            <Text style={styles.prayingFor}>Emma Wilson</Text>
+            <Animated.View style={[styles.prayPulse, { transform: [{ scale: pulseAnim }] }]}>
+              <Text style={styles.prayEmoji}>🙏</Text>
+            </Animated.View>
+            <Text style={styles.prayingFor}>In Prayer</Text>
             <Text style={styles.prayingDesc}>
-              Praying for her mother's recovery and the surgical team.
+              Take a moment to be still and bring your heart before God.
             </Text>
           </View>
 
           <Animated.View style={[styles.transcriptCard, { transform: [{ scale: pulseAnim }] }]}>
             <Text style={styles.transcriptText}>
-              "Lord, we lift up Emma's mother to you today. We ask for your guiding hand upon the surgeons..."
+              "Be still and know that I am God." — Psalm 46:10
             </Text>
           </Animated.View>
 
@@ -259,12 +256,12 @@ function createStyles(colors: ThemeColors) {
       gap: 36,
     },
     avatarSection: { alignItems: "center" as const, gap: 12 },
-    avatarBorder: {
+    prayPulse: {
       width: 100, height: 100, borderRadius: 50,
-      padding: 4, borderWidth: 3,
-      borderColor: colors.primary + "30",
+      backgroundColor: colors.primary + "18",
+      alignItems: "center" as const, justifyContent: "center" as const,
     },
-    avatar: { width: "100%", height: "100%", borderRadius: 50 },
+    prayEmoji: { fontSize: 48 },
     prayingFor: {
       fontSize: 28, fontWeight: "800" as const, color: colors.foreground,
     },

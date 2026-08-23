@@ -1,0 +1,348 @@
+Please perform a **full audit of the entire Prayer Space app and remove all dummy, placeholder, mock and hard-coded user data from the production experience.**
+
+This should not be limited to profiles. Review the entire application.
+
+## Main goal
+
+Prayer Space should only display:
+
+* Real user data
+* Real community data
+* Real prayer data
+* Real notifications
+* Real messages
+* Real activity
+* Real statistics
+
+If real data does not exist, show a proper empty state instead of fake content.
+
+## Audit the entire app for dummy data
+
+Search the full codebase for:
+
+* Hard-coded names
+* Hard-coded profile photos
+* Fake locations
+* Fake prayer counts
+* Fake follower counts
+* Fake group counts
+* Fake activity
+* Fake testimonies
+* Fake Bible verses
+* Fake notifications
+* Fake messages
+* Fake community members
+* Fake communities
+* Fake prayer requests
+* Fake status updates
+* Fake chat conversations
+* Fake timestamps
+* Fake unread counts
+* Fake badges
+* Fake online statuses
+* Fake analytics
+* Fake search results
+* Fake suggested users
+* Fake contact/address book entries
+* Fake invitations
+* Fake onboarding data
+
+Also search for common development/mock terms such as:
+
+* mock
+* dummy
+* placeholder
+* demo
+* fake
+* sample
+* testData
+* seedData
+* mockData
+* exampleData
+* staticData
+
+Do not assume dummy data is only labelled clearly. Inspect hard-coded arrays and objects as well.
+
+## Profiles
+
+Remove all hard-coded profile information such as:
+
+* Michael Scott
+* Scranton, PA
+* Fake profile photos
+* 1.2k prayers
+* 843 followers
+* 15 groups
+* Dummy recent activity
+* Dummy favourite verses
+
+Profiles must be loaded from the real user/profile record.
+
+If information does not exist, hide the field or show an appropriate empty state.
+
+## Status updates
+
+Every status update must come from real database content.
+
+When clicking a status update:
+
+* Resolve the actual author ID.
+* Open that user's real profile.
+* Never navigate to a generic mock profile.
+* Ensure the status author image/name also comes from that user's profile.
+
+## Notifications
+
+Remove all dummy notification records and notification counts.
+
+The notification badge should only reflect real unread notifications.
+
+If there are no notifications:
+
+Show a clean empty state such as:
+
+**No notifications yet**
+
+Do not insert example notifications to make the page look populated.
+
+## Prayer Feed
+
+Audit the main prayer feed.
+
+Remove:
+
+* Fake prayers
+* Fake praise reports
+* Fake answered prayers
+* Fake reactions
+* Fake prayer counts
+* Fake status updates
+* Fake timestamps
+
+If the feed is empty, display an intentional empty state rather than sample content.
+
+## Prayer Communities
+
+Audit all Community screens.
+
+Remove:
+
+* Fake communities
+* Fake member counts
+* Fake administrators
+* Fake community activity
+* Fake channels
+* Fake prayer requests
+* Fake announcements
+* Fake group chats
+
+Community screens must resolve the correct Community ID and load real database data.
+
+## Prayer Groups
+
+Audit Prayer Groups separately if these are stored differently from Prayer Communities.
+
+Remove:
+
+* Dummy groups
+* Dummy membership
+* Dummy group activity
+* Dummy prayer requests
+* Dummy messages
+* Fake "new updates available" states
+
+Only show "New updates available" when genuine newer records exist.
+
+## Messaging and Group Chat
+
+Remove all placeholder chat conversations and messages.
+
+Messages must be loaded using the real:
+
+* sender ID
+* recipient ID
+* group/community ID
+* message ID
+* timestamp
+
+If a conversation has no messages, show an empty conversation state.
+
+Never populate it with example messages.
+
+## Search
+
+Audit search results.
+
+Do not show fake people, prayers, communities or groups when the user searches.
+
+If no results exist, show:
+
+**No results found**
+
+rather than example content.
+
+## Community/user discovery
+
+If the app contains sections such as:
+
+* Suggested people
+* Suggested groups
+* Discover communities
+* Recommended users
+
+These recommendations must come from real database queries.
+
+If no recommendations are available, show an empty state.
+
+## Stats and counts
+
+Audit every numerical statistic shown throughout the app.
+
+Examples:
+
+* Prayer counts
+* Followers
+* Following
+* Community members
+* Group membership
+* Unread notifications
+* Unread messages
+* Prayer streaks
+* Answered prayers
+* Testimony counts
+
+All counts must come from real database queries or derived real data.
+
+Do not hard-code realistic-looking values.
+
+## Online indicators
+
+If the app displays green online dots or "online now" indicators, make sure they are based on genuine presence/session data.
+
+If real presence tracking has not been implemented, remove the online indicator rather than showing fake online status.
+
+## Recent activity
+
+Recent Activity must be generated from real events.
+
+Examples:
+
+* Created a prayer
+* Shared a testimony
+* Joined a Prayer Group
+* Joined a Community
+* Prayer marked answered
+
+Only display events the viewer has permission to see.
+
+If there is no activity, show:
+
+**No recent activity yet**
+
+## Address book
+
+Do not populate contacts with fake users.
+
+Imported contacts, matched users and invitation status should come from real data.
+
+If contact integration is unavailable, show the appropriate permission or empty state.
+
+## Onboarding
+
+Audit onboarding for any temporary values used during development.
+
+Make sure real selections are persisted and passed into the user's actual account.
+
+Do not allow onboarding mock data to leak into:
+
+* Profiles
+* Communities
+* Prayer Groups
+* Preferences
+* Notifications
+
+## Empty states
+
+Where dummy data was previously being used to make a screen look populated, replace it with intentional empty-state design.
+
+Examples:
+
+**No prayers yet**
+Be the first to share a prayer request.
+
+**No Prayer Groups yet**
+Create or join a Prayer Group to start praying together.
+
+**No recent activity**
+Activity will appear here as you use Prayer Space.
+
+**No messages yet**
+Start the conversation.
+
+**No notifications yet**
+Updates will appear here when something needs your attention.
+
+Keep these consistent with the Prayer Space visual style.
+
+## Database and API review
+
+For each affected screen:
+
+1. Identify the correct source table/API.
+2. Confirm the authenticated user ID is being used where appropriate.
+3. Confirm correct foreign keys are being passed.
+4. Check joins.
+5. Check row-level security.
+6. Check loading states.
+7. Check empty states.
+8. Check error states.
+9. Check permissions.
+10. Ensure cached data does not leak between users.
+
+## Important privacy requirement
+
+Removing dummy data must not result in private data being exposed.
+
+Respect privacy rules for:
+
+* Private prayers
+* Anonymous prayers
+* Prayer Groups
+* Prayer Communities
+* Messages
+* Contact information
+* Private profile fields
+
+Only show data that the current viewer is authorised to see.
+
+## Development-only data
+
+If mock data is still useful for development or automated testing, it can remain in clearly separated:
+
+* test fixtures
+* Storybook/demo components
+* development-only seeds
+* automated tests
+
+But it must never appear in the production user flow.
+
+Use environment checks or proper test fixtures rather than runtime fallback data.
+
+## Final audit
+
+After making the changes, perform a second codebase-wide search for remaining dummy/mock data.
+
+Document every location found and whether it was:
+
+* Removed
+* Replaced with real data
+* Moved to development/test-only code
+* Intentionally retained, with a reason
+
+Do not simply hide dummy data visually. Remove the production dependency on it.
+
+## Goal
+
+No user should ever encounter fake people, fake prayers, fake messages, fake communities, fake statistics or fake activity while using Prayer Space.
+
+If real content does not exist, the app should communicate that clearly with a well-designed empty state.

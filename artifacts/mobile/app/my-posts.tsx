@@ -98,7 +98,7 @@ export default function MyPostsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { archivedPosts } = usePrayer();
   const [posts, setPosts] = useState<MyPost[]>(INITIAL_MY_POSTS);
 
@@ -192,13 +192,16 @@ export default function MyPostsScreen() {
         }
         return updated;
       });
+      const realAuthorId = user?.id ?? "";
+      const realAuthorName = profile?.full_name ?? user?.email?.split("@")[0] ?? "";
+      const realAuthorAvatar = profile?.avatar_url ?? "";
       if (isAnsweredUpdate && communityId) {
         feedStore.addPost({
           id: newPost.id,
           communityId,
-          authorId: "sarah_current",
-          authorName: "Sarah",
-          authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
+          authorId: realAuthorId,
+          authorName: realAuthorName,
+          authorAvatar: realAuthorAvatar,
           category: "UPDATE",
           tags: ["answered"],
           timeLabel: "JUST NOW",
@@ -213,9 +216,9 @@ export default function MyPostsScreen() {
           originalPost: {
             id: originalPost.originalPostId ?? originalPost.id,
             communityId,
-            authorId: "sarah_current",
-            authorName: "Sarah",
-            authorAvatar: "https://randomuser.me/api/portraits/women/68.jpg",
+            authorId: realAuthorId,
+            authorName: realAuthorName,
+            authorAvatar: realAuthorAvatar,
             category: originalPost.category,
             tags: [],
             timeLabel: "AGO",

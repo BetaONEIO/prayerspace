@@ -8,17 +8,14 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { type Contact } from "@/mocks/data";
 
-const SUGGESTIONS: Contact[] = [
-  { id: "c1", name: "Michael Scott", avatar: "https://randomuser.me/api/portraits/men/32.jpg" },
-  { id: "c2", name: "Pam Beesly", avatar: "https://randomuser.me/api/portraits/women/45.jpg", lastPrayedFor: "1 week ago" },
-];
+const SUGGESTIONS: Contact[] = [];
 
 export default function SelectContactsTagScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [search, setSearch] = useState("");
-  const [tagged, setTagged] = useState<Contact[]>([SUGGESTIONS[0], { id: "c3", name: "Jim Halpert", avatar: "https://randomuser.me/api/portraits/men/45.jpg" }]);
+  const [tagged, setTagged] = useState<Contact[]>([]);
 
   const toggle = useCallback((contact: Contact) => {
     setTagged((prev) => {
@@ -60,7 +57,7 @@ export default function SelectContactsTagScreen() {
                 ))}
               </View>
             )}
-            <Text style={styles.sectionLabel}>Suggestions from Prayer</Text>
+            <Text style={styles.sectionLabel}>People you pray for</Text>
           </>
         }
         renderItem={({ item }) => {

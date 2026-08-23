@@ -1,446 +1,164 @@
-import React, { useState, useMemo} from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  SectionList,
-  Linking,
-  Platform,
-  Alert,
-} from "react-native";
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, Pressable, Platform, Alert, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Gift, MessageCircle, MessageSquare, Phone } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
-import { ThemeColors } from "@/constants/colors";
+import { ArrowLeft, Gift, UserPlus } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { ThemeColors } from "@/constants/colors";
+import * as Haptics from "expo-haptics";
 
-interface AppContact {
-  id: string;
-  initials: string;
-  name: string;
-  phone: string;
-  onApp: true;
-  userId: string;
-}
-
-interface OffAppContact {
-  id: string;
-  initials: string;
-  name: string;
-  phone: string;
-  onApp: false;
-  rawPhone: string;
-}
-
-type ContactItem = AppContact | OffAppContact;
-
-const ON_APP: AppContact[] = [
-  { id: "a1", initials: "SR", name: "Sarah Reynolds", phone: "+1 (555) 2291", onApp: true, userId: "u1" },
-  { id: "a2", initials: "MP", name: "Marcus Powell", phone: "+1 (555) 4410", onApp: true, userId: "u2" },
-  { id: "a3", initials: "AK", name: "Aisha Kamara", phone: "+1 (555) 8823", onApp: true, userId: "u3" },
-];
-
-const OFF_APP: OffAppContact[] = [
-  { id: "b1", initials: "JD", name: "John Doe", phone: "+1 (555) 0912", onApp: false, rawPhone: "15550912" },
-  { id: "b2", initials: "MM", name: "Maria Mendez", phone: "+1 (555) 7744", onApp: false, rawPhone: "15557744" },
-  { id: "b3", initials: "TR", name: "Tom Richards", phone: "+1 (555) 3311", onApp: false, rawPhone: "15553311" },
-  { id: "b4", initials: "LC", name: "Lisa Chen", phone: "+1 (555) 8876", onApp: false, rawPhone: "15558876" },
-];
-
-const INVITE_MESSAGE = "Hey! I've been using Prayer Space to share prayer requests and stay connected. Join me! 🙏";
+const INVITE_MESSAGE =
+  "Hey! I've been using Prayer Space to share prayer requests and stay connected. Join me! 🙏";
 
 export default function InviteContactsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const [messaged, setMessaged] = useState<string[]>([]);
 
-  const handleOpenApp = (contact: AppContact) => {
+  const haptic = () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/chat/${contact.userId}` as never);
   };
 
-  const handleWhatsApp = async (contact: OffAppContact) => {
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const url = `whatsapp://send?phone=${contact.rawPhone}&text=${encodeURIComponent(INVITE_MESSAGE)}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-      setMessaged((prev) => [...prev, contact.id]);
-    } else {
-      handleSMS(contact);
+  const handleShareLink = () => {
+    haptic();
+    // Share via system share sheet when available
+    if (Platform.OS === "web") {
+      Alert.alert("Share", "Copy the App Store / Play Store link and share it with a friend.");
+      return;
     }
-  };
-
-  const handleSMS = (contact: OffAppContact) => {
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const url =
-      Platform.OS === "ios"
-        ? `sms:${contact.rawPhone}&body=${encodeURIComponent(INVITE_MESSAGE)}`
-        : `sms:${contact.rawPhone}?body=${encodeURIComponent(INVITE_MESSAGE)}`;
-    Linking.openURL(url).then(() => {
-      setMessaged((prev) => [...prev, contact.id]);
-    }).catch(() => {
+    Linking.openURL(
+      `sms:?body=${encodeURIComponent(INVITE_MESSAGE)}`
+    ).catch(() => {
       Alert.alert("Unavailable", "Could not open messaging app.");
     });
   };
 
-  const handleWhatsAppOrSMS = (contact: OffAppContact) => {
-    if (Platform.OS === "web") {
-      Alert.alert("Not available", "WhatsApp and SMS are only available on mobile.");
-      return;
-    }
-    Alert.alert(
-      `Invite ${contact.name}`,
-      "How would you like to reach them?",
-      [
-        {
-          text: "WhatsApp",
-          onPress: () => void handleWhatsApp(contact),
-        },
-        {
-          text: "SMS / Text",
-          onPress: () => handleSMS(contact),
-        },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
-
-  const sections = [
-    { title: "ON PRAYER SPACE", data: ON_APP as ContactItem[] },
-    { title: "NOT ON THE APP YET", data: OFF_APP as ContactItem[] },
-  ];
-
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>Your Contacts</Text>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <ArrowLeft size={20} color={colors.secondaryForeground} />
-          </Pressable>
+        <Text style={styles.title}>Invite Friends</Text>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <ArrowLeft size={20} color={colors.secondaryForeground} />
+        </Pressable>
+      </View>
+
+      <View style={styles.bannerCard}>
+        <View style={styles.giftCircle}>
+          <Gift size={26} color={colors.primaryForeground} />
         </View>
-        <View style={styles.bannerCard}>
-          <View style={styles.giftCircle}>
-            <Gift size={26} color={colors.primaryForeground} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>Share the Light</Text>
-            <Text style={styles.bannerSub}>
-              Invite friends and unlock the "Prayer Warrior" badge.
-            </Text>
-          </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.bannerTitle}>Invite a friend</Text>
+          <Text style={styles.bannerSub}>
+            Share Prayer Space and pray together.
+          </Text>
         </View>
       </View>
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={false}
-        renderSectionHeader={({ section }) => (
-          <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionLabel}>{section.title}</Text>
-            {section.title === "ON PRAYER SPACE" && (
-              <View style={styles.onAppPill}>
-                <View style={styles.onAppDot} />
-                <Text style={styles.onAppPillText}>{ON_APP.length} connected</Text>
-              </View>
-            )}
-          </View>
-        )}
-        renderItem={({ item, section }) => {
-          if (item.onApp) {
-            const c = item as AppContact;
-            return (
-              <View style={styles.contactCard}>
-                <View style={styles.contactLeft}>
-                  <View style={[styles.initials, styles.initialsApp]}>
-                    <Text style={styles.initialsText}>{c.initials}</Text>
-                  </View>
-                  <View>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.contactName}>{c.name}</Text>
-                    </View>
-                    <Text style={styles.contactPhone}>{c.phone}</Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={styles.messageBtn}
-                  onPress={() => handleOpenApp(c)}
-                  testID={`message-${c.id}`}
-                >
-                  <MessageCircle size={14} color={colors.primaryForeground} />
-                  <Text style={styles.messageBtnText}>Message</Text>
-                </Pressable>
-              </View>
-            );
-          }
-
-          const c = item as OffAppContact;
-          const done = messaged.includes(c.id);
-          return (
-            <View style={styles.contactCard}>
-              <View style={styles.contactLeft}>
-                <View style={[styles.initials, styles.initialsOff]}>
-                  <Text style={[styles.initialsText, styles.initialsTextOff]}>{c.initials}</Text>
-                </View>
-                <View>
-                  <Text style={styles.contactName}>{c.name}</Text>
-                  <Text style={styles.contactPhone}>{c.phone}</Text>
-                </View>
-              </View>
-              {done ? (
-                <View style={styles.sentPill}>
-                  <Text style={styles.sentPillText}>Invited ✓</Text>
-                </View>
-              ) : (
-                <View style={styles.offAppActions}>
-                  <Pressable
-                    style={styles.whatsappBtn}
-                    onPress={() => handleWhatsApp(c)}
-                    testID={`whatsapp-${c.id}`}
-                  >
-                    <Text style={styles.whatsappBtnText}>WhatsApp</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.smsBtn}
-                    onPress={() => handleSMS(c)}
-                    testID={`sms-${c.id}`}
-                  >
-                    <MessageSquare size={14} color={colors.secondaryForeground} />
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          );
-        }}
-        SectionSeparatorComponent={() => <View style={styles.sectionGap} />}
-      />
+      <View style={styles.emptyState}>
+        <View style={styles.emptyIcon}>
+          <UserPlus size={32} color={colors.mutedForeground} />
+        </View>
+        <Text style={styles.emptyTitle}>Share Prayer Space</Text>
+        <Text style={styles.emptyBody}>
+          Invite friends by sending them a link via text or any messaging app.
+        </Text>
+        <Pressable style={styles.shareBtn} onPress={handleShareLink}>
+          <Text style={styles.shareBtnText}>Send Invite</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
 
-const createStyles = (colors: ThemeColors) => StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800" as const,
-    color: colors.foreground,
-    letterSpacing: -0.5,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bannerCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    backgroundColor: colors.primary + "12",
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: colors.primary + "20",
-  },
-  giftCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  bannerTitle: {
-    fontSize: 17,
-    fontWeight: "700" as const,
-    color: colors.foreground,
-    marginBottom: 4,
-  },
-  bannerSub: {
-    fontSize: 13,
-    color: colors.mutedForeground,
-    lineHeight: 18,
-  },
-  list: {
-    paddingHorizontal: 24,
-    paddingBottom: 48,
-  },
-  sectionGap: {
-    height: 8,
-  },
-  sectionHeaderWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "800" as const,
-    color: colors.mutedForeground,
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-  onAppPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: colors.green + "18",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  onAppDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.green,
-  },
-  onAppPillText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.green,
-  },
-  contactCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.card,
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.border + "50",
-  },
-  contactLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    flex: 1,
-  },
-  initials: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  initialsApp: {
-    backgroundColor: colors.primary + "18",
-  },
-  initialsOff: {
-    backgroundColor: colors.secondary,
-  },
-  initialsText: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: colors.primary,
-  },
-  initialsTextOff: {
-    color: colors.secondaryForeground,
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  contactName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: colors.foreground,
-  },
-  contactPhone: {
-    fontSize: 12,
-    color: colors.mutedForeground,
-    marginTop: 2,
-  },
-  messageBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  messageBtnText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: colors.primaryForeground,
-  },
-  offAppActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  whatsappBtn: {
-    backgroundColor: "#25D366",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    shadowColor: "#25D366",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  whatsappBtnText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: "#FFFFFF",
-  },
-  smsBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.secondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sentPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-  },
-  sentPillText: {
-    fontSize: 12,
-    fontWeight: "600" as const,
-    color: colors.mutedForeground,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingTop: 12,
+      paddingBottom: 16,
+    },
+    title: { fontSize: 20, fontWeight: "800" as const, color: colors.foreground },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bannerCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+      marginHorizontal: 24,
+      padding: 20,
+      borderRadius: 24,
+      backgroundColor: colors.primary,
+      marginBottom: 32,
+    },
+    giftCircle: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: "rgba(255,255,255,0.2)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bannerTitle: {
+      fontSize: 16,
+      fontWeight: "700" as const,
+      color: colors.primaryForeground,
+      marginBottom: 4,
+    },
+    bannerSub: {
+      fontSize: 13,
+      color: colors.primaryForeground + "CC",
+      lineHeight: 18,
+    },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 40,
+      gap: 12,
+    },
+    emptyIcon: {
+      width: 76,
+      height: 76,
+      borderRadius: 38,
+      backgroundColor: colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 8,
+    },
+    emptyTitle: {
+      fontSize: 20,
+      fontWeight: "700" as const,
+      color: colors.foreground,
+      textAlign: "center",
+    },
+    emptyBody: {
+      fontSize: 14,
+      color: colors.mutedForeground,
+      textAlign: "center",
+      lineHeight: 22,
+    },
+    shareBtn: {
+      marginTop: 16,
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      paddingHorizontal: 32,
+      paddingVertical: 16,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    shareBtnText: { fontSize: 15, fontWeight: "700" as const, color: colors.primaryForeground },
+  });
+}

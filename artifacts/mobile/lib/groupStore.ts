@@ -25,27 +25,16 @@ export interface GroupState {
   members: GroupMember[];
 }
 
-const DEFAULT_MEMBERS: GroupMember[] = [
-  { id: "m1", name: "Pastor Michael", avatar: "https://randomuser.me/api/portraits/men/32.jpg", role: "Admin", isOnline: true, joinedDate: "Founder" },
-  { id: "m2", name: "Alice Thompson", avatar: "https://randomuser.me/api/portraits/women/62.jpg", role: "Admin", isOnline: true, joinedDate: "Since Jan 2023" },
-  { id: "m3", name: "David Chen", avatar: "https://randomuser.me/api/portraits/men/85.jpg", role: "Leader", isOnline: false, joinedDate: "Since Mar 2023" },
-  { id: "m4", name: "Emma Watson", avatar: "https://randomuser.me/api/portraits/women/44.jpg", role: "Leader", isOnline: true, joinedDate: "Since Jun 2023" },
-  { id: "m5", name: "Chloe Martin", avatar: "https://randomuser.me/api/portraits/women/24.jpg", role: "Member", isOnline: true, joinedDate: "Since Aug 2023" },
-  { id: "m6", name: "Bob Jenkins", avatar: "https://randomuser.me/api/portraits/men/42.jpg", role: "Member", isOnline: false, joinedDate: "Since Sep 2023" },
-  { id: "m7", name: "Diana Prince", avatar: "https://randomuser.me/api/portraits/women/33.jpg", role: "Member", isOnline: true, joinedDate: "Since Oct 2023" },
-  { id: "m8", name: "Chris Evans", avatar: "https://randomuser.me/api/portraits/men/12.jpg", role: "Member", isOnline: false, joinedDate: "Since Nov 2023" },
-];
-
 function makeDefault(id: string): GroupState {
   return {
     id,
-    name: "Grace Community",
-    description: "A welcoming space for prayer, encouragement, and growing together in faith.",
+    name: "",
+    description: "",
     photoUri: null,
     privacy: "Private",
     safeSpace: true,
     focus: "Prayer",
-    members: DEFAULT_MEMBERS.map((m) => ({ ...m })),
+    members: [],
   };
 }
 

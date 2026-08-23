@@ -301,7 +301,7 @@ export default function ReceivedPrayerScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.senderSection}>
-            <Pressable style={styles.avatarWrap} onPress={() => router.push({ pathname: "/profile/[id]", params: { id: prayer.senderId ?? prayer.id } })}>
+            <Pressable style={styles.avatarWrap} onPress={() => router.push(`/user/${prayer.senderId ?? prayer.id}` as never)}>
               <Image source={{ uri: prayer.senderAvatar }} style={styles.avatar} />
               <View style={styles.avatarBadge}>
                 {isVoice ? (

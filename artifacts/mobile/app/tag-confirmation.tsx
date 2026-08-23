@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { UserCheck } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
@@ -11,6 +11,10 @@ export default function TagConfirmationScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
+  const { names, count } = useLocalSearchParams<{ names?: string; count?: string }>();
+
+  const tagCount = count ? parseInt(count, 10) : 0;
+  const displayNames = names?.trim();
 
   return (
     <View style={[styles.overlay, { paddingBottom: insets.bottom }]}>
@@ -21,8 +25,11 @@ export default function TagConfirmationScreen() {
         <View style={styles.textBlock}>
           <Text style={styles.title}>Confirm Tags</Text>
           <Text style={styles.subtitle}>
-            You are about to tag <Text style={styles.bold}>Michael Scott</Text> and{" "}
-            <Text style={styles.bold}>Jim Halpert</Text> in this prayer. They will be notified.
+            {displayNames
+              ? <>You are about to tag <Text style={styles.bold}>{displayNames}</Text> in this prayer. They will be notified.</>
+              : tagCount > 0
+              ? `You are about to tag ${tagCount} ${tagCount === 1 ? "person" : "people"} in this prayer. They will be notified.`
+              : "You are about to tag people in this prayer. They will be notified."}
           </Text>
         </View>
         <Pressable style={styles.confirmBtn} onPress={() => router.replace("/prayer-sent")}>

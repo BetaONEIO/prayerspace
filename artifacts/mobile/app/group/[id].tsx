@@ -128,109 +128,14 @@ interface Member {
   joinedDate?: string;
 }
 
-const TOTAL_GROUP_MEMBERS = 12;
-const IS_CURRENT_USER_ADMIN = true;
+// Group member count and admin status are resolved from real group state at runtime.
+// Do NOT add hardcoded members here.
+const TOTAL_GROUP_MEMBERS = 0;
+const IS_CURRENT_USER_ADMIN = false;
 
 const CHAT_MESSAGES: ChatMessage[] = [];
 
-const MEMBERS: Member[] = [
-  {
-    id: "m1",
-    name: "Pastor Michael",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    role: "Admin",
-    isOnline: true,
-    joinedDate: "Founder",
-  },
-  {
-    id: "m2",
-    name: "Alice Thompson",
-    avatar: "https://randomuser.me/api/portraits/women/62.jpg",
-    role: "Admin",
-    isOnline: true,
-    joinedDate: "Since Jan 2023",
-  },
-  {
-    id: "m3",
-    name: "David Chen",
-    avatar: "https://randomuser.me/api/portraits/men/85.jpg",
-    role: "Leader",
-    isOnline: false,
-    joinedDate: "Since Mar 2023",
-  },
-  {
-    id: "m4",
-    name: "Emma Watson",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    role: "Leader",
-    isOnline: true,
-    joinedDate: "Since Jun 2023",
-  },
-  {
-    id: "m5",
-    name: "Chloe Martin",
-    avatar: "https://randomuser.me/api/portraits/women/24.jpg",
-    role: "Member",
-    isOnline: true,
-    joinedDate: "Since Aug 2023",
-  },
-  {
-    id: "m6",
-    name: "Bob Jenkins",
-    avatar: "https://randomuser.me/api/portraits/men/42.jpg",
-    role: "Member",
-    isOnline: false,
-    joinedDate: "Since Sep 2023",
-  },
-  {
-    id: "m7",
-    name: "Diana Prince",
-    avatar: "https://randomuser.me/api/portraits/women/33.jpg",
-    role: "Member",
-    isOnline: true,
-    joinedDate: "Since Oct 2023",
-  },
-  {
-    id: "m8",
-    name: "Chris Evans",
-    avatar: "https://randomuser.me/api/portraits/men/12.jpg",
-    role: "Member",
-    isOnline: false,
-    joinedDate: "Since Nov 2023",
-  },
-  {
-    id: "m9",
-    name: "Sarah Jenkins",
-    avatar: "https://randomuser.me/api/portraits/women/45.jpg",
-    role: "Member",
-    isOnline: true,
-    joinedDate: "Since Dec 2023",
-  },
-  {
-    id: "m10",
-    name: "Nathan Ford",
-    avatar: "https://randomuser.me/api/portraits/men/55.jpg",
-    role: "Member",
-    isOnline: false,
-    joinedDate: "Since Jan 2024",
-  },
-  {
-    id: "m11",
-    name: "Grace Kim",
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-    role: "Member",
-    isOnline: true,
-    joinedDate: "Since Feb 2024",
-  },
-  {
-    id: "m12",
-    name: "James Okafor",
-    avatar: "https://randomuser.me/api/portraits/men/75.jpg",
-    role: "Member",
-    isOnline: false,
-    joinedDate: "Since Mar 2024",
-  },
-];
+const MEMBERS: Member[] = [];
 
 function getUpdateTagLabels(colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> {
   return {

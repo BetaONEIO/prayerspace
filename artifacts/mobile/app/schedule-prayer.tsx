@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, Platform, Alert, KeyboardAvoidingView } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
-import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
 import { ChevronLeft, Calendar, Clock, Plus } from "lucide-react-native";
@@ -10,10 +9,6 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import ThemedSwitch from "@/components/ThemedSwitch";
 
-const PRAY_WITH = [
-  { id: "p1", name: "Michael", avatar: "https://randomuser.me/api/portraits/men/32.jpg" },
-  { id: "p2", name: "Chloe", avatar: "https://randomuser.me/api/portraits/women/24.jpg" },
-];
 
 export default function SchedulePrayerScreen() {
   const router = useRouter();
@@ -50,11 +45,11 @@ export default function SchedulePrayerScreen() {
               <View style={styles.dateRow}>
                 <View style={styles.dateField}>
                   <Text style={styles.label}>DATE</Text>
-                  <Pressable style={styles.dateBtn}><Text style={styles.dateBtnText}>Oct 25, 2024</Text><Calendar size={18} color={colors.primary} /></Pressable>
+                  <Pressable style={styles.dateBtn}><Text style={styles.dateBtnText}>Select date</Text><Calendar size={18} color={colors.primary} /></Pressable>
                 </View>
                 <View style={styles.dateField}>
                   <Text style={styles.label}>TIME</Text>
-                  <Pressable style={styles.dateBtn}><Text style={styles.dateBtnText}>08:00 AM</Text><Clock size={18} color={colors.primary} /></Pressable>
+                  <Pressable style={styles.dateBtn}><Text style={styles.dateBtnText}>Select time</Text><Clock size={18} color={colors.primary} /></Pressable>
                 </View>
               </View>
 
@@ -65,12 +60,6 @@ export default function SchedulePrayerScreen() {
             <View style={styles.section}>
               <Text style={styles.label}>PRAYING WITH</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.prayWithRow}>
-                {PRAY_WITH.map((p) => (
-                  <View key={p.id} style={styles.prayWithItem}>
-                    <View style={styles.prayWithAvatarWrap}><Image source={{ uri: p.avatar }} style={styles.prayWithAvatar} /></View>
-                    <Text style={styles.prayWithName}>{p.name}</Text>
-                  </View>
-                ))}
                 <Pressable style={styles.prayWithItem}>
                   <View style={styles.inviteCircle}><Plus size={22} color={colors.mutedForeground} /></View>
                   <Text style={styles.prayWithNameMuted}>Invite</Text>
