@@ -1,0 +1,374 @@
+Please improve the **Browse Communities** page in Prayer Space.
+
+The current visual design is good and should largely be preserved, but the discovery and search experience needs to be more useful.
+
+## Critical requirement: NO dummy data
+
+Do not add any:
+
+* Dummy communities
+* Example communities
+* Fake churches
+* Fake member counts
+* Fake community images
+* Fake activity
+* Placeholder search results
+* Hard-coded recommendations
+* Seeded content purely to make the page appear populated
+
+Every community displayed on this page must represent a **real Prayer Community from the database** that the current user is authorised to discover.
+
+If no real data exists, show a proper empty state.
+
+Never use mock data as a fallback if a query returns no results or fails.
+
+---
+
+# 1. Make "Browse" actually browsable
+
+Currently the page has a large empty area saying:
+
+**Browse available communities**
+
+Instead, when the page opens, query the database for real **public/discoverable Prayer Communities**.
+
+If real public communities exist, display them immediately without requiring the user to search first.
+
+Possible sections can include:
+
+### Recently Active
+
+Real public communities with genuine recent activity.
+
+### Popular Communities
+
+Real public communities ordered using genuine data such as member count or activity.
+
+### Suggested Communities
+
+Only display this section if there is genuine recommendation logic available.
+
+For example, suggestions could eventually be based on:
+
+* Communities friends belong to
+* Location, where users have chosen to share it
+* Interests/prayer topics
+* Existing Community relationships
+
+Do NOT randomly label communities as "Suggested".
+
+If there is no real recommendation logic yet, simply omit this section.
+
+---
+
+# 2. Community cards
+
+Create clean, compact Community result cards using the existing Prayer Space visual style.
+
+Where real data exists, a card could contain:
+
+* Community image/logo
+* Community name
+* Community type
+* Location, if provided and public
+* Short description
+* Real member count
+* Public/private status where appropriate
+* Recent activity indicator if genuinely supported
+* "View Community" action
+
+Do not show a field if that Community has not provided the corresponding data.
+
+Do not replace missing values with fake information.
+
+The whole card can also be tappable to open the Community.
+
+---
+
+# 3. Improve search
+
+Search should operate across real Community data.
+
+Allow users to search using relevant fields such as:
+
+* Community name
+* Church/ministry name
+* Location
+* Description
+* Category
+* Prayer topic/tags, if these exist
+
+Change the placeholder from:
+
+**Search communities...**
+
+to something more useful such as:
+
+**Search by name, church, location or topic**
+
+Do not introduce new searchable fields solely for this screen if they don't exist yet. Use the existing Community data model where possible.
+
+---
+
+# 4. Live search experience
+
+As the user types, update the results underneath the search field.
+
+For example:
+
+User types:
+
+**Hope**
+
+Then show:
+
+**3 communities found**
+
+followed by the real matching Community cards.
+
+Do not require a full page refresh.
+
+Use sensible debounce behaviour so a database query is not performed on every individual keystroke unnecessarily.
+
+---
+
+# 5. Search state
+
+When the user starts searching, prioritise the search experience.
+
+The page should effectively become:
+
+Search field
+
+↓
+
+Result count
+
+↓
+
+Matching Communities
+
+The existing browse/discovery content can temporarily disappear while an active search is being performed.
+
+When the search field is cleared, return to the normal Browse Communities view.
+
+---
+
+# 6. No results
+
+If a search returns zero real results, show:
+
+**No communities found**
+
+Supporting text:
+
+**Try another search or join a private Prayer Community with an invite code.**
+
+Do not insert suggested/example communities underneath simply to fill the space.
+
+---
+
+# 7. Empty Browse state
+
+If there are currently no real public Prayer Communities available, replace the existing generic browse message with a proper empty state.
+
+For example:
+
+**No public communities yet**
+
+**Public Prayer Communities will appear here when they become available.**
+
+Then retain the option to join a private Community using an invite code.
+
+Use an existing Prayer Space styled icon for the empty state.
+
+Do not use a generic Unicode emoji.
+
+---
+
+# 8. Improve "Private community?" wording
+
+Change:
+
+**Private community?**
+
+to:
+
+**Have an invite code?**
+
+Then change the card to:
+
+**Join a private community**
+
+Supporting text:
+
+**Enter the code shared by your church or group.**
+
+This is clearer from the user's perspective.
+
+Tapping this should open the existing Join with a Code flow.
+
+---
+
+# 9. Keyboard-aware search
+
+This screen must work properly with the iOS and Android keyboards.
+
+When the search field receives focus:
+
+* Keep the search field visible.
+* Search results must appear above the keyboard.
+* Results must remain vertically scrollable.
+* The keyboard must not cover important results.
+* Tapping a Community should dismiss the keyboard before navigating.
+* Tapping outside the search field should dismiss the keyboard.
+* Scrolling the results should dismiss the keyboard naturally where appropriate.
+* Clearing the search should return to Browse mode.
+* The layout should return correctly when the keyboard closes.
+
+Do not allow the keyboard to create large inaccessible areas of the page.
+
+---
+
+# 10. Privacy and discoverability
+
+Only Communities explicitly allowed to appear publicly should be returned by Browse/Search.
+
+Private Communities must NEVER appear in:
+
+* Browse
+* Search
+* Popular
+* Recently Active
+* Suggested Communities
+
+Private Communities should only be accessible through authorised mechanisms such as:
+
+* Invite code
+* Direct invitation
+* Existing membership
+
+Ensure this is enforced by backend/database permissions, not just hidden in the frontend.
+
+---
+
+# 11. Real member counts
+
+If member counts are displayed, calculate them from genuine Community membership records.
+
+Do not use:
+
+* Hard-coded counts
+* Estimated counts
+* Random counts
+* Placeholder counts
+
+If member counts should not be publicly visible according to the Community's privacy settings, don't show them.
+
+---
+
+# 12. Loading and error states
+
+Add proper states for:
+
+### Loading
+
+Use the existing Prayer Space loading/skeleton style while real Community records are being retrieved.
+
+### No communities
+
+Display the intentional empty state.
+
+### No search results
+
+Display the search-specific empty state.
+
+### Database/API error
+
+Display something such as:
+
+**We couldn't load communities right now.**
+
+Provide a Retry option.
+
+CRITICAL:
+
+An API/database error must NEVER cause dummy Community data to be displayed as a fallback.
+
+---
+
+# 13. Navigation
+
+When a real Community card is selected:
+
+`Community card → community_id → Community page`
+
+Load the Community using its real database ID.
+
+Do not pass hard-coded Community information between screens.
+
+The Community ID should be the source of truth.
+
+---
+
+# 14. Prayer Space visual style
+
+Keep this page consistent with the existing Prayer Space design.
+
+Reuse:
+
+* Existing typography
+* Existing spacing
+* Existing card styles
+* Existing border radius
+* Existing colours
+* Existing button styles
+* Existing iconography
+
+Do not use standard emojis.
+
+Any icons used for:
+
+* Search
+* Community
+* Location
+* Members
+* Private Community
+* Invite code
+* Empty states
+
+should use the existing Prayer Space icon style.
+
+Reuse existing app icons wherever possible rather than creating inconsistent new ones.
+
+---
+
+# Final expected behaviour
+
+When I open Browse Communities:
+
+### If real public Communities exist:
+
+I immediately see real Communities I can browse.
+
+### If I search:
+
+I see real matching Communities from the database.
+
+### If nothing matches:
+
+I see a proper "No communities found" state.
+
+### If there are no public Communities:
+
+I see a proper empty state.
+
+### If I have an invite code:
+
+I can clearly access the private Community joining flow.
+
+### At no point:
+
+Should Prayer Space invent or display dummy Community data.
+
+The goal is to make this feel like a genuine Community discovery experience while maintaining strict privacy and ensuring **100% of displayed Community content comes from real application data**.

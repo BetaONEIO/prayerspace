@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
 const COLOR_PALETTES: Array<{ accent: string; gradient: [string, string, string] }> = [
@@ -72,7 +72,10 @@ export function useDiscoverCommunities(searchQuery: string) {
   const [communities, setCommunities] = useState<DiscoverCommunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const refetch = useCallback(() => setRetryCount((n) => n + 1), []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -105,13 +108,13 @@ export function useDiscoverCommunities(searchQuery: string) {
           if (isTableMissing) {
             setCommunities([]);
           } else {
-            setError("Couldn't load communities. Please try again.");
+            setError("We couldn't load communities right now.");
           }
         } else {
           setCommunities((data as DBRow[]).map(mapRow));
         }
       } catch {
-        setError("Couldn't load communities. Please try again.");
+        setError("We couldn't load communities right now.");
       } finally {
         setLoading(false);
       }
@@ -120,7 +123,7 @@ export function useDiscoverCommunities(searchQuery: string) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [searchQuery]);
+  }, [searchQuery, retryCount]);
 
-  return { communities, loading, error };
+  return { communities, loading, error, refetch };
 }

@@ -389,7 +389,34 @@ export const mailer = {
   alter table public.prayer_requests enable row level security;
   create policy "Authors can manage own prayer requests" on public.prayer_requests
     for all using (auth.uid() = author_id) with check (auth.uid() = author_id);
-  create policy "Anyone can view public prayer requests" on public.prayer_requests
+  -- DEPRECATED: replaced by the two policies below
+  -- create policy "Anyone can view public prayer requests" on public.prayer_requests ...
+
+  -- Run this migration in the Supabase SQL editor to enable friend-based feed:
+  --
+  -- DROP POLICY IF EXISTS "Anyone can view public prayer requests" ON public.prayer_requests;
+  -- DROP POLICY IF EXISTS "Public posts visible to all" ON public.prayer_requests;
+  -- DROP POLICY IF EXISTS "Friends can read friends posts" ON public.prayer_requests;
+  --
+  -- CREATE POLICY "Public posts visible to all" ON public.prayer_requests
+  --   FOR SELECT USING (audience = 'everyone' AND status != 'archived');
+  --
+  -- CREATE POLICY "Friends can read friends posts" ON public.prayer_requests
+  --   FOR SELECT USING (
+  --     audience = 'friends' AND status != 'archived'
+  --     AND EXISTS (
+  --       SELECT 1 FROM public.friend_requests fr
+  --       WHERE fr.status = 'accepted'
+  --       AND (
+  --         (fr.sender_id = auth.uid() AND fr.receiver_id = prayer_requests.author_id)
+  --         OR
+  --         (fr.receiver_id = auth.uid() AND fr.sender_id = prayer_requests.author_id)
+  --       )
+  --     )
+  --   );
+  --
+  -- ALTER PUBLICATION supabase_realtime ADD TABLE public.prayer_requests;
+
     for select using (audience = 'everyone' and status != 'archived');
 
   -- prayer_engagements — tracks who prayed for a request

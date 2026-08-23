@@ -284,8 +284,8 @@ export default function CommunityScreen() {
   }, [tabParam]);
   const [prayedPosts, setPrayedPosts] = useState<Set<string>>(new Set());
   const [commentPost, setCommentPost] = useState<FeedPost | null>(null);
-  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as FeedPost[]);
-  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as FeedPost[]);
+  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as unknown as FeedPost[]);
+  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as unknown as FeedPost[]);
   const [repostTarget, setRepostTarget] = useState<FeedPost | null>(null);
   const [postActionsTarget, setPostActionsTarget] = useState<FeedPost | null>(null);
   const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
@@ -1763,7 +1763,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
   const searchInputRef = useRef<TextInput>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { communities: dbCommunities, loading: dbLoading, error: dbError } = useDiscoverCommunities(searchQuery);
+  const { communities: dbCommunities, loading: dbLoading, error: dbError, refetch: refetchCommunities } = useDiscoverCommunities(searchQuery);
 
   useEffect(() => {
     if (visible) {
@@ -1869,7 +1869,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
           <TextInput
             ref={searchInputRef}
             style={styles.browseSearchInput}
-            placeholder="Search communities..."
+            placeholder="Search by name, church, location or topic"
             placeholderTextColor={colors.mutedForeground + "80"}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -1899,16 +1899,34 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             ) : dbError ? (
               <View style={styles.browseNoResults}>
                 <Globe size={28} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>Browse available communities</Text>
+                <Text style={styles.browseNoResultsText}>We couldn't load communities right now.</Text>
+                <Pressable
+                  style={[styles.browseCommunityJoinBtn, { marginTop: 12, paddingHorizontal: 20 }]}
+                  onPress={refetchCommunities}
+                >
+                  <Text style={styles.browseCommunityJoinText}>Retry</Text>
+                </Pressable>
               </View>
             ) : dbCommunities.length > 0 ? (
-              dbCommunities.map((community: DiscoverCommunity) => {
+              <>
+                {searchQuery.trim() ? (
+                  <Text style={styles.browseResultCount}>
+                    {dbCommunities.length} {dbCommunities.length === 1 ? "community" : "communities"} found
+                  </Text>
+                ) : (
+                  <Text style={styles.browseSectionHeader}>Popular Communities</Text>
+                )}
+              {dbCommunities.map((community: DiscoverCommunity) => {
                 const isJoined = joinedCommunityIds.includes(community.id);
                 return (
                   <Pressable
                     key={community.id}
                     style={[styles.browseCommunityCard, isJoined && { opacity: 0.75 }]}
-                    onPress={() => { if (isJoined) return; onViewProfile(community as Community); }}
+                    onPress={() => {
+                      if (isJoined) return;
+                      Keyboard.dismiss();
+                      onViewProfile(community as Community);
+                    }}
                   >
                     <LinearGradient
                       colors={community.gradientColors}
@@ -1951,28 +1969,30 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                     )}
                   </Pressable>
                 );
-              })
+              })}
+              </>
             ) : searchQuery.trim() ? (
               <View style={styles.browseNoResults}>
                 <Search size={28} color={colors.mutedForeground + "60"} />
                 <Text style={styles.browseNoResultsText}>No communities found</Text>
-                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Check the spelling or try another search.</Text>
-                <Pressable style={[styles.browseCommunityJoinBtn, { marginTop: 12, paddingHorizontal: 16 }]} onPress={onCreateCommunity}>
-                  <Text style={styles.browseCommunityJoinText}>Create a community</Text>
-                </Pressable>
+                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 4, lineHeight: 18 }]}>
+                  Try another search or join a private Prayer Community with an invite code.
+                </Text>
               </View>
             ) : (
               <View style={styles.browseNoResults}>
-                <Globe size={28} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>No communities found yet</Text>
-                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 2 }]}>Try searching or create a community.</Text>
+                <HandHeart size={32} color={colors.mutedForeground + "60"} />
+                <Text style={styles.browseNoResultsText}>No public communities yet</Text>
+                <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 4, lineHeight: 18 }]}>
+                  Public Prayer Communities will appear here when they become available.
+                </Text>
               </View>
             )}
 
             <View style={styles.browsePrivateSection}>
               <View style={styles.browsePrivateDivider}>
                 <View style={styles.browsePrivateLine} />
-                <Text style={styles.browsePrivateDividerText}>Private community?</Text>
+                <Text style={styles.browsePrivateDividerText}>Have an invite code?</Text>
                 <View style={styles.browsePrivateLine} />
               </View>
 
@@ -1983,7 +2003,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                   </View>
                   <View>
                     <Text style={styles.browsePrivateToggleTitle}>Join with a code</Text>
-                    <Text style={styles.browsePrivateToggleSub}>For church family & invite-only groups</Text>
+                    <Text style={styles.browsePrivateToggleSub}>Enter the code shared by your church or group.</Text>
                   </View>
                 </View>
                 <ChevronDown
@@ -5646,6 +5666,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 21,
     fontWeight: "400" as const,
   },
+  feedEmptyBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+  },
+  feedEmptyBtnText: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+  },
   switcherOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -7373,6 +7406,22 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "500" as const,
     textAlign: "center" as const,
   },
+  browseSectionHeader: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    letterSpacing: 0.8,
+    color: colors.mutedForeground,
+    textTransform: "uppercase" as const,
+    marginBottom: 4,
+    marginTop: 4,
+  },
+  browseResultCount: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: colors.foreground,
+    marginBottom: 8,
+    marginTop: 4,
+  },
   browsePrivateSection: {
     gap: 12,
     marginTop: 4,
@@ -7524,14 +7573,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: "800" as const,
     color: colors.primaryForeground,
     letterSpacing: 0.1,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.muted,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
   },
   puOverlay: {
     flex: 1,
