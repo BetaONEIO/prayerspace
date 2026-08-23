@@ -574,6 +574,11 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   setVoiceNoteIncludeAudio(inclAudio);
                   setVoiceNoteIncludeTranscription(inclTranscription);
                   setVoiceNoteTranscription(transcription);
+                   if (transcription?.trim()) {
+                     // Use the generated transcript as the editable status
+                     // text so the user can review it before posting.
+                     setText(transcription.trim().slice(0, MAX_CHARS));
+                   }
                   setShowVoiceRecorder(false);
                 }}
                 onDiscard={() => setShowVoiceRecorder(false)}

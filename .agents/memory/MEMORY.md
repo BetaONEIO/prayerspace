@@ -1,2 +1,3 @@
 - [Keyboard dismissal pattern](keyboard-dismissal.md) — keep keyboard-aware scrolling, outside-tap dismissal, control dismissal, and focus cleanup consistent across mobile forms.
 - [Friend-based feed & RLS](friend-based-feed.md) — DB-backed feed with RLS; SQL migration must be run manually in Supabase dashboard before friends can see each other's posts.
+- [Native voice playback lifecycle](voice-playback-lifecycle.md) — check Expo Sound load state and guard cleanup/playback races before calling native playback methods.
