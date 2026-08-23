@@ -388,7 +388,10 @@ export default function FindFriendScreen() {
     queryKey: ["friend_requests_sent", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase.from("friend_requests").select("id, sender_id, receiver_id, status").eq("sender_id", user.id);
+      const { data, error } = await supabase
+        .from("friend_requests")
+        .select("id, sender_id, receiver_id, status")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
       if (error) return [];
       return (data as FriendRequest[]) ?? [];
     },
@@ -407,7 +410,9 @@ export default function FindFriendScreen() {
   });
 
   const getRequestStatus = useCallback((userId: string): "none" | "pending" | "accepted" | "declined" => {
-    const req = myRequests.find((r) => r.receiver_id === userId);
+    const req = myRequests.find(
+      (r) => r.sender_id === userId || r.receiver_id === userId
+    );
     return req ? req.status : "none";
   }, [myRequests]);
 
@@ -436,14 +441,49 @@ export default function FindFriendScreen() {
   const sendRequestMutation = useMutation({
     mutationFn: async (receiverId: string) => {
       if (!user?.id) throw new Error("Not authenticated");
-      const { error } = await supabase.from("friend_requests").insert({ sender_id: user.id, receiver_id: receiverId, status: "pending" });
+
+      // Check both directions first. The database has a unique constraint for
+      // one direction, but a reverse pending request is also already a valid
+      // connection flow and should not produce a confusing insert error.
+      const { data: existing, error: lookupError } = await supabase
+        .from("friend_requests")
+        .select("id, sender_id, receiver_id, status")
+        .or(
+          `and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`
+        )
+        .limit(1);
+      if (lookupError) throw lookupError;
+
+      const existingRequest = (existing?.[0] as FriendRequest | undefined);
+      if (existingRequest?.status === "accepted") {
+        throw new Error("You are already friends with this person.");
+      }
+      if (existingRequest?.status === "pending") {
+        throw new Error(
+          existingRequest.sender_id === user.id
+            ? "A friend request is already pending."
+            : "This person has already sent you a request. Check Friend Requests."
+        );
+      }
+
+      const { error } = await supabase
+        .from("friend_requests")
+        .insert({ sender_id: user.id, receiver_id: receiverId, status: "pending" });
       if (error) throw error;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
-    onError: () => { Alert.alert("Error", "Could not send friend request. Please try again."); },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "";
+      Alert.alert(
+        message.includes("already")
+          ? "Friend Request Already Exists"
+          : "Could Not Add Friend",
+        message || "Please check your connection and try again."
+      );
+    },
   });
 
   useEffect(() => {
