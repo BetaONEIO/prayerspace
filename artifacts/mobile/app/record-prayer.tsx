@@ -38,6 +38,7 @@ import { transcribeAudio } from "@/lib/transcribe";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import { dismissKeyboard } from "@/lib/keyboard";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 
 type JournalTag = "gratitude" | "petition" | "reflection" | "praying_for";
 
@@ -68,6 +69,7 @@ export default function RecordPrayerScreen() {
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [textEditorVisible, setTextEditorVisible] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnim1 = useRef(new Animated.Value(0.3)).current;
@@ -345,17 +347,15 @@ export default function RecordPrayerScreen() {
                   </View>
                 </View>
 
-                <TextInput
+                <Pressable
                   style={styles.transcriptionInput}
-                  value={editedText}
-                  onChangeText={setEditedText}
-                  multiline
-                  textAlignVertical="top"
-                  placeholder="Your transcribed prayer will appear here..."
-                  placeholderTextColor={colors.mutedForeground + "88"}
-                  onSubmitEditing={dismissKeyboard}
+                  onPress={() => setTextEditorVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit prayer transcription"
                   testID="transcription-input"
-                />
+                >
+                  <Text style={styles.transcriptionPreview}>{editedText}</Text>
+                </Pressable>
               </View>
 
               <View style={styles.detailsSection}>
@@ -456,6 +456,15 @@ export default function RecordPrayerScreen() {
         uri={viewingImage}
         visible={!!viewingImage}
         onClose={() => setViewingImage(null)}
+      />
+      <FullScreenTextEditor
+        visible={textEditorVisible}
+        title="Prayer Transcription"
+        value={editedText}
+        onChangeText={setEditedText}
+        onDone={() => setTextEditorVisible(false)}
+        placeholder="Your transcribed prayer will appear here..."
+        maxLength={5000}
       />
     </View>
   );
@@ -642,6 +651,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 1,
+  },
+  transcriptionPreview: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: colors.foreground,
+    fontWeight: "500" as const,
   },
   detailsSection: {
     marginBottom: 28,

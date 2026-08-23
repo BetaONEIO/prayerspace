@@ -36,6 +36,7 @@ const ANON_AVATAR = require("../assets/images/anon_user.png");
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { dismissKeyboard } from "@/lib/keyboard";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 import { currentUser } from "@/mocks/data";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
@@ -69,6 +70,7 @@ export default function NewRequestScreen() {
   const [selectedAudience, setSelectedAudience] = useState<AudienceOption>(AUDIENCE_OPTIONS[0]);
   const [dateExpanded, setDateExpanded] = useState(false);
   const [eventDate, setEventDate] = useState<string | null>(null);
+  const [textEditorVisible, setTextEditorVisible] = useState(false);
   const tagsHeightAnim = useRef(new Animated.Value(0)).current;
   const dateHeightAnim = useRef(new Animated.Value(0)).current;
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -269,18 +271,16 @@ export default function NewRequestScreen() {
             </View>
           )}
 
-          <View style={styles.inputWrap}>
-            <TextInput
-              style={styles.textArea}
-              placeholder="What can your community pray for you about?"
-              placeholderTextColor={colors.mutedForeground + "60"}
-              multiline
-              value={content}
-              onChangeText={setContent}
-              textAlignVertical="top"
-              onSubmitEditing={dismissKeyboard}
-              testID="request-content"
-            />
+          <Pressable
+            style={styles.inputWrap}
+            onPress={() => setTextEditorVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit prayer request"
+            testID="request-content"
+          >
+            <Text style={[styles.textAreaPreview, !content && { color: colors.mutedForeground + "60" }]}>
+              {content || "What can your community pray for you about?"}
+            </Text>
             {requestImageUri && (
               <View style={styles.requestImagePreview}>
                 <ImageAttachment
@@ -291,7 +291,7 @@ export default function NewRequestScreen() {
                 />
               </View>
             )}
-          </View>
+          </Pressable>
 
           <View style={styles.optionsRow}>
             <ImageAttachment
@@ -442,6 +442,15 @@ export default function NewRequestScreen() {
         uri={viewingRequestImage}
         visible={!!viewingRequestImage}
         onClose={() => setViewingRequestImage(null)}
+      />
+      <FullScreenTextEditor
+        visible={textEditorVisible}
+        title="Prayer Request"
+        value={content}
+        onChangeText={setContent}
+        onDone={() => setTextEditorVisible(false)}
+        placeholder="What can your community pray for you about?"
+        maxLength={500}
       />
     </SafeAreaView>
     {DiscardModal}
@@ -631,6 +640,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     lineHeight: 26,
     minHeight: 120,
     padding: 0,
+  },
+  textAreaPreview: {
+    fontSize: 16,
+    color: colors.foreground,
+    lineHeight: 26,
+    minHeight: 120,
   },
   optionsRow: {
     flexDirection: "row",
