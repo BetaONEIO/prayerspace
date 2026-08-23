@@ -445,16 +445,26 @@ export default function FindFriendScreen() {
       // Check both directions first. The database has a unique constraint for
       // one direction, but a reverse pending request is also already a valid
       // connection flow and should not produce a confusing insert error.
-      const { data: existing, error: lookupError } = await supabase
-        .from("friend_requests")
-        .select("id, sender_id, receiver_id, status")
-        .or(
-          `and(sender_id.eq.${user.id},receiver_id.eq.${receiverId}),and(sender_id.eq.${receiverId},receiver_id.eq.${user.id})`
-        )
-        .limit(1);
-      if (lookupError) throw lookupError;
+      const [outgoingResult, incomingResult] = await Promise.all([
+        supabase
+          .from("friend_requests")
+          .select("id, sender_id, receiver_id, status")
+          .eq("sender_id", user.id)
+          .eq("receiver_id", receiverId)
+          .maybeSingle(),
+        supabase
+          .from("friend_requests")
+          .select("id, sender_id, receiver_id, status")
+          .eq("sender_id", receiverId)
+          .eq("receiver_id", user.id)
+          .maybeSingle(),
+      ]);
+      if (outgoingResult.error) throw outgoingResult.error;
+      if (incomingResult.error) throw incomingResult.error;
 
-      const existingRequest = (existing?.[0] as FriendRequest | undefined);
+      const existingRequest =
+        (outgoingResult.data as FriendRequest | null) ??
+        (incomingResult.data as FriendRequest | null);
       if (existingRequest?.status === "accepted") {
         throw new Error("You are already friends with this person.");
       }
@@ -476,7 +486,15 @@ export default function FindFriendScreen() {
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : "";
+      const supabaseError = error as { message?: string; code?: string; details?: string };
+      const message = error instanceof Error
+        ? error.message
+        : supabaseError?.message ?? "";
+      console.error("[FindFriend] send request failed", {
+        code: supabaseError?.code,
+        message,
+        details: supabaseError?.details,
+      });
       Alert.alert(
         message.includes("already")
           ? "Friend Request Already Exists"
