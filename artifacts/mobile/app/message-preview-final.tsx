@@ -337,7 +337,7 @@ export default function MessagePreviewFinalScreen() {
         content: prayerMessage,
         is_anonymous: isAnon,
         is_time_sensitive: isTimeSensitive,
-        audience: isSendToFeed ? "everyone" : "private",
+        audience: isSendToFeed ? "friends" : "private",
         tags,
         image_url: photoUrls[0] ?? null,
         event_date: eventDate ?? null,
@@ -346,7 +346,7 @@ export default function MessagePreviewFinalScreen() {
         console.error("[MessagePreviewFinal] Supabase insert error:", error.message);
       } else {
         prayerRequestId = prData?.id ?? null;
-        console.log("[MessagePreviewFinal] Prayer saved to Supabase id:", prayerRequestId, "audience:", isSendToFeed ? "everyone" : "private");
+        console.log("[MessagePreviewFinal] Prayer saved to Supabase id:", prayerRequestId, "audience:", isSendToFeed ? "friends" : "private");
       }
 
       const onAppRecipients = recipients.filter((r) => r.channel === "app" && isUUID(r.id));

@@ -1,0 +1,181 @@
+Please review and fix the Prayer Space feed so that posts are distributed correctly between connected users.
+
+## Main requirement
+
+When a user posts something to the main Feed, their friends/connections should be able to see that post in their own Feed.
+
+The Feed should not only show the current user's own posts.
+
+## Friend-based feed logic
+
+Every feed post should be associated with the real authenticated author:
+
+* `post_id`
+* `author_user_id`
+* `created_at`
+* `visibility`
+* post content/media
+
+When loading a user's Feed, fetch:
+
+1. Posts created by the logged-in user.
+2. Posts created by users who are confirmed friends/connections with the logged-in user.
+3. Any additional Community content the logged-in user is authorised to see, if Community content is part of the same Feed.
+
+Sort these together by `created_at`, newest first.
+
+## Friendship must be real
+
+Do not use dummy friendship data.
+
+Please inspect how Prayer Space currently stores relationships between users.
+
+A friendship should only count when the relationship has been accepted/confirmed.
+
+For example:
+
+`user_friends`
+
+with something equivalent to:
+
+* requester_user_id
+* recipient_user_id
+* status
+* created_at
+
+Only relationships where `status = accepted` should be used for the Friends Feed.
+
+Make sure friendship works in both directions.
+
+If User A and User B are friends, User A should see User B's eligible posts and User B should see User A's eligible posts.
+
+## Post visibility
+
+Add or confirm a visibility value for Feed posts.
+
+Suggested options:
+
+### Friends
+
+Visible to:
+
+* The author
+* Confirmed friends of the author
+
+This should be the default for ordinary personal Feed posts.
+
+### Community
+
+Visible to:
+
+* The relevant Prayer Community members
+
+Only use this where a post is specifically posted into a Community.
+
+### Private
+
+Visible only to:
+
+* The author
+
+If there are already equivalent privacy settings in the app, reuse them rather than creating duplicate systems.
+
+## Security
+
+This must be enforced at the database/API permission level, not only by hiding posts in the UI.
+
+A user should not be able to retrieve another user's Friends-only post simply by knowing the post ID.
+
+Review Row Level Security / backend authorisation so that Friends-only posts can only be read by:
+
+* The post author
+* Users with a confirmed friendship with the author
+
+Community posts should only be readable by authorised Community members.
+
+Private posts should only be readable by the author.
+
+## Feed refresh
+
+After a user submits a Feed post:
+
+* Save the post successfully first.
+* Add it to their own Feed immediately.
+* Their friends should receive it on their Feed on the next refresh or through realtime updates if realtime subscriptions already exist.
+* Do not require the author to log out or reload the whole application.
+
+If the app already uses Supabase realtime or another realtime system, subscribe to new authorised Feed posts so friends can see new posts naturally.
+
+## Friend changes
+
+If users become friends:
+
+* Their eligible Friends posts should begin appearing according to the intended product rules.
+
+If they unfriend each other:
+
+* Friends-only posts should no longer be available to the former friend where appropriate.
+
+If one user blocks another:
+
+* Neither user's Friends-only Feed content should be visible to the blocked relationship.
+* Block rules should override friendship rules.
+
+## Feed states
+
+If the user has no friends or nobody has posted yet, show a proper empty state.
+
+For example:
+
+**Your feed is quiet**
+Connect with friends and their prayer updates will appear here.
+
+Do not populate the Feed with dummy posts.
+
+## Profile integration
+
+Clicking the author of a Feed post should open that author's real profile using `author_user_id`.
+
+Do not pass dummy profile information from the Feed.
+
+## Test this with multiple accounts
+
+Please test the full flow using at least three real test accounts:
+
+### User A
+
+Friends with User B.
+
+### User B
+
+Friends with User A.
+
+### User C
+
+Not friends with either.
+
+Test:
+
+1. User A creates a Friends post.
+2. User A sees their own post.
+3. User B can see User A's post.
+4. User C cannot see User A's post.
+5. User B creates a post and User A can see it.
+6. User A and B unfriend each other.
+7. Verify Friends-only visibility behaves correctly.
+8. Block one of the users and confirm blocked content cannot be accessed.
+9. Confirm profile links from Feed posts open the correct real profile.
+
+## Important
+
+Do not solve this by fetching every post and filtering it only on the frontend.
+
+The backend/database query and security rules should enforce who is authorised to receive each post.
+
+## Goal
+
+The Prayer Space Feed should behave like a genuine social feed:
+
+**My posts + posts from my confirmed friends + authorised Community content**
+
+with proper privacy, real user relationships and no dummy data.

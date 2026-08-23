@@ -169,6 +169,64 @@ const ALL_FEED_POSTS: FeedPost[] = [];
 
 const ALL_COMMUNITY_POSTS: FeedPost[] = [];
 
+// ── DB row shape returned by the prayer_requests Supabase query ────────────
+interface DbPrayerRow {
+  id: string;
+  author_id: string;
+  content: string;
+  audience: string;
+  tags: string[] | null;
+  is_anonymous: boolean;
+  is_time_sensitive: boolean;
+  image_url: string | null;
+  status: string;
+  prayer_count: number;
+  created_at: string;
+  event_date: string | null;
+}
+
+function rowToFeedPost(
+  row: DbPrayerRow,
+  profileMap: Record<string, { full_name: string | null; avatar_url: string | null }>
+): FeedPost {
+  const isAnon = row.is_anonymous;
+  const authorProfile = profileMap[row.author_id];
+  const createdAt = new Date(row.created_at);
+  const now = new Date();
+  const diffMs = now.getTime() - createdAt.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffDays = Math.floor(diffMins / 1440);
+  let timeLabel: string;
+  let postedAt: string;
+  if (diffMins < 1) { timeLabel = "JUST NOW"; postedAt = "Just now"; }
+  else if (diffMins < 60) { timeLabel = "TODAY"; postedAt = `${diffMins}m ago`; }
+  else if (diffDays === 0) { timeLabel = "TODAY"; postedAt = `Today at ${createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`; }
+  else if (diffDays === 1) { timeLabel = "YESTERDAY"; postedAt = "Yesterday"; }
+  else if (diffDays < 7) { timeLabel = `${diffDays} DAYS AGO`; postedAt = createdAt.toLocaleDateString([], { month: "short", day: "numeric" }); }
+  else { timeLabel = createdAt.toLocaleDateString([], { month: "short", day: "numeric" }).toUpperCase(); postedAt = createdAt.toLocaleDateString([], { month: "short", day: "numeric" }); }
+  const tags: string[] = Array.isArray(row.tags) ? row.tags : [];
+  const category = tags.length > 0 ? tags[0].replace(/_/g, " ").toUpperCase() : "PRAYER REQUEST";
+  return {
+    id: row.id,
+    communityId: "default",
+    authorId: isAnon ? "anonymous" : row.author_id,
+    authorName: isAnon ? "Anonymous" : (authorProfile?.full_name ?? "Prayer Space User"),
+    authorAvatar: isAnon ? "" : (authorProfile?.avatar_url ?? ""),
+    category,
+    tags,
+    timeLabel,
+    postedAt,
+    isTimeSensitive: row.is_time_sensitive,
+    eventDate: row.event_date ?? null,
+    content: row.content,
+    prayerCount: row.prayer_count ?? 0,
+    commentCount: 0,
+    prayedByAvatars: [],
+    comments: [],
+    imageUrl: row.image_url ?? undefined,
+  };
+}
+
 interface MyGroup {
   id: string;
   name: string;
@@ -226,14 +284,8 @@ export default function CommunityScreen() {
   }, [tabParam]);
   const [prayedPosts, setPrayedPosts] = useState<Set<string>>(new Set());
   const [commentPost, setCommentPost] = useState<FeedPost | null>(null);
-  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(() => [
-    ...feedStore.getPosts(),
-    ...ALL_FEED_POSTS,
-  ] as FeedPost[]);
-  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(() => [
-    ...feedStore.getPosts(),
-    ...ALL_COMMUNITY_POSTS,
-  ] as FeedPost[]);
+  const [allFeedPosts, setAllFeedPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as FeedPost[]);
+  const [allCommunityPosts, setAllCommunityPosts] = useState<FeedPost[]>(() => feedStore.getPosts() as FeedPost[]);
   const [repostTarget, setRepostTarget] = useState<FeedPost | null>(null);
   const [postActionsTarget, setPostActionsTarget] = useState<FeedPost | null>(null);
   const [archivedPostIds, setArchivedPostIds] = useState<Set<string>>(new Set());
@@ -291,6 +343,33 @@ export default function CommunityScreen() {
     staleTime: 60_000,
   });
 
+  // Fetch real feed posts from Supabase: own posts + friends' posts (RLS-enforced).
+  const { data: dbFeedPosts = [], refetch: refetchFeed } = useQuery<FeedPost[]>({
+    queryKey: ["feed-posts", currentUserId],
+    queryFn: async () => {
+      if (!currentUserId || currentUserId === "user-1") return [];
+      const { data: rows, error } = await supabase
+        .from("prayer_requests")
+        .select("id, author_id, content, audience, tags, is_anonymous, is_time_sensitive, image_url, status, prayer_count, created_at, event_date")
+        .neq("status", "archived")
+        .in("audience", ["everyone", "friends"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error || !rows || rows.length === 0) return [];
+      // Batch-fetch author profiles for display
+      const authorIds = [...new Set((rows as DbPrayerRow[]).map((r) => r.author_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", authorIds);
+      const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> =
+        Object.fromEntries((profiles ?? []).map((p) => [p.id as string, { full_name: p.full_name as string | null, avatar_url: p.avatar_url as string | null }]));
+      return (rows as DbPrayerRow[]).map((row) => rowToFeedPost(row, profileMap));
+    },
+    enabled: !!currentUserId && currentUserId !== "user-1",
+    staleTime: 30_000,
+  });
+
   // Animation refs
   const tabContentAnim = useRef(new Animated.Value(1)).current;
   const tabSlideAnim = useRef(new Animated.Value(0)).current;
@@ -322,13 +401,42 @@ export default function CommunityScreen() {
   useEffect(() => {
     feedStore.register((post) => {
       const withCommunity = { ...post, communityId: activeCommunityRef.current.id } as FeedPost;
-      // Buffer the post — show the "New updates available" banner instead of
-      // injecting directly into the visible feed.
       setPendingFeedPosts((prev) => [withCommunity, ...prev]);
       setHasNewUpdates(true);
     });
     return () => feedStore.unregister();
   }, []);
+
+  // Sync DB-fetched posts into local feed state, preserving optimistic local posts.
+  useEffect(() => {
+    if (!dbFeedPosts.length) return;
+    setAllFeedPosts((prev) => {
+      const dbIds = new Set(dbFeedPosts.map((p) => p.id));
+      // Keep only freshly-created local posts whose IDs haven't landed in the DB yet
+      const localOnly = prev.filter(
+        (p) =>
+          !dbIds.has(p.id) &&
+          (p.id.startsWith("status_") || p.id.startsWith("prayer_") || p.id.startsWith("update_"))
+      );
+      return [...localOnly, ...dbFeedPosts];
+    });
+  }, [dbFeedPosts]);
+
+  // Realtime: refetch the feed whenever a new prayer_request is inserted so
+  // friends see new posts without reloading the app.
+  useEffect(() => {
+    if (!currentUserId || currentUserId === "user-1") return;
+    const channel = supabase
+      .channel("feed-posts-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "prayer_requests" }, () => {
+        void refetchFeed();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [currentUserId, refetchFeed]);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -494,8 +602,32 @@ export default function CommunityScreen() {
       resolvedAudioUrl = audioUri;
     }
 
+    // Persist to Supabase so friends can see this post in their feed
+    let persistedPostId = `status_${Date.now()}`;
+    if (currentUserId && currentUserId !== "user-1") {
+      try {
+        const { data: prData } = await supabase
+          .from("prayer_requests")
+          .insert({
+            author_id: currentUserId,
+            content: text,
+            is_anonymous: isAnonymous,
+            is_time_sensitive: isTimeSensitive,
+            audience: isAnonymous ? "everyone" : "friends",
+            tags,
+            image_url: imageUri ?? null,
+            event_date: eventDate ?? null,
+          })
+          .select("id")
+          .single();
+        if (prData?.id) persistedPostId = prData.id as string;
+      } catch (e) {
+        console.warn("[Community] Failed to persist status post to Supabase:", e);
+      }
+    }
+
     const newPost: FeedPost = {
-      id: `status_${Date.now()}`,
+      id: persistedPostId,
       communityId: activeCommunity.id,
       authorId: isAnonymous ? "anonymous" : currentUserId,
       authorName: isAnonymous ? "Anonymous" : (profile?.full_name ?? "Me"),
@@ -680,9 +812,11 @@ export default function CommunityScreen() {
   }, [feedFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Feed tab: show posts from the active community AND posts by friends from any community.
+  // The Supabase query (via RLS) already ensures only the current user's posts
+  // and their confirmed friends' posts are loaded. Client-side: just hide
+  // posts the user has archived or hidden locally.
   const filteredFeedPosts = allFeedPosts.filter((p) =>
-    (p.communityId === activeCommunity.id || (friendIds.has(p.authorId) && p.authorId !== currentUserId))
-    && !archivedPostIds.has(p.id)
+    !archivedPostIds.has(p.id)
     && !hiddenPostIds.has(p.id)
   );
   const filteredCommunityPosts = useMemo(() => {
@@ -880,7 +1014,11 @@ export default function CommunityScreen() {
               )}
 
               {posts.length === 0 ? (
-                <CommunityEmptyState communityName={activeCommunity.name} />
+                activeTab === "Feed" ? (
+                  <FeedEmptyState />
+                ) : (
+                  <CommunityEmptyState communityName={activeCommunity.name} />
+                )
               ) : (
                 <Animated.View style={{ opacity: feedFilterAnim }}>
                   {posts.map((post) => (
@@ -1571,6 +1709,30 @@ function CommunityEmptyState({ communityName }: CommunityEmptyStateProps) {
       <Text style={styles.emptySubtitle}>
         Be the first to share a prayer request here.
       </Text>
+    </View>
+  );
+}
+
+function FeedEmptyState() {
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const router = useRouter();
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIconWrap}>
+        <Users size={32} color={colors.primary} />
+      </View>
+      <Text style={styles.emptyTitle}>Your feed is quiet</Text>
+      <Text style={styles.emptySubtitle}>
+        Connect with friends and their prayer updates will appear here.
+      </Text>
+      <Pressable
+        style={[styles.feedEmptyBtn, { backgroundColor: colors.primary }]}
+        onPress={() => router.push("/find-friend" as never)}
+      >
+        <UserPlus size={16} color={colors.primaryForeground} />
+        <Text style={[styles.feedEmptyBtnText, { color: colors.primaryForeground }]}>Find Friends</Text>
+      </Pressable>
     </View>
   );
 }
