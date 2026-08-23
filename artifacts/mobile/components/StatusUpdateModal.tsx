@@ -92,6 +92,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
   const [voiceNoteIncludeAudio, setVoiceNoteIncludeAudio] = useState<boolean>(true);
   const [voiceNoteIncludeTranscription, setVoiceNoteIncludeTranscription] = useState<boolean>(false);
   const [voiceNoteTranscription, setVoiceNoteTranscription] = useState<string | undefined>(undefined);
+  const [textEditorVisible, setTextEditorVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(600)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const tagRotate = useRef(new Animated.Value(0)).current;
@@ -161,6 +162,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setVoiceNoteIncludeAudio(true);
       setVoiceNoteIncludeTranscription(false);
       setVoiceNoteTranscription(undefined);
+       setTextEditorVisible(false);
       Animated.timing(tagRotate, { toValue: 0, duration: 0, useNativeDriver: true }).start();
     }, 300);
   }, [onClose, tagRotate, communityName]);
@@ -346,18 +348,18 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 </View>
               )}
 
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="What's your prayer focus right now?"
-                  placeholderTextColor={colors.mutedForeground + "88"}
-                  multiline
-                  maxLength={MAX_CHARS + 10}
-                  value={text}
-                  onChangeText={setText}
-                  textAlignVertical="top"
-                  onSubmitEditing={() => dismissKeyboard()}
-                />
+               <Pressable
+                 style={styles.inputWrap}
+                 onPress={() => setTextEditorVisible(true)}
+                 accessibilityRole="button"
+                 accessibilityLabel="Edit status update"
+               >
+                 <Text
+                   style={[styles.inputPreview, !text && { color: colors.mutedForeground + "88" }]}
+                   numberOfLines={4}
+                 >
+                   {text || "What's your prayer focus right now?"}
+                 </Text>
                 {statusImageUri && (
                   <View style={styles.statusImagePreview}>
                     <ImageAttachment
@@ -376,7 +378,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                 >
                   {text.length} / {MAX_CHARS}
                 </Text>
-              </View>
+               </Pressable>
 
               <ScrollView
                 horizontal
@@ -587,6 +589,50 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
           </View>
         </View>
       )}
+
+       {textEditorVisible && (
+         <View style={styles.textEditorOverlay}>
+           <View style={[styles.textEditorSheet, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+             <View style={styles.textEditorHeader}>
+               <Pressable
+                 style={styles.textEditorDoneBtn}
+                 onPress={() => {
+                   dismissKeyboard();
+                   setTextEditorVisible(false);
+                 }}
+                 accessibilityRole="button"
+                 accessibilityLabel="Done editing status"
+               >
+                 <Text style={styles.textEditorDoneText}>Done</Text>
+               </Pressable>
+               <Text style={styles.textEditorTitle}>Update Status</Text>
+               <View style={styles.textEditorHeaderSpacer} />
+             </View>
+             <View style={styles.textEditorInputWrap}>
+               <TextInput
+                 style={styles.textEditorInput}
+                 placeholder="What's your prayer focus right now?"
+                 placeholderTextColor={colors.mutedForeground + "88"}
+                 multiline
+                 maxLength={MAX_CHARS}
+                 value={text}
+                 onChangeText={setText}
+                 textAlignVertical="top"
+                 autoFocus
+                 returnKeyType="done"
+                 blurOnSubmit
+                 onSubmitEditing={() => {
+                   dismissKeyboard();
+                   setTextEditorVisible(false);
+                 }}
+               />
+               <Text style={[styles.textEditorCharCount, isOverLimit && styles.charCountOver]}>
+                 {text.length} / {MAX_CHARS}
+               </Text>
+             </View>
+           </View>
+         </View>
+       )}
     </Modal>
   );
 }
@@ -802,6 +848,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 90,
     paddingBottom: 24,
   },
+  inputPreview: {
+    fontSize: 15,
+    color: colors.foreground,
+    fontWeight: "500" as const,
+    minHeight: 90,
+    paddingBottom: 24,
+  },
   charCount: {
     position: "absolute",
     bottom: 12,
@@ -814,6 +867,67 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   charCountOver: {
     color: colors.destructive,
+  },
+  textEditorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+    backgroundColor: colors.card,
+  },
+  textEditorSheet: {
+    flex: 1,
+    backgroundColor: colors.card,
+    paddingHorizontal: 20,
+  },
+  textEditorHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    minHeight: 48,
+    marginBottom: 18,
+  },
+  textEditorDoneBtn: {
+    minWidth: 58,
+    paddingVertical: 10,
+  },
+  textEditorDoneText: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: colors.primary,
+  },
+  textEditorTitle: {
+    fontSize: 17,
+    fontWeight: "800" as const,
+    color: colors.foreground,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  textEditorHeaderSpacer: {
+    width: 58,
+  },
+  textEditorInputWrap: {
+    flex: 1,
+    position: "relative" as const,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 18,
+  },
+  textEditorInput: {
+    flex: 1,
+    fontSize: 20,
+    lineHeight: 29,
+    color: colors.foreground,
+    fontWeight: "500" as const,
+    padding: 0,
+    paddingBottom: 40,
+  },
+  textEditorCharCount: {
+    position: "absolute" as const,
+    right: 0,
+    bottom: 12,
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: colors.mutedForeground,
+    letterSpacing: 0.5,
   },
   optionsRow: {
     flexDirection: "row",
