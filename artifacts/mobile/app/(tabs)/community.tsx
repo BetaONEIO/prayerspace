@@ -1896,7 +1896,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={[styles.browseNoResultsText, { marginTop: 8 }]}>Loading communities...</Text>
               </View>
-            ) : dbError ? (
+            ) : dbError && dbCommunities.length > 0 ? (
               <View style={styles.browseNoResults}>
                 <Globe size={28} color={colors.mutedForeground + "60"} />
                 <Text style={styles.browseNoResultsText}>We couldn't load communities right now.</Text>
@@ -1982,7 +1982,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             ) : (
               <View style={styles.browseNoResults}>
                 <HandHeart size={32} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>No public communities yet</Text>
+                <Text style={styles.browseNoResultsText}>No communities exist yet</Text>
                 <Text style={[styles.browseNoResultsText, { fontSize: 12, marginTop: 4, lineHeight: 18 }]}>
                   Public Prayer Communities will appear here when they become available.
                 </Text>
