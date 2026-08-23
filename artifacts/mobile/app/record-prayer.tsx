@@ -37,6 +37,7 @@ import { usePrayer } from "@/providers/PrayerProvider";
 import { transcribeAudio } from "@/lib/transcribe";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 type JournalTag = "gratitude" | "petition" | "reflection" | "praying_for";
 
@@ -352,6 +353,7 @@ export default function RecordPrayerScreen() {
                   textAlignVertical="top"
                   placeholder="Your transcribed prayer will appear here..."
                   placeholderTextColor={colors.mutedForeground + "88"}
+                  onSubmitEditing={dismissKeyboard}
                   testID="transcription-input"
                 />
               </View>
@@ -365,6 +367,8 @@ export default function RecordPrayerScreen() {
                   onChangeText={setTitle}
                   placeholder="Prayer title (optional)"
                   placeholderTextColor={colors.mutedForeground + "88"}
+                  returnKeyType="done"
+                  onSubmitEditing={dismissKeyboard}
                   testID="title-input"
                 />
 

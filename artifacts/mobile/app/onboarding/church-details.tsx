@@ -18,6 +18,7 @@ import { AutoScrollView } from "@/components/AutoScrollView";
 import { ChevronDown, Check } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { dismissKeyboard } from "@/lib/keyboard";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
 import { communityStore } from "@/lib/communityStore";
 
@@ -137,6 +138,7 @@ export default function ChurchDetails() {
                 autoCapitalize="words"
                 autoCorrect={false}
                 returnKeyType="done"
+                onSubmitEditing={dismissKeyboard}
                 testID="community-location-input"
               />
             </View>

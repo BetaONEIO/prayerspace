@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { dismissKeyboard } from "@/lib/keyboard";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
 
 export default function ChurchSetup() {
@@ -105,6 +106,7 @@ export default function ChurchSetup() {
                 autoCapitalize="words"
                 autoCorrect={false}
                 returnKeyType="done"
+                onSubmitEditing={dismissKeyboard}
                 testID="church-location-input"
               />
             </View>

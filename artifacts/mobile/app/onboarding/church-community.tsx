@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { Building2 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { dismissKeyboard } from "@/lib/keyboard";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
 import { AutoScrollView } from "@/components/AutoScrollView";
 
@@ -79,6 +80,7 @@ export default function OnboardingChurchCommunity() {
                 numberOfLines={3}
                 textAlignVertical="top"
                 returnKeyType="done"
+                onSubmitEditing={dismissKeyboard}
                 testID="church-description-input"
               />
             </View>

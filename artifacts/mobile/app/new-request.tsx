@@ -35,6 +35,7 @@ import { Image } from "expo-image";
 const ANON_AVATAR = require("../assets/images/anon_user.png");
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { dismissKeyboard } from "@/lib/keyboard";
 import { currentUser } from "@/mocks/data";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
@@ -277,6 +278,7 @@ export default function NewRequestScreen() {
               value={content}
               onChangeText={setContent}
               textAlignVertical="top"
+              onSubmitEditing={dismissKeyboard}
               testID="request-content"
             />
             {requestImageUri && (

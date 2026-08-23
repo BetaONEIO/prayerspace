@@ -1876,6 +1876,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
+            onSubmitEditing={dismissKeyboard}
           />
           {searchQuery.length > 0 && (
             <Pressable onPress={() => setSearchQuery("")}>
@@ -2193,6 +2194,7 @@ function CommunitySwitcherModal({
               autoCorrect={false}
               autoCapitalize="none"
               returnKeyType="search"
+              onSubmitEditing={dismissKeyboard}
             />
             {switcherSearch.length > 0 && (
               <Pressable onPress={() => setSwitcherSearch("")}>

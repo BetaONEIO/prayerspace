@@ -1,10 +1,9 @@
-import { Keyboard, TextInput } from "react-native";
+import { Keyboard } from "react-native";
 
 /**
  * Finishes editing without submitting the surrounding form.
  * Call this from a single-line input's onSubmitEditing handler.
  */
-export function dismissKeyboard(input?: TextInput | null): void {
-  input?.blur();
+export function dismissKeyboard(): void {
   Keyboard.dismiss();
 }

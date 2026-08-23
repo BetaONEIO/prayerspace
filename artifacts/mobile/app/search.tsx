@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { ChevronLeft, Search as SearchIcon, Flame, Heart, Sun, Globe } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 
 export default function SearchScreen() {
@@ -27,7 +28,16 @@ export default function SearchScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>
         <View style={styles.searchBar}>
           <SearchIcon size={18} color={colors.mutedForeground} />
-          <TextInput style={styles.searchInput} placeholder="Search prayers, people, groups..." placeholderTextColor={colors.mutedForeground + "80"} value={query} onChangeText={setQuery} autoFocus />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search prayers, people, groups..."
+            placeholderTextColor={colors.mutedForeground + "80"}
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+            returnKeyType="search"
+            onSubmitEditing={dismissKeyboard}
+          />
         </View>
       </View>
 

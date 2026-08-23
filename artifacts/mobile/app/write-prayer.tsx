@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 export default function WritePrayerScreen() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function WritePrayerScreen() {
             <Text style={styles.subtitle}>Write a message to encourage the people you've prayed for today.</Text>
 
             <View style={styles.textareaWrapper}>
-              <TextInput style={styles.textarea} placeholder="Hi, I prayed for peace, strength, and blessing over you today..." placeholderTextColor={colors.mutedForeground + "60"} value={prayerText} onChangeText={setPrayerText} multiline textAlignVertical="top" autoFocus={false} />
+              <TextInput style={styles.textarea} placeholder="Hi, I prayed for peace, strength, and blessing over you today..." placeholderTextColor={colors.mutedForeground + "60"} value={prayerText} onChangeText={setPrayerText} multiline textAlignVertical="top" autoFocus={false} onSubmitEditing={dismissKeyboard} />
               <Text style={styles.helperText}>Optional — you can send this to one or many.</Text>
             </View>
           </AutoScrollView>
