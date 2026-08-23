@@ -94,6 +94,7 @@ import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useDiscoverCommunities, DiscoverCommunity } from "@/lib/useDiscoverCommunities";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 type Tab = "Feed" | "Community" | "Groups";
 
