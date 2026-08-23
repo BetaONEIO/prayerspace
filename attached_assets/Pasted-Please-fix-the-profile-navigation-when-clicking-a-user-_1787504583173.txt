@@ -1,0 +1,185 @@
+Please fix the profile navigation when clicking a user's status update in Prayer Space.
+
+## Current problem
+
+When I click on one of my own status updates, the app correctly navigates to a profile page, but the profile page is displaying dummy/demo data.
+
+For example, it currently shows placeholder information such as:
+
+* Michael Scott
+* Scranton, PA
+* 1.2k prayers
+* 843 followers
+* 15 groups
+* Dummy recent activity
+* Dummy favourite Bible verse
+
+This should **never display placeholder profile data** when viewing a real user's profile.
+
+## Required behaviour
+
+When a user clicks on a status update, determine which real user created that status update and navigate to that user's profile using their actual user/profile ID.
+
+For example:
+
+`Status Update → author_user_id → User Profile → fetch real profile data`
+
+Do not navigate to a generic profile template containing hard-coded data.
+
+### If I click my own status
+
+If the status update belongs to the currently authenticated user, display **my actual profile** and all of my real information.
+
+This should use the same underlying profile data as the user's normal "My Profile" page so there cannot be two different versions of the user's profile.
+
+### If I click another user's status
+
+Load that person's actual public profile using the `user_id` / `profile_id` associated with the status update.
+
+Do not accidentally fall back to the logged-in user's data.
+
+## Replace all dummy profile information
+
+Audit this entire profile screen and remove all hard-coded/demo data.
+
+Every displayed value should come from the real database where applicable, including:
+
+* Profile photo
+* Display name
+* Username if used
+* Location
+* Online status
+* Bio
+* Prayer count
+* Followers/following
+* Prayer Groups
+* Recent activity
+* Testimonies
+* Favourite Bible verse
+* Community information
+* Follow status
+* Message availability
+
+If a user has not supplied a particular piece of information, show an appropriate empty state or hide that section.
+
+**Never substitute fake/demo information.**
+
+For example, if the user hasn't selected a favourite Bible verse, do not display a fake verse.
+
+## Stats
+
+Profile statistics must also be calculated from real user data.
+
+For example:
+
+**Prayers**
+Number of appropriate prayers created/shared by this user.
+
+**Followers**
+Actual follower count.
+
+**Prayer Groups**
+Actual number of Prayer Groups this user belongs to, subject to privacy rules.
+
+Do not use hard-coded numbers.
+
+## Recent Activity
+
+The "Recent Activity" section must contain genuine activity associated with that user.
+
+Only display activities that are appropriate to expose publicly.
+
+If there is no activity:
+
+Display a clean empty state such as:
+
+**No recent activity yet**
+
+Do not populate the section with dummy activity.
+
+## Privacy
+
+Be particularly careful with Prayer Space because profile data can contain private prayer/community information.
+
+Do not expose:
+
+* Private prayer requests
+* Anonymous prayer authors
+* Private Prayer Group membership where this should not be public
+* Private community activity
+* Private messages
+* Information the user has chosen not to make public
+
+The profile API/query should only return information the viewer is authorised to see.
+
+## Navigation architecture
+
+Please inspect how status updates currently navigate to profiles.
+
+Ideally every status/update object should contain or resolve an `author_id` / `user_id`.
+
+When tapped:
+
+1. Read the author ID from the status update.
+2. Navigate to the profile route with that ID.
+3. Fetch the corresponding profile.
+4. Display real database information.
+5. Show a loading state while the profile is being fetched.
+6. Show an appropriate error state if the profile cannot be loaded.
+
+Do not pass profile names, photos, stats or other profile information as hard-coded navigation parameters.
+
+The user ID should be the source of truth.
+
+## Important: use one reusable profile system
+
+Please check whether Prayer Space currently has separate implementations for:
+
+* My Profile
+* Other User Profile
+* Profile opened from a status
+* Profile opened from a prayer
+* Profile opened from a community
+* Profile opened from search
+* Profile opened from followers/following
+
+Where possible, these should use the **same reusable profile component and profile data service**.
+
+The component can alter available actions depending on whether:
+
+`profile.user_id === authenticatedUser.id`
+
+For your own profile:
+
+* Show appropriate edit/manage controls.
+* Do not show actions such as following yourself.
+
+For another person's profile:
+
+* Show Message/Follow/etc. where appropriate.
+
+But the underlying profile information should come from the same source of truth.
+
+## Audit other dummy data
+
+While fixing this, search the profile components for any remaining placeholder/demo values such as:
+
+`Michael Scott`
+`Scranton`
+`1.2k`
+`843`
+`15`
+
+and any mock profile objects.
+
+Remove these from the production user flow.
+
+Do not simply replace these examples with different placeholder values.
+
+## Goal
+
+Clicking a person's status update should always take me to **that person's real Prayer Space profile**.
+
+If I click my own status update, I should see **my real profile details**.
+
+There should be no dummy user data anywhere in the live profile experience.
