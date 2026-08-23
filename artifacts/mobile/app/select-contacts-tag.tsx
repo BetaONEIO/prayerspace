@@ -7,6 +7,7 @@ import { ArrowLeft, Search, CheckCircle2, X } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { type Contact } from "@/mocks/data";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 const SUGGESTIONS: Contact[] = [];
 
@@ -37,7 +38,15 @@ export default function SelectContactsTagScreen() {
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
           <Search size={18} color={colors.mutedForeground} />
-          <TextInput style={styles.searchInput} placeholder="Search to tag..." placeholderTextColor={colors.mutedForeground + "80"} value={search} onChangeText={setSearch} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search to tag..."
+            placeholderTextColor={colors.mutedForeground + "80"}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            onSubmitEditing={dismissKeyboard}
+          />
         </View>
       </View>
 

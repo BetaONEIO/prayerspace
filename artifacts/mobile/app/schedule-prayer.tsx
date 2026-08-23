@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import ThemedSwitch from "@/components/ThemedSwitch";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 
 export default function SchedulePrayerScreen() {
@@ -39,7 +40,15 @@ export default function SchedulePrayerScreen() {
             <View style={styles.card}>
               <View style={styles.field}>
                 <Text style={styles.label}>PRAYER TOPIC</Text>
-                <TextInput style={styles.input} placeholder="What are you praying for?" placeholderTextColor={colors.mutedForeground + "80"} value={topic} onChangeText={setTopic} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="What are you praying for?"
+                  placeholderTextColor={colors.mutedForeground + "80"}
+                  value={topic}
+                  onChangeText={setTopic}
+                  returnKeyType="done"
+                  onSubmitEditing={dismissKeyboard}
+                />
               </View>
 
               <View style={styles.dateRow}>

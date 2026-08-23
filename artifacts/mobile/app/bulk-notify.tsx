@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { allContacts, type Contact } from "@/mocks/data";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 export default function BulkNotifyScreen() {
   const router = useRouter();
@@ -62,7 +63,15 @@ export default function BulkNotifyScreen() {
 
         <View style={styles.searchBar}>
           <Search size={18} color={colors.mutedForeground} />
-          <TextInput style={styles.searchInput} placeholder="Search contacts..." placeholderTextColor={colors.mutedForeground + "80"} value={searchText} onChangeText={setSearchText} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search contacts..."
+            placeholderTextColor={colors.mutedForeground + "80"}
+            value={searchText}
+            onChangeText={setSearchText}
+            returnKeyType="search"
+            onSubmitEditing={dismissKeyboard}
+          />
         </View>
 
         <View style={styles.selectHeader}>

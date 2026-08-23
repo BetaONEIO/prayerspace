@@ -40,6 +40,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { PRAYER_TAGS, type AudienceOption } from "@/constants/prayerContent";
 import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -355,6 +356,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
                   value={text}
                   onChangeText={setText}
                   textAlignVertical="top"
+                  onSubmitEditing={() => dismissKeyboard()}
                 />
                 {statusImageUri && (
                   <View style={styles.statusImagePreview}>

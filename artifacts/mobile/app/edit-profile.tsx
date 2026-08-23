@@ -11,6 +11,7 @@ import { uploadAvatar } from "@/lib/storage";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
 import AvatarImage from "@/components/AvatarImage";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function EditProfileScreen() {
             <View style={styles.form}>
               <View style={styles.field}>
                 <Text style={styles.label}>FULL NAME</Text>
-                <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.mutedForeground + "80"} editable={!isUpdatingProfile} />
+                <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={colors.mutedForeground + "80"} editable={!isUpdatingProfile} returnKeyType="next" />
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>EMAIL</Text>
@@ -137,11 +138,11 @@ export default function EditProfileScreen() {
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>BIO</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={bio} onChangeText={setBio} placeholder="A short bio about yourself..." placeholderTextColor={colors.mutedForeground + "80"} multiline textAlignVertical="top" maxLength={200} editable={!isUpdatingProfile} />
+                <TextInput style={[styles.input, styles.textArea]} value={bio} onChangeText={setBio} placeholder="A short bio about yourself..." placeholderTextColor={colors.mutedForeground + "80"} multiline textAlignVertical="top" maxLength={200} editable={!isUpdatingProfile} onSubmitEditing={dismissKeyboard} />
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>FAVORITE VERSE</Text>
-                <TextInput style={styles.input} value={verse} onChangeText={setVerse} placeholder="e.g. Philippians 4:13" placeholderTextColor={colors.mutedForeground + "80"} editable={!isUpdatingProfile} />
+                <TextInput style={styles.input} value={verse} onChangeText={setVerse} placeholder="e.g. Philippians 4:13" placeholderTextColor={colors.mutedForeground + "80"} editable={!isUpdatingProfile} returnKeyType="done" onSubmitEditing={dismissKeyboard} />
               </View>
             </View>
           </AutoScrollView>

@@ -7,6 +7,7 @@ import { Search, X, CheckCircle2 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { allContacts, type Contact } from "@/mocks/data";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 export default function SelectContactsScreen() {
   const router = useRouter();
@@ -51,7 +52,15 @@ export default function SelectContactsScreen() {
       <View style={styles.searchWrap}>
         <View style={styles.searchBar}>
           <Search size={16} color={colors.mutedForeground} />
-          <TextInput style={styles.searchInput} placeholder="Search..." placeholderTextColor={colors.mutedForeground + "80"} value={search} onChangeText={setSearch} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search..."
+            placeholderTextColor={colors.mutedForeground + "80"}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            onSubmitEditing={dismissKeyboard}
+          />
         </View>
       </View>
 

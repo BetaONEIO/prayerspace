@@ -15,6 +15,8 @@ import { Mic, Square, Play, Pause, RotateCcw, Trash2, Check } from "lucide-react
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import ThemedSwitch from "@/components/ThemedSwitch";
+import { transcribeAudio } from "@/lib/transcribe";
+import { dismissKeyboard } from "@/lib/keyboard";
 
 type RecorderState = "idle" | "recording" | "preview";
 
@@ -50,6 +52,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
 
   const [includeAudio, setIncludeAudio] = useState(true);
   const [transcriptionText, setTranscriptionText] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -136,6 +139,22 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       setPlaybackMs(0);
       setIsPlaying(false);
       setState("preview");
+      // Populate the optional caption/transcription automatically after a
+      // successful recording. The field remains editable if the user wants
+      // to correct or replace the returned text.
+      if (uri) {
+        setIsTranscribing(true);
+        void transcribeAudio(uri)
+          .then((text) => {
+            if (text.trim()) setTranscriptionText(text.trim());
+          })
+          .catch((err) => {
+            // Transcription is optional; keep the manual caption available
+            // when the service is unavailable or returns no text.
+            console.warn("[VoiceNoteRecorder] transcription unavailable:", err);
+          })
+          .finally(() => setIsTranscribing(false));
+      }
     } catch (err) {
       console.error("[VoiceNoteRecorder] stop error:", err);
     }
@@ -196,6 +215,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setRecordedDuration(0);
     setIncludeAudio(true);
     setTranscriptionText("");
+    setIsTranscribing(false);
     setState("idle");
   }, []);
 
@@ -211,6 +231,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
     setDurationMs(0);
     setIncludeAudio(true);
     setTranscriptionText("");
+    setIsTranscribing(false);
     onDiscard();
   }, [onDiscard]);
 
@@ -285,7 +306,9 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
       {/* Transcription / caption card */}
       <View style={styles.transcriptionCard}>
         <View style={styles.transcriptionCardHeader}>
-          <Text style={styles.transcriptionCardLabel}>TRANSCRIPTION</Text>
+          <Text style={styles.transcriptionCardLabel}>
+            {isTranscribing ? "TRANSCRIBING…" : "TRANSCRIPTION"}
+          </Text>
           <Mic size={14} color={colors.primary} />
         </View>
         <TextInput
@@ -297,6 +320,7 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
           onChangeText={setTranscriptionText}
           maxLength={500}
           textAlignVertical="top"
+          onSubmitEditing={() => dismissKeyboard()}
         />
       </View>
 
