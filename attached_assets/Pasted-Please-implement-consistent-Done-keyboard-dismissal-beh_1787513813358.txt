@@ -1,0 +1,241 @@
+Please implement consistent **Done / keyboard dismissal behaviour across every text input in the Prayer Space app**.
+
+## Problem
+
+Currently, when users enter text into fields, the mobile keyboard can remain open after they have finished typing.
+
+This means users sometimes have to:
+
+* Tap randomly outside the field
+* Scroll the page
+* Try to find the next section
+* Manually work around the keyboard
+
+This creates unnecessary friction, particularly on iPhone.
+
+## Add "Done" across the app
+
+Audit **all text input fields throughout Prayer Space** and provide users with a clear way to indicate that they have finished typing.
+
+Where appropriate, the mobile keyboard should display:
+
+**Done**
+
+When the user taps **Done**:
+
+1. Blur the active text input.
+2. Dismiss the keyboard.
+3. Keep the user's entered text.
+4. Return the screen/layout to its normal keyboard-closed position.
+5. Allow the user to continue naturally to the next part of the screen.
+
+IMPORTANT:
+
+**Done does NOT mean Submit, Save, Continue or Post.**
+
+It simply means:
+
+**"I'm finished typing. Close the keyboard."**
+
+Do not accidentally submit forms when Done is pressed unless a specific field is explicitly designed to submit using the keyboard.
+
+## Single-line inputs
+
+For normal single-line inputs such as:
+
+* Name
+* Community name
+* Search
+* Invite code
+* Location
+* Email where applicable
+* Titles
+* Profile information
+* Group names
+* Community details
+
+Use the appropriate native keyboard return key such as:
+
+**Done**
+
+where this makes sense.
+
+Pressing Done should dismiss the keyboard.
+
+## Multiline text areas
+
+Be particularly careful with multiline fields such as:
+
+* Prayer requests
+* Testimonies
+* Status updates
+* Community descriptions
+* Prayer descriptions
+* Messages
+* Transcriptions
+* Bios
+* Longer text content
+
+Users still need the keyboard **Return** key to create paragraphs/new lines.
+
+Therefore, do NOT replace Return with Done if doing so prevents multiline text entry.
+
+Instead, where appropriate, provide a keyboard accessory/toolbar containing:
+
+**Done**
+
+above the keyboard.
+
+This allows the user to:
+
+* Press Return to create a new line
+* Press Done when they have finished writing
+
+Tapping Done should blur the textarea and dismiss the keyboard without submitting the content.
+
+## Keyboard-aware layouts
+
+Also make sure every screen containing an input is properly keyboard-aware.
+
+When the keyboard opens:
+
+* The active field should remain visible.
+* The screen should adjust appropriately.
+* Important controls should not become permanently inaccessible.
+* Users should still be able to scroll where necessary.
+* The keyboard should not overlap modals or selectors.
+
+When the keyboard closes:
+
+* The page should return to the correct layout.
+* Do not leave unnecessary blank space where the keyboard previously appeared.
+* Do not unexpectedly jump the user to the top of the page.
+
+## Other dismissal behaviour
+
+Done should not be the only way to close the keyboard.
+
+Continue supporting:
+
+**Tap outside input**
+→ dismiss keyboard
+
+**Tap another control**
+→ dismiss keyboard before opening the new control where appropriate
+
+**Scroll**
+→ dismiss keyboard where appropriate
+
+**Done**
+→ dismiss keyboard
+
+## iOS
+
+Make sure this feels native on iOS.
+
+For multiline inputs where the native keyboard needs Return for new lines, use an appropriate keyboard accessory/input toolbar with a clearly visible **Done** action.
+
+Respect safe areas and ensure the Done control sits correctly above the keyboard.
+
+## Android
+
+Implement equivalent native-feeling behaviour on Android.
+
+Use the appropriate IME action / keyboard configuration for single-line fields and provide sensible dismissal behaviour for multiline fields.
+
+Do not implement an iOS-only solution.
+
+## Messages/chat exception
+
+Be careful with chat/message fields.
+
+If the existing behaviour uses the keyboard action to **Send**, preserve that behaviour.
+
+Do not globally replace intentional Send/Search/Next keyboard actions with Done.
+
+Examples:
+
+Search field:
+**Search** may be more appropriate.
+
+Chat:
+**Send** may be more appropriate.
+
+Normal form input:
+**Done** or **Next** may be appropriate.
+
+Choose the keyboard action based on the purpose of the field.
+
+## "Next" where appropriate
+
+For forms containing several consecutive fields, consider:
+
+**Next**
+
+for intermediate fields and:
+
+**Done**
+
+for the final field.
+
+For example:
+
+First Name → Next
+Last Name → Next
+Location → Done
+
+"Next" should focus the next logical field and keep the keyboard open.
+
+"Done" should dismiss the keyboard.
+
+## Reusable implementation
+
+Do not implement a different keyboard workaround on every screen.
+
+Create/reuse a consistent Prayer Space input system or shared keyboard handling utility so that keyboard behaviour is predictable throughout the app.
+
+Audit existing shared:
+
+* Input
+* TextArea
+* Form
+* Search
+* Message
+* Modal input
+
+components and implement the behaviour at the shared-component level wherever possible.
+
+## Test across the whole app
+
+Audit all screens containing text inputs, including:
+
+* Creating a prayer
+* Voice prayer transcription
+* Status updates
+* Search
+* Profiles
+* Prayer Groups
+* Prayer Communities
+* Creating Communities
+* Joining with a code
+* Community search
+* Group chat
+* Direct messages
+* Comments/replies
+* Address book/contact search
+* Settings
+* Onboarding
+* Login/sign-up
+* Any modal containing text input
+
+Test on both iOS and Android.
+
+## Goal
+
+Typing throughout Prayer Space should feel native and effortless.
+
+A user should never be stuck thinking:
+
+**"How do I get rid of this keyboard?"**
+
+There should always be an obvious and consistent way to finish typing and dismiss the keyboard without losing their text or accidentally submitting the form.
