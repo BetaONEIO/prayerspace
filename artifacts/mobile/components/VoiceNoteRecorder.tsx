@@ -58,6 +58,8 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   const soundRef = useRef<Audio.Sound | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasFinishedRef = useRef(false);
+  const soundLoadIdRef = useRef(0);
+  const playbackBusyRef = useRef(false);
 
   // Pulse animation for recording dot
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -161,12 +163,31 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   }, [durationMs]);
 
   const loadSound = useCallback(async (uri: string) => {
+    const loadId = ++soundLoadIdRef.current;
     if (soundRef.current) {
-      await soundRef.current.unloadAsync();
+      try {
+        await soundRef.current.unloadAsync();
+      } catch {
+        // The sound may already have been unloaded by effect cleanup.
+      }
       soundRef.current = null;
     }
     hasFinishedRef.current = false;
-    const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false });
+    let sound: Audio.Sound;
+    try {
+      ({ sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: false }));
+    } catch (err) {
+      console.warn("[VoiceNoteRecorder] playback load unavailable:", err);
+      return;
+    }
+    if (loadId !== soundLoadIdRef.current) {
+      try {
+        await sound.unloadAsync();
+      } catch {
+        // Ignore cleanup races when the preview is closed quickly.
+      }
+      return;
+    }
     sound.setOnPlaybackStatusUpdate((status) => {
       if (!status.isLoaded) return;
       setPlaybackMs(status.positionMillis);
@@ -192,18 +213,34 @@ export default function VoiceNoteRecorder({ onAttach, onDiscard }: Props) {
   }, [state, recordedUri]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePlayback = useCallback(async () => {
-    if (!soundRef.current) return;
-    if (isPlaying) {
-      await soundRef.current.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      if (Platform.OS !== "web") void Haptics.selectionAsync();
-      if (hasFinishedRef.current) {
-        await soundRef.current.setPositionAsync(0);
-        hasFinishedRef.current = false;
+    const sound = soundRef.current;
+    if (!sound || playbackBusyRef.current) return;
+    playbackBusyRef.current = true;
+    try {
+      const status = await sound.getStatusAsync();
+      if (!status.isLoaded) {
+        setIsPlaying(false);
+        return;
       }
-      await soundRef.current.playAsync();
-      setIsPlaying(true);
+      if (isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        if (Platform.OS !== "web") void Haptics.selectionAsync();
+        if (hasFinishedRef.current) {
+          await sound.setPositionAsync(0);
+          hasFinishedRef.current = false;
+        }
+        await sound.playAsync();
+        setIsPlaying(true);
+      }
+    } catch (err) {
+      // Playback can race with preview cleanup or native audio interruption.
+      // Keep the recorder usable instead of surfacing an uncaught native error.
+      console.warn("[VoiceNoteRecorder] playback unavailable:", err);
+      setIsPlaying(false);
+    } finally {
+      playbackBusyRef.current = false;
     }
   }, [isPlaying]);
 
