@@ -9,12 +9,14 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { dismissKeyboard } from "@/lib/keyboard";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 
 export default function WritePrayerScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [prayerText, setPrayerText] = useState("");
+  const [textEditorVisible, setTextEditorVisible] = useState(false);
 
   const { DiscardModal } = useUnsavedChangesWarning(prayerText.trim().length > 0);
 
@@ -39,10 +41,17 @@ export default function WritePrayerScreen() {
             <Text style={styles.title}>Write your prayer</Text>
             <Text style={styles.subtitle}>Write a message to encourage the people you've prayed for today.</Text>
 
-            <View style={styles.textareaWrapper}>
-              <TextInput style={styles.textarea} placeholder="Hi, I prayed for peace, strength, and blessing over you today..." placeholderTextColor={colors.mutedForeground + "60"} value={prayerText} onChangeText={setPrayerText} multiline textAlignVertical="top" autoFocus={false} onSubmitEditing={dismissKeyboard} />
+             <Pressable
+               style={styles.textareaWrapper}
+               onPress={() => setTextEditorVisible(true)}
+               accessibilityRole="button"
+               accessibilityLabel="Edit prayer"
+             >
+               <Text style={[styles.textareaPreview, !prayerText && { color: colors.mutedForeground + "60" }]}>
+                 {prayerText || "Hi, I prayed for peace, strength, and blessing over you today..."}
+               </Text>
               <Text style={styles.helperText}>Optional — you can send this to one or many.</Text>
-            </View>
+             </Pressable>
           </AutoScrollView>
 
           <View style={styles.footer}>
@@ -54,6 +63,14 @@ export default function WritePrayerScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
       {DiscardModal}
+      <FullScreenTextEditor
+        visible={textEditorVisible}
+        title="Write Prayer"
+        value={prayerText}
+        onChangeText={setPrayerText}
+        onDone={() => setTextEditorVisible(false)}
+        placeholder="Hi, I prayed for peace, strength, and blessing over you today..."
+      />
     </>
   );
 }
@@ -69,7 +86,8 @@ function createStyles(colors: ThemeColors) {
     title: { fontSize: 24, fontWeight: "700" as const, color: colors.foreground, marginBottom: 8, marginTop: 8 },
     subtitle: { fontSize: 15, color: colors.mutedForeground, lineHeight: 22, marginBottom: 24 },
     textareaWrapper: { backgroundColor: colors.card, borderRadius: 24, padding: 24, minHeight: 260, borderWidth: 2, borderColor: colors.border + "40" },
-    textarea: { fontSize: 17, color: colors.foreground, lineHeight: 26, flex: 1, minHeight: 200 },
+     textarea: { fontSize: 17, color: colors.foreground, lineHeight: 26, flex: 1, minHeight: 200 },
+     textareaPreview: { fontSize: 17, color: colors.foreground, lineHeight: 26, minHeight: 200 },
     helperText: { fontSize: 11, color: colors.mutedForeground + "80", marginTop: 12 },
     footer: { padding: 24, paddingBottom: Platform.OS === "android" ? 24 : 16, backgroundColor: colors.background },
     continueBtn: { backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 },

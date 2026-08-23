@@ -12,6 +12,7 @@ import PhotoUploadModal from "@/components/PhotoUploadModal";
 import AvatarImage from "@/components/AvatarImage";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { dismissKeyboard } from "@/lib/keyboard";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function EditProfileScreen() {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [localAvatarUri, setLocalAvatarUri] = useState<string | null>(null);
+  const [bioEditorVisible, setBioEditorVisible] = useState(false);
 
   const hasChanges = (profile ? name !== (profile.full_name ?? "") || bio !== (profile.bio ?? "") || verse !== (profile.favorite_verse ?? "") : false) || localAvatarUri !== null;
   const { DiscardModal } = useUnsavedChangesWarning(hasChanges);
@@ -138,7 +140,16 @@ export default function EditProfileScreen() {
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>BIO</Text>
-                <TextInput style={[styles.input, styles.textArea]} value={bio} onChangeText={setBio} placeholder="A short bio about yourself..." placeholderTextColor={colors.mutedForeground + "80"} multiline textAlignVertical="top" maxLength={200} editable={!isUpdatingProfile} onSubmitEditing={dismissKeyboard} />
+                <Pressable
+                  style={[styles.input, styles.textArea]}
+                  onPress={() => !isUpdatingProfile && setBioEditorVisible(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit bio"
+                >
+                  <Text style={[styles.bioPreview, !bio && { color: colors.mutedForeground + "80" }]}>
+                    {bio || "A short bio about yourself..."}
+                  </Text>
+                </Pressable>
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>FAVORITE VERSE</Text>
@@ -151,6 +162,15 @@ export default function EditProfileScreen() {
         <PhotoUploadModal visible={showPhotoModal} onClose={() => setShowPhotoModal(false)} onImageSelected={handleImageSelected} onRemovePhoto={handleRemovePhoto} hasExistingPhoto={hasExistingPhoto} isUploading={isUploadingPhoto} />
       </SafeAreaView>
       {DiscardModal}
+      <FullScreenTextEditor
+        visible={bioEditorVisible}
+        title="Edit Bio"
+        value={bio}
+        onChangeText={setBio}
+        onDone={() => setBioEditorVisible(false)}
+        placeholder="A short bio about yourself..."
+        maxLength={200}
+      />
     </>
   );
 }
@@ -177,5 +197,6 @@ function createStyles(colors: ThemeColors) {
     input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border + "90", borderRadius: 18, paddingHorizontal: 20, paddingVertical: 16, fontSize: 15, color: colors.foreground },
     inputReadOnly: { opacity: 0.6 },
     textArea: { minHeight: 100, textAlignVertical: "top" as const },
+     bioPreview: { minHeight: 68, fontSize: 15, lineHeight: 22, color: colors.foreground },
   });
 }

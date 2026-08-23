@@ -41,6 +41,7 @@ import { PRAYER_TAGS, type AudienceOption } from "@/constants/prayerContent";
 import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { dismissKeyboard } from "@/lib/keyboard";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -590,49 +591,15 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
         </View>
       )}
 
-       {textEditorVisible && (
-         <View style={styles.textEditorOverlay}>
-           <View style={[styles.textEditorSheet, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
-             <View style={styles.textEditorHeader}>
-               <Pressable
-                 style={styles.textEditorDoneBtn}
-                 onPress={() => {
-                   dismissKeyboard();
-                   setTextEditorVisible(false);
-                 }}
-                 accessibilityRole="button"
-                 accessibilityLabel="Done editing status"
-               >
-                 <Text style={styles.textEditorDoneText}>Done</Text>
-               </Pressable>
-               <Text style={styles.textEditorTitle}>Update Status</Text>
-               <View style={styles.textEditorHeaderSpacer} />
-             </View>
-             <View style={styles.textEditorInputWrap}>
-               <TextInput
-                 style={styles.textEditorInput}
-                 placeholder="What's your prayer focus right now?"
-                 placeholderTextColor={colors.mutedForeground + "88"}
-                 multiline
-                 maxLength={MAX_CHARS}
-                 value={text}
-                 onChangeText={setText}
-                 textAlignVertical="top"
-                 autoFocus
-                 returnKeyType="done"
-                 blurOnSubmit
-                 onSubmitEditing={() => {
-                   dismissKeyboard();
-                   setTextEditorVisible(false);
-                 }}
-               />
-               <Text style={[styles.textEditorCharCount, isOverLimit && styles.charCountOver]}>
-                 {text.length} / {MAX_CHARS}
-               </Text>
-             </View>
-           </View>
-         </View>
-       )}
+       <FullScreenTextEditor
+         visible={textEditorVisible}
+         title="Update Status"
+         value={text}
+         onChangeText={setText}
+         onDone={() => setTextEditorVisible(false)}
+         placeholder="What's your prayer focus right now?"
+         maxLength={MAX_CHARS}
+       />
     </Modal>
   );
 }
