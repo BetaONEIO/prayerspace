@@ -370,6 +370,10 @@ export default function CommunityScreen() {
     enabled: !!currentUserId && currentUserId !== "user-1",
     staleTime: 30_000,
   });
+  const refetchFeedRef = useRef(refetchFeed);
+  useEffect(() => {
+    refetchFeedRef.current = refetchFeed;
+  }, [refetchFeed]);
 
   // Animation refs
   const tabContentAnim = useRef(new Animated.Value(1)).current;
@@ -427,16 +431,34 @@ export default function CommunityScreen() {
   // friends see new posts without reloading the app.
   useEffect(() => {
     if (!currentUserId || currentUserId === "user-1") return;
-    const channel = supabase
-      .channel("feed-posts-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "prayer_requests" }, () => {
-        void refetchFeed();
-      })
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupChannel = async () => {
+      // React can mount/clean up an effect twice in development. Wait for any
+      // prior channel with this name to be removed before registering callbacks.
+      const existingChannel = supabase
+        .getChannels()
+        .find((candidate) => candidate.topic === "realtime:feed-posts-realtime");
+      if (existingChannel) {
+        await supabase.removeChannel(existingChannel);
+      }
+      if (cancelled) return;
+
+      channel = supabase
+        .channel("feed-posts-realtime")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "prayer_requests" }, () => {
+          void refetchFeedRef.current();
+        })
+        .subscribe();
     };
-  }, [currentUserId, refetchFeed]);
+
+    void setupChannel();
+    return () => {
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
 
   const router = useRouter();
 
