@@ -36,6 +36,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import FormattedText from "@/components/FormattedText";
+import FullScreenTextEditor from "@/components/FullScreenTextEditor";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
 
@@ -90,6 +91,7 @@ export default function JournalEntryScreen() {
 
   const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const [isBodyFocused, setIsBodyFocused] = useState(false);
+  const [textEditorVisible, setTextEditorVisible] = useState(false);
   const bodyInputRef = useRef<TextInput>(null);
 
   const { isRecording, duration, startRecording, stopRecording } = useAudioRecording();
@@ -423,30 +425,19 @@ export default function JournalEntryScreen() {
             <Pressable
               style={styles.bodyCard}
               onPress={() => {
-                setIsBodyFocused(true);
-                setTimeout(() => bodyInputRef.current?.focus(), 50);
+                setTextEditorVisible(true);
               }}
             >
               <View style={styles.quoteBar} />
               <View style={{ flex: 1 }}>
-                <TextInput
-                  ref={bodyInputRef}
-                  style={[styles.bodyInput, body.length > 0 && { color: "transparent" }]}
-                  placeholder="Pour your heart out here..."
-                  placeholderTextColor={colors.mutedForeground + "35"}
-                  multiline
-                  value={body}
-                  onChangeText={setBody}
-                  selection={selection}
-                  onSelectionChange={handleSelectionChange}
-                  onFocus={() => setIsBodyFocused(true)}
-                  onBlur={() => setIsBodyFocused(false)}
-                  textAlignVertical="top"
-                />
-                {body.length > 0 && (
+                {body.length > 0 ? (
                   <View style={styles.formattedOverlay} pointerEvents="none">
                     <FormattedText text={body} baseStyle={styles.bodyInput} />
                   </View>
+                ) : (
+                  <Text style={[styles.bodyInput, { color: colors.mutedForeground + "35" }]}>
+                    Pour your heart out here...
+                  </Text>
                 )}
               </View>
             </Pressable>
@@ -572,6 +563,16 @@ export default function JournalEntryScreen() {
             )}
           </AutoScrollView>
         )}
+
+        <FullScreenTextEditor
+          visible={textEditorVisible}
+          title="Prayer Journal"
+          value={body}
+          onChangeText={setBody}
+          onDone={() => setTextEditorVisible(false)}
+          placeholder="Pour your heart out here..."
+          maxLength={5000}
+        />
 
         <SafeAreaView edges={["bottom"]}>
           <Pressable
