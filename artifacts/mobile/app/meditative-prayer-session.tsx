@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { X, Settings, Music, Pause, Play, BookOpen, PenLine, Loader, Volume2, VolumeX } from "lucide-react-native";
+import { X, Music, Pause, Play, BookOpen, PenLine, Loader, Volume2, VolumeX } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
@@ -301,21 +301,18 @@ export default function MeditativePrayerSessionScreen() {
             <Text style={styles.headerTag}>WITH GOD</Text>
             <Text style={styles.headerSub}>Quiet Session</Text>
           </View>
-          <View style={styles.headerActions}>
-            <Pressable
-              style={styles.headerBtn}
-              onPress={() => { void handleToggleMute(); }}
-              accessibilityRole="button"
-              accessibilityLabel={isMuted ? "Turn prayer music on" : "Mute prayer music"}
-            >
-              {isMuted
-                ? <VolumeX size={18} color={colors.primary} />
-                : <Volume2 size={18} color={colors.primary} />}
-            </Pressable>
-            <View style={styles.headerBtn}>
-              <Settings size={18} color={colors.primary} />
+            <View style={styles.headerActions}>
+              <Pressable
+                style={styles.headerBtn}
+                onPress={() => { void handleToggleMute(); }}
+                accessibilityRole="button"
+                accessibilityLabel={isMuted ? "Turn prayer music on" : "Mute prayer music"}
+              >
+                {isMuted
+                  ? <VolumeX size={18} color={colors.primary} />
+                  : <Volume2 size={18} color={colors.primary} />}
+              </Pressable>
             </View>
-          </View>
         </View>
 
         {/* Main content — ripple rings + timer + waveform */}
