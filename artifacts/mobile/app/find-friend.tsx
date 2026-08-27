@@ -548,7 +548,13 @@ export default function FindFriendScreen() {
   }, []);
 
   // Only show contacts who have a matching Prayer Space account
-  const onAppContacts = contactsList.filter((c) => !!c.existingUser);
+  const actionableStatuses = new Set(["none", "declined"]);
+  const searchableResults = results.filter((found) =>
+    actionableStatuses.has(getRequestStatus(found.id))
+  );
+  const onAppContacts = contactsList.filter(
+    (c) => !!c.existingUser && actionableStatuses.has(getRequestStatus(c.existingUser.id))
+  );
 
   const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
 
@@ -602,25 +608,18 @@ export default function FindFriendScreen() {
           </View>
         </View>
 
-        {showDropdown && results.length > 0 && (
+        {showDropdown && searchableResults.length > 0 && (
           <View style={styles.dropdownContainer}>
             <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} nestedScrollEnabled>
-              {results.map((found, index) => {
-                const status = getRequestStatus(found.id);
+              {searchableResults.map((found, index) => {
                 return (
-                  <Pressable key={found.id} style={[styles.dropdownItem, index < results.length - 1 && styles.dropdownItemBorder]} onPress={() => { if (status === "none") sendRequestMutation.mutate(found.id); }}>
+                  <Pressable key={found.id} style={[styles.dropdownItem, index < searchableResults.length - 1 && styles.dropdownItemBorder]} onPress={() => sendRequestMutation.mutate(found.id)}>
                     <AvatarImage avatarPath={found.avatar_url} fallbackSeed={found.full_name ?? "U"} style={styles.dropdownAvatar} />
                     <View style={styles.dropdownInfo}>
                       <Text style={styles.dropdownName} numberOfLines={1}>{found.full_name ?? "User"}</Text>
                       <Text style={styles.dropdownUsername} numberOfLines={1}>{deriveUsername(found.full_name)}</Text>
                     </View>
-                    {status === "accepted" ? (
-                      <View style={[styles.statusBadge, styles.statusBadgeFriends]}><UserCheck size={12} color={colors.primary} /><Text style={styles.statusBadgeTextPrimary}>Friends</Text></View>
-                    ) : status === "pending" ? (
-                      <View style={[styles.statusBadge, styles.statusBadgePending]}><Clock size={12} color={colors.mutedForeground} /><Text style={styles.statusBadgeTextMuted}>Requested</Text></View>
-                    ) : (
-                      <View style={styles.addBtnSmall}><UserPlus size={14} color={colors.primaryForeground} /></View>
-                    )}
+                    <View style={styles.addBtnSmall}><UserPlus size={14} color={colors.primaryForeground} /></View>
                   </Pressable>
                 );
               })}
@@ -628,13 +627,17 @@ export default function FindFriendScreen() {
           </View>
         )}
 
-        {hasSearched && results.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
+        {hasSearched && searchableResults.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
           <View style={styles.noResultsDropdown}>
-            <Text style={styles.noResultsText}>User not found</Text>
-            <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
-              <Share2 size={14} color={colors.primary} />
-              <Text style={styles.noResultsInviteText}>Invite them to Prayer Space</Text>
-            </Pressable>
+            <Text style={styles.noResultsText}>
+              {results.length > 0 ? "No new people to add" : "User not found"}
+            </Text>
+            {results.length === 0 && (
+              <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
+                <Share2 size={14} color={colors.primary} />
+                <Text style={styles.noResultsInviteText}>Invite them to Prayer Space</Text>
+              </Pressable>
+            )}
           </View>
         )}
 
