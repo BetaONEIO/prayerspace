@@ -54,6 +54,10 @@ function normalizeDisplayName(name: string | null): string {
 function shortAccountId(id: string): string {
   return id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
+function isMissingRelationshipRpc(error: unknown): boolean {
+  const rpcError = error as { code?: string; message?: string };
+  return rpcError?.code === "PGRST202" || rpcError?.message?.includes("send_friend_request") === true;
+}
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
 }
@@ -470,6 +474,13 @@ export default function FindFriendScreen() {
         message,
         details: supabaseError?.details,
       });
+      if (isMissingRelationshipRpc(error)) {
+        Alert.alert(
+          "Friend features need setup",
+          "The Friends database migration has not been applied yet. Run the Friends/Connections migration in the Supabase SQL Editor, then try again."
+        );
+        return;
+      }
       Alert.alert(
         message.includes("already")
           ? "Friend Request Already Exists"

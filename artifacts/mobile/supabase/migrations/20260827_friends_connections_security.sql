@@ -368,3 +368,7 @@ create policy "Users can view updates on visible requests"
   );
 
 commit;
+
+-- Refresh PostgREST's function cache immediately in projects where the SQL
+-- editor does not trigger an automatic schema reload.
+notify pgrst, 'reload schema';
