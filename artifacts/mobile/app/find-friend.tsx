@@ -441,48 +441,15 @@ export default function FindFriendScreen() {
   const sendRequestMutation = useMutation({
     mutationFn: async (receiverId: string) => {
       if (!user?.id) throw new Error("Not authenticated");
-
-      // Check both directions first. The database has a unique constraint for
-      // one direction, but a reverse pending request is also already a valid
-      // connection flow and should not produce a confusing insert error.
-      const [outgoingResult, incomingResult] = await Promise.all([
-        supabase
-          .from("friend_requests")
-          .select("id, sender_id, receiver_id, status")
-          .eq("sender_id", user.id)
-          .eq("receiver_id", receiverId)
-          .maybeSingle(),
-        supabase
-          .from("friend_requests")
-          .select("id, sender_id, receiver_id, status")
-          .eq("sender_id", receiverId)
-          .eq("receiver_id", user.id)
-          .maybeSingle(),
-      ]);
-      if (outgoingResult.error) throw outgoingResult.error;
-      if (incomingResult.error) throw incomingResult.error;
-
-      const existingRequest =
-        (outgoingResult.data as FriendRequest | null) ??
-        (incomingResult.data as FriendRequest | null);
-      if (existingRequest?.status === "accepted") {
-        throw new Error("You are already friends with this person.");
-      }
-      if (existingRequest?.status === "pending") {
-        throw new Error(
-          existingRequest.sender_id === user.id
-            ? "A friend request is already pending."
-            : "This person has already sent you a request. Check Friend Requests."
-        );
-      }
-
-      const { error } = await supabase
-        .from("friend_requests")
-        .insert({ sender_id: user.id, receiver_id: receiverId, status: "pending" });
+      const { error } = await supabase.rpc("send_friend_request", {
+        target_user_id: receiverId,
+      });
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, receiverId) => {
+      setResults((previous) => previous.filter((result) => result.id !== receiverId));
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user?.id] });
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: unknown) => {
@@ -581,6 +548,14 @@ export default function FindFriendScreen() {
             </Pressable>
             <Pressable style={styles.inviteBtn} onPress={() => openInviteSheet()}>
               <Share2 size={18} color={colors.primary} />
+            </Pressable>
+            <Pressable
+              style={styles.requestsBtn}
+              onPress={() => router.push("/friends" as never)}
+              accessibilityRole="button"
+              accessibilityLabel="View friends"
+            >
+              <UserCheck size={18} color={colors.primary} />
             </Pressable>
             <Pressable style={styles.requestsBtn} onPress={() => router.push("/friend-requests" as never)}>
               <Users size={18} color={colors.primary} />

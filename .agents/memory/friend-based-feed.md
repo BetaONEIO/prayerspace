@@ -13,6 +13,19 @@ description: How the community Feed tab fetches real posts from Supabase with fr
 
 ## SQL migration (NOT yet applied — must be run manually in Supabase SQL Editor)
 
+Relationship mutations and friend-only visibility now depend on the companion
+friends/connections migration. Treat the migration as a release prerequisite:
+it intentionally stops on duplicate active pairs instead of deleting them, and
+the Friends audit cannot be called complete until it is applied and verified
+with real accounts.
+
+**Why:** Client-side relationship checks can race and the previous RLS recipe
+was documentation rather than proof that the live database enforced privacy.
+
+**How to apply:** Apply the migration in the Supabase SQL Editor, resolve any
+duplicate-pair preflight failure deliberately, then run the three-account
+request/accept/decline/unfriend/block/privacy flow before release.
+
 ```sql
 DROP POLICY IF EXISTS "Anyone can view public prayer requests" ON public.prayer_requests;
 DROP POLICY IF EXISTS "Public posts visible to all" ON public.prayer_requests;

@@ -49,15 +49,25 @@ export default function FriendRequestsScreen() {
 
   const respondMutation = useMutation({
     mutationFn: async ({ requestId, status }: { requestId: string; status: "accepted" | "declined" }) => {
-      const { error } = await supabase.from("friend_requests").update({ status }).eq("id", requestId);
+      const { error } = await supabase.rpc("respond_to_friend_request", {
+        request_id: requestId,
+        next_status: status,
+      });
       if (error) throw error;
     },
     onSuccess: (_, { status }) => {
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts", user?.id] });
       if (Platform.OS !== "web") void Haptics.notificationAsync(status === "accepted" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning);
     },
-    onError: () => Alert.alert("Error", "Could not update request. Please try again."),
+    onError: (error: unknown) => {
+      const message = error instanceof Error
+        ? error.message
+        : (error as { message?: string })?.message ?? "Could not update request. Please try again.";
+      Alert.alert("Error", message);
+    },
   });
 
   const handleAccept = useCallback((requestId: string) => respondMutation.mutate({ requestId, status: "accepted" }), [respondMutation]);

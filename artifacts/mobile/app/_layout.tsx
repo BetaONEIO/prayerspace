@@ -136,6 +136,7 @@ function RootLayoutNav() {
       <Stack.Screen name="meditative-prayer-session" options={{ headerShown: false }} />
       <Stack.Screen name="prayer-space-pro" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="find-friend" options={{ headerShown: false }} />
+      <Stack.Screen name="friends" options={{ headerShown: false }} />
       <Stack.Screen name="friend-requests" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />

@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { Image } from "expo-image";
@@ -36,6 +37,8 @@ type ProfileData = {
   favorite_verse: string | null;
 };
 
+type RelationshipStatus = "add" | "sent" | "respond" | "friends" | "blocked";
+
 export default function UserProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -49,6 +52,8 @@ export default function UserProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isFavourited, setIsFavourited] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>("add");
+  const [relationshipLoading, setRelationshipLoading] = useState(false);
 
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
   const heartScale = useRef(new Animated.Value(1)).current;
@@ -101,6 +106,112 @@ export default function UserProfileScreen() {
     void fetchProfile();
   }, [fetchProfile]);
 
+  const fetchRelationship = useCallback(async () => {
+    if (!user?.id || !id || user.id === id) return;
+    const [requestsResult, blocksResult] = await Promise.all([
+      supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id, status")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+      supabase
+        .from("blocked_users")
+        .select("blocker_id, blocked_id")
+        .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${id}),and(blocker_id.eq.${id},blocked_id.eq.${user.id})`),
+    ]);
+    if (blocksResult.data?.length) {
+      setRelationshipStatus("blocked");
+      return;
+    }
+    const request = (requestsResult.data ?? []).find(
+      (row) => row.sender_id === id || row.receiver_id === id
+    );
+    if (!request) {
+      setRelationshipStatus("add");
+    } else if (request.status === "accepted") {
+      setRelationshipStatus("friends");
+    } else if (request.status === "pending") {
+      setRelationshipStatus(request.sender_id === user.id ? "sent" : "respond");
+    } else {
+      setRelationshipStatus("add");
+    }
+  }, [id, user?.id]);
+
+  useEffect(() => {
+    void fetchRelationship();
+  }, [fetchRelationship]);
+
+  const handleRelationshipAction = useCallback(() => {
+    if (!user?.id || !id || relationshipLoading) return;
+    if (relationshipStatus === "respond") {
+      router.push("/friend-requests" as never);
+      return;
+    }
+    if (relationshipStatus === "sent" || relationshipStatus === "blocked") return;
+    if (relationshipStatus === "friends") {
+      Alert.alert(
+        "Remove Friend?",
+        `Remove ${profile?.full_name ?? "this person"} from your friends?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => {
+              setRelationshipLoading(true);
+              void (async () => {
+                const { error: rpcError } = await supabase.rpc("remove_friend", { target_user_id: id });
+                if (rpcError) {
+                  Alert.alert("Could not remove friend", rpcError.message);
+                } else {
+                  setRelationshipStatus("add");
+                }
+                setRelationshipLoading(false);
+              })();
+            },
+          },
+        ],
+      );
+      return;
+    }
+    setRelationshipLoading(true);
+    void (async () => {
+      const { error: rpcError } = await supabase.rpc("send_friend_request", { target_user_id: id });
+      if (rpcError) {
+        Alert.alert("Could not add friend", rpcError.message);
+      } else {
+        setRelationshipStatus("sent");
+      }
+      setRelationshipLoading(false);
+    })();
+  }, [id, profile?.full_name, relationshipLoading, relationshipStatus, router, user?.id]);
+
+  const handleMoreAction = useCallback(() => {
+    if (!id || isOwnProfile || relationshipStatus === "blocked") return;
+    Alert.alert(
+      "Profile options",
+      undefined,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block User",
+          style: "destructive",
+          onPress: () => {
+            setRelationshipLoading(true);
+            void (async () => {
+              const { error: rpcError } = await supabase.rpc("block_user", { target_user_id: id });
+              if (rpcError) {
+                Alert.alert("Could not block user", rpcError.message);
+              } else {
+                setRelationshipStatus("blocked");
+              }
+              setRelationshipLoading(false);
+            })();
+          },
+        },
+      ],
+    );
+  }, [id, isOwnProfile, relationshipStatus]);
+
   const handleFavourite = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newVal = !isFavourited;
@@ -138,7 +249,7 @@ export default function UserProfileScreen() {
             <Pencil size={18} color={colors.secondaryForeground} />
           </Pressable>
         ) : (
-          <Pressable style={styles.iconBtn}>
+          <Pressable style={styles.iconBtn} onPress={handleMoreAction}>
             <MoreHorizontal size={20} color={colors.secondaryForeground} />
           </Pressable>
         )}
@@ -202,8 +313,29 @@ export default function UserProfileScreen() {
             ) : (
               <View style={styles.actionRow}>
                 <Pressable
-                  style={styles.messageBtn}
+                  style={[styles.friendBtn, relationshipStatus === "blocked" && styles.disabledBtn]}
+                  onPress={handleRelationshipAction}
+                  disabled={relationshipLoading || relationshipStatus === "blocked"}
+                >
+                  <User size={16} color={colors.primaryForeground} />
+                  <Text style={styles.friendBtnText}>
+                    {relationshipLoading
+                      ? "Updating…"
+                      : relationshipStatus === "sent"
+                        ? "Request Sent"
+                        : relationshipStatus === "respond"
+                          ? "Respond"
+                          : relationshipStatus === "friends"
+                            ? "Friends"
+                            : relationshipStatus === "blocked"
+                              ? "Blocked"
+                              : "Add Friend"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.messageBtn, relationshipStatus === "blocked" && styles.disabledBtn]}
                   onPress={() => router.push(`/chat/${id ?? ""}`)}
+                  disabled={relationshipStatus === "blocked"}
                 >
                   <MessageCircle size={18} color={colors.primaryForeground} />
                   <Text style={styles.messageBtnText}>Message</Text>
@@ -401,6 +533,24 @@ function createStyles(colors: ThemeColors) {
       gap: 12,
       width: "100%" as const,
       marginTop: 4,
+    },
+    friendBtn: {
+      flex: 1,
+      flexDirection: "row" as const,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+      gap: 7,
+      backgroundColor: colors.primary,
+      paddingVertical: 16,
+      borderRadius: 999,
+    },
+    friendBtnText: {
+      fontSize: 13,
+      fontWeight: "700" as const,
+      color: colors.primaryForeground,
+    },
+    disabledBtn: {
+      opacity: 0.55,
     },
     messageBtn: {
       flex: 1,
