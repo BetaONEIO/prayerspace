@@ -1405,7 +1405,7 @@ function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMes
             style={[styles.ownBubble, message.imageUrl && styles.ownBubbleWithImage]}
           >
             {message.imageUrl && (
-              <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
+              <Pressable onPress={() => onImagePress?.(message.imageUrl!)}>
                 <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
               </Pressable>
             )}
@@ -1471,7 +1471,7 @@ function OtherMessage({ message, showHeader = true, onImagePress, onLongPress, o
               delayLongPress={300}
               style={[styles.otherBubble, styles.otherBubbleWithImage]}
             >
-              <Pressable onPress={() => onImagePress?.(message.imageUrl!)} activeOpacity={0.88}>
+              <Pressable onPress={() => onImagePress?.(message.imageUrl!)}>
                 <Image source={{ uri: message.imageUrl }} style={styles.groupMsgImage} contentFit="cover" />
               </Pressable>
               {(message.text ?? "").trim().length > 0 && (

@@ -722,7 +722,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: "center" as const,
     },
     photoEditOverlay: {
-      ...absoluteFill,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: "rgba(0,0,0,0.35)",
       alignItems: "center" as const,
       justifyContent: "center" as const,
@@ -991,7 +991,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: "flex-end" as const,
     },
     sheetBackdrop: {
-      ...absoluteFill,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: "rgba(0,0,0,0.5)",
     },
     sheet: {

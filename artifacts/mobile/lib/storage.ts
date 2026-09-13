@@ -19,7 +19,7 @@ export function isStoragePath(value: string | null | undefined): boolean {
 async function uriToUploadable(uri: string, contentType: string): Promise<Blob | Uint8Array> {
   if (Platform.OS !== 'web' && uri.startsWith('file://')) {
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);

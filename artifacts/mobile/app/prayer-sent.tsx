@@ -36,7 +36,7 @@ export default function PrayerSentScreen() {
   useEffect(() => {
     const run = async () => {
       await incrementPrayersSent();
-      setTimeout(() => checkAndShowPrompt(), 2000);
+      setTimeout(() => checkAndShowPrompt("answered_prayer"), 2000);
     };
     run();
   }, [checkAndShowPrompt]);

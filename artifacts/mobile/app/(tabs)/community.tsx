@@ -1260,7 +1260,7 @@ interface CommunitySelectorBannerProps {
 
 function CommunitySelectorBanner({ activeCommunity, onPress }: CommunitySelectorBannerProps) {
   const colors = useThemeColors();
-  const styles = createStyles(colors);
+  const styles = { ...createStyles(colors), ...createCpStyles(colors) };
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {

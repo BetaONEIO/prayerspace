@@ -1,5 +1,6 @@
 import type { PrayerStatus } from "@/mocks/data";
 import { isDatePassed, reminderDateFor, daysUntil } from "./prayerDateUtils";
+import { SchedulableTriggerInputTypes } from "expo-notifications";
 
 export interface ScheduledReminder {
   prayerRequestId: string;
@@ -104,7 +105,7 @@ export async function scheduleReceivedPrayerReminders(
           body: `Remember to pray for them: "${snippet.slice(0, 80)}${snippet.length > 80 ? "…" : ""}"`,
           data: { prayerRequestId, screen: "received-prayer" },
         },
-        trigger: triggerDate,
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: triggerDate },
       });
     }
   }
@@ -119,7 +120,7 @@ export async function scheduleReceivedPrayerReminders(
           body: `Hold them in prayer — it's happening tomorrow.`,
           data: { prayerRequestId, screen: "received-prayer" },
         },
-        trigger: { seconds: 10 },
+        trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, repeats: false },
       });
     }
   }
@@ -134,7 +135,7 @@ export async function scheduleReceivedPrayerReminders(
           body: `${firstName} needs your prayers today. Lift them up.`,
           data: { prayerRequestId, screen: "received-prayer" },
         },
-        trigger: triggerDate,
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: triggerDate },
       });
     }
   }
@@ -147,7 +148,7 @@ export async function scheduleReceivedPrayerReminders(
         body: `Today is the day — ${firstName} is counting on your prayers.`,
         data: { prayerRequestId, screen: "received-prayer" },
       },
-      trigger: { seconds: 30 },
+      trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 30, repeats: false },
     });
   }
 }
@@ -199,7 +200,7 @@ export async function scheduleOwnPrayerReminders(
           body: shortSnippet,
           data: { prayerRequestId, screen: "prayer-detail" },
         },
-        trigger: triggerDate,
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: triggerDate },
       });
     }
   }
@@ -212,7 +213,7 @@ export async function scheduleOwnPrayerReminders(
         body: `Remember to trust God for this: ${shortSnippet}`,
         data: { prayerRequestId, screen: "prayer-detail" },
       },
-      trigger: { seconds: 10 },
+      trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, repeats: false },
     });
   }
 
@@ -226,7 +227,7 @@ export async function scheduleOwnPrayerReminders(
           body: `This is the day you've been praying for: ${shortSnippet}`,
           data: { prayerRequestId, screen: "prayer-detail" },
         },
-        trigger: triggerDate,
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: triggerDate },
       });
     }
   }
@@ -239,7 +240,7 @@ export async function scheduleOwnPrayerReminders(
         body: shortSnippet,
         data: { prayerRequestId, screen: "prayer-detail" },
       },
-      trigger: { seconds: 30 },
+      trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 30, repeats: false },
     });
   }
 }

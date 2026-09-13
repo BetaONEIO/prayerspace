@@ -141,7 +141,7 @@ function MessageBubble({ channel, message }: { channel: DeliveryChannel; message
           styles.messageBubble,
           {
             backgroundColor: meta.bubbleColor,
-            alignSelf: meta.bubbleAlign,
+            alignSelf: meta.bubbleAlign as "flex-start" | "flex-end",
           },
           channel === "whatsapp" && styles.whatsAppBubble,
           channel === "sms" && styles.smsBubble,

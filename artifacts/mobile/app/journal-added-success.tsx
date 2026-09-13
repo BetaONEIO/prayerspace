@@ -87,7 +87,7 @@ export default function JournalAddedSuccessScreen() {
         </View>
 
         <Animated.View style={[styles.buttons, { opacity: buttonsFade }]}>
-          <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]} onPress={() => router.replace("/(tabs)/journal")} testID="view-journal-btn">
+          <Pressable style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]} onPress={() => router.replace("/(tabs)/activity")} testID="view-journal-btn">
             <BookOpen size={20} color={colors.primaryForeground} />
             <Text style={styles.primaryBtnText}>View My Journal</Text>
           </Pressable>

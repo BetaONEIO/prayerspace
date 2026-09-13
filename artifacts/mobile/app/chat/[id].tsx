@@ -760,7 +760,7 @@ export default function ChatScreen() {
               )}
               <View style={[styles.bubble, styles.bubbleTheirs, hasImage && styles.bubbleWithImage]}>
                 {hasImage && (
-                  <Pressable onPress={() => setViewingImage(item.image_url!)} activeOpacity={0.88}>
+                  <Pressable onPress={() => setViewingImage(item.image_url!)}>
                     <Image source={{ uri: item.image_url! }} style={styles.msgImage} contentFit="cover" />
                   </Pressable>
                 )}
@@ -808,7 +808,7 @@ export default function ChatScreen() {
             hasImage && styles.bubbleWithImage,
           ]}>
             {hasImage && (
-              <Pressable onPress={() => setViewingImage(item.image_url!)} activeOpacity={0.88}>
+              <Pressable onPress={() => setViewingImage(item.image_url!)}>
                 <Image source={{ uri: item.image_url! }} style={styles.msgImage} contentFit="cover" />
               </Pressable>
             )}

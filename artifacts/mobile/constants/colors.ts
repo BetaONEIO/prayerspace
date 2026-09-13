@@ -15,6 +15,8 @@ export interface ThemeColors {
   destructive: string;
   tabIconDefault: string;
   tabIconSelected: string;
+  radius: number;
+  green: string;
 }
 
 export const LightColors: ThemeColors = {
@@ -34,6 +36,8 @@ export const LightColors: ThemeColors = {
   destructive: "#D9534F",
   tabIconDefault: "#B8A090",
   tabIconSelected: "#C4662A",
+  radius: 12,
+  green: "#22C55E",
 };
 
 export const DarkColors: ThemeColors = {
@@ -53,6 +57,8 @@ export const DarkColors: ThemeColors = {
   destructive: "#EF4444",
   tabIconDefault: "#64748B",
   tabIconSelected: "#E86F24",
+  radius: 12,
+  green: "#4ADE80",
 };
 
 const Colors = LightColors;
