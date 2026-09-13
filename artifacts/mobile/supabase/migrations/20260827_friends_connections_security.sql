@@ -268,6 +268,20 @@ create policy "Users can dismiss own notifications"
   on public.notifications for delete
   using (auth.uid() = recipient_id);
 
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end
+$$;
+
 create or replace function public.create_friend_notification()
 returns trigger
 language plpgsql

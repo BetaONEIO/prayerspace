@@ -140,7 +140,7 @@ function NotificationIcon({ type, colors }: { type: Notification["type"]; colors
 export default function NotificationsPanel({ visible, onClose }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { notifications, removeNotification, clearAll } = useNotifications();
+  const { notifications, removeNotification, markNotificationRead, markAllRead } = useNotifications();
   const [declineDialogVisible, setDeclineDialogVisible] = useState(false);
   const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
@@ -169,9 +169,8 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
   }, []);
 
   const handleMarkAllRead = useCallback(() => {
-    clearAll();
-    console.log("Mark all notifications read — cleared");
-  }, [clearAll]);
+    markAllRead();
+  }, [markAllRead]);
 
   const pendingDeclineNotif = notifications.find((n) => n.id === pendingDeclineId);
   const groupNameMatch = pendingDeclineNotif?.body.match(/"([^"]+)"/);
@@ -221,8 +220,9 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
                 </View>
               ) : (
                 notifications.map((notif, index) => (
-                  <View
+                  <Pressable
                     key={notif.id}
+                    onPress={() => markNotificationRead(notif.id)}
                     style={[
                       styles.notifRow,
                       notif.unread && styles.notifRowUnread,
@@ -290,7 +290,7 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
                         )}
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
                 ))
               )}
             </ScrollView>

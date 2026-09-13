@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { notifications, removeNotification, clearAll, joinGroup } = useNotifications();
+  const { notifications, removeNotification, markNotificationRead, markAllRead, joinGroup } = useNotifications();
   const [declineDialogVisible, setDeclineDialogVisible] = useState(false);
   const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
@@ -74,9 +74,18 @@ export default function NotificationsScreen() {
       if (notif.targetRoute && notif.targetId) { router.back(); setTimeout(() => router.push(`${notif.targetRoute}/${notif.targetId}` as never), 100); }
       return;
     }
-    removeNotification(notif.id);
-    if (notif.targetRoute) { router.back(); setTimeout(() => router.push(notif.targetId ? `${notif.targetRoute}/${notif.targetId}` as never : notif.targetRoute as never), 100); }
-  }, [removeNotification, joinGroup, router]);
+    markNotificationRead(notif.id);
+    if (notif.targetRoute) {
+      router.back();
+      setTimeout(() => {
+        if (notif.targetRoute === "/friend-requests") {
+          router.push(notif.targetRoute as never);
+        } else {
+          router.push(notif.targetId ? `${notif.targetRoute}/${notif.targetId}` as never : notif.targetRoute as never);
+        }
+      }, 100);
+    }
+  }, [removeNotification, markNotificationRead, joinGroup, router]);
 
   const handleDeclineConfirm = useCallback(() => {
     if (pendingDeclineId) removeNotification(pendingDeclineId);
@@ -85,12 +94,18 @@ export default function NotificationsScreen() {
   }, [pendingDeclineId, removeNotification]);
 
   const handleNotifRowPress = useCallback((notif: Notification) => {
-    if (!notif.targetRoute) return;
+    if (!notif.targetRoute) {
+      markNotificationRead(notif.id);
+      return;
+    }
     if (Platform.OS !== "web") void Haptics.selectionAsync();
+    markNotificationRead(notif.id);
     router.back();
-    if (notif.targetId) setTimeout(() => router.push(`${notif.targetRoute}/${notif.targetId}` as never), 100);
+    if (notif.targetRoute === "/friend-requests") {
+      setTimeout(() => router.push(notif.targetRoute as never), 100);
+    } else if (notif.targetId) setTimeout(() => router.push(`${notif.targetRoute}/${notif.targetId}` as never), 100);
     else setTimeout(() => router.push(notif.targetRoute as never), 100);
-  }, [router]);
+  }, [markNotificationRead, router]);
 
   const pendingDeclineNotif = notifications.find((n) => n.id === pendingDeclineId);
   const groupName = pendingDeclineNotif?.body.match(/"([^"]+)"/)?.[1] ?? "this group";
@@ -106,8 +121,8 @@ export default function NotificationsScreen() {
           {unreadCount > 0 && <View style={styles.unreadBadge}><Text style={styles.unreadBadgeText}>{unreadCount}</Text></View>}
         </View>
         {notifications.length > 0 ? (
-          <Pressable style={styles.markReadBtn} onPress={() => { if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); clearAll(); }}>
-            <Text style={styles.markReadText}>Clear all</Text>
+          <Pressable style={styles.markReadBtn} onPress={() => { if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); markAllRead(); }}>
+            <Text style={styles.markReadText}>Mark all read</Text>
           </Pressable>
         ) : <View style={{ width: 70 }} />}
       </View>
