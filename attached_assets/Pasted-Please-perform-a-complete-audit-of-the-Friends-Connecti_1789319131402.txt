@@ -1,0 +1,518 @@
+Please perform a **complete audit of the Friends / Connections system across the Prayer Space app**.
+
+The goal is to make sure friendships work reliably from beginning to end and that becoming friends actually affects what users can see and do throughout Prayer Space.
+
+**CRITICAL: Do not use any dummy, mock, placeholder or hard-coded data during this work. Test against real database records/test accounts only.**
+
+## 1. Audit the friendship data model
+
+First inspect how friendships are currently stored.
+
+We need one reliable source of truth for the relationship between two users.
+
+A friendship should support states equivalent to:
+
+* No relationship
+* Request pending
+* Friends
+* Declined
+* Blocked
+
+Make sure friendships work **bidirectionally**.
+
+If David and Sarah are friends, both accounts should recognise the same friendship. Do not require duplicate friendship records unless that is intentionally how the existing architecture works.
+
+Prevent:
+
+* Duplicate requests
+* Duplicate friendships
+* Sending a request to yourself
+* Sending another request when one is already pending
+* Becoming friends without acceptance
+* Race conditions caused by both users requesting each other simultaneously
+
+Reuse the existing database architecture where possible rather than unnecessarily rebuilding the system.
+
+---
+
+# 2. Sending a Friend Request
+
+From another user's profile, I should be able to tap:
+
+**Add Friend**
+
+After sending:
+
+* Create a genuine pending friend request.
+* Change the button to something like **Request Sent**.
+* Prevent repeated requests.
+* Persist the state after refreshing/reopening the app.
+* Notify the recipient.
+* Do not expose additional Friends-only information until the request is accepted.
+
+If the request fails, show an error and restore the button correctly.
+
+---
+
+# 3. Receiving Friend Requests
+
+The recipient should receive a real notification such as:
+
+**David sent you a friend request**
+
+The user should be able to:
+
+**Accept**
+
+or
+
+**Decline**
+
+Friend requests should also have a reliable place within the app where users can see pending requests, rather than relying solely on notifications.
+
+For example:
+
+**Friends → Requests**
+
+Display the genuine user's:
+
+* Profile image
+* Name
+* Relevant public profile information
+
+No dummy profiles.
+
+---
+
+# 4. Accepting Requests
+
+When the recipient taps **Accept**:
+
+* Update the relationship to Friends.
+* Update both users immediately.
+* Remove the pending request.
+* Update the relevant notification.
+* Refresh both profiles where necessary.
+* Allow Friends-only activity according to privacy rules.
+* Prevent accepting the same request multiple times.
+
+The original sender's profile should now display the appropriate Friends state.
+
+---
+
+# 5. Declining Requests
+
+If the recipient declines:
+
+* Remove/resolve the pending request correctly.
+* Do not create a friendship.
+* Remove it from pending requests.
+* Ensure the sender does not incorrectly see them as a friend.
+
+Decide on sensible behaviour for whether another request can be sent later.
+
+---
+
+# 6. Friends List
+
+Each user should have a real Friends list.
+
+This should display actual confirmed friends from the database.
+
+Each friend should show real information such as:
+
+* Profile image
+* Display name
+* Relevant public profile information
+* Online state only if genuine presence functionality exists
+
+Tapping a friend should open their real Prayer Space profile using their `user_id`.
+
+If the user has no friends, show a proper empty state.
+
+For example:
+
+**No friends yet**
+
+**Connect with people you know and pray together on Prayer Space.**
+
+Never populate this screen with example users.
+
+---
+
+# 7. Friends and the main Feed
+
+This is particularly important.
+
+Once two users become confirmed friends, their eligible activity/posts should appear in each other's main Feed.
+
+The Feed should contain appropriate content from:
+
+1. The logged-in user.
+2. Their confirmed friends.
+3. Any Prayer Community content they are authorised to see, if Community content belongs in this Feed.
+
+For a Friends-visible status update:
+
+`Post → author_user_id → confirmed friendship → authorised Feed`
+
+If User A and User B are friends:
+
+* A should see eligible posts from B.
+* B should see eligible posts from A.
+
+If User C is not their friend:
+
+* C must not see Friends-only content.
+
+Do not fetch every user's posts and simply hide unauthorised posts in the frontend.
+
+The backend/database permissions must enforce visibility.
+
+---
+
+# 8. Friend Activity
+
+Audit the Activity system.
+
+When I'm friends with someone, I should be able to see **appropriate activity that they have chosen or are permitted to share**.
+
+Potential activity could include:
+
+* New status updates
+* Public/Friends prayer requests
+* Praise reports
+* Answered prayer updates
+* Testimonies
+* Other appropriate social activity
+
+However, friendship must **not automatically make everything visible**.
+
+Respect the privacy setting of the original content.
+
+---
+
+# 9. Prayer privacy
+
+Prayer Space contains potentially sensitive content, so friendship should never override prayer privacy.
+
+A friend should only see a prayer if the prayer's visibility permits them to.
+
+For example:
+
+### Private
+
+Only the author.
+
+### Friends
+
+Confirmed friends.
+
+### Prayer Group
+
+Members of the relevant Prayer Group.
+
+### Community
+
+Members of the relevant Prayer Community.
+
+If other privacy options already exist, reuse the current model instead of introducing conflicting options.
+
+---
+
+# 10. Anonymous prayers
+
+Be extremely careful with anonymous prayer requests.
+
+If a prayer has been posted anonymously:
+
+* Do not expose `author_user_id` to other users through the UI.
+* Do not expose the author's profile through Activity.
+* Do not allow friends to determine who posted it.
+* Do not accidentally expose the author through notifications, API responses or profile activity.
+
+Anonymous must remain anonymous regardless of friendship.
+
+---
+
+# 11. Profile Activity
+
+When viewing a friend's profile, the Activity section should show only real activity that the current viewer is authorised to see.
+
+Do not display:
+
+* Private prayers
+* Private Community activity
+* Private Prayer Group activity
+* Anonymous authorship
+* Private messages
+* Hidden profile information
+
+If there is no visible activity:
+
+**No recent activity to show**
+
+Do not substitute dummy activity.
+
+---
+
+# 12. Status Updates
+
+Audit status updates specifically.
+
+When I post a Friends-visible status update:
+
+* It should save against my authenticated `user_id`.
+* I should see it immediately.
+* My confirmed friends should see it.
+* Non-friends should not see it.
+* Clicking my name/profile image should open my real profile.
+* Clicking another user's status should open their real profile.
+
+Make sure status updates are not still using any mock profile data.
+
+---
+
+# 13. Notifications
+
+Friend-related notifications should be based entirely on real events.
+
+Examples:
+
+**Sarah sent you a friend request**
+
+**Sarah accepted your friend request**
+
+Potentially:
+
+**Sarah shared a new prayer request**
+
+but only if that notification behaviour is intentionally supported and privacy permits it.
+
+Notifications should:
+
+* Link to the correct user/content.
+* Have correct read/unread states.
+* Not duplicate.
+* Clear/update appropriately after actions are completed.
+* Never be generated from dummy data.
+
+---
+
+# 14. Unfriend
+
+Users need to be able to remove a friend.
+
+Add or audit:
+
+**Remove Friend**
+
+Require appropriate confirmation.
+
+After removing:
+
+* Both users should cease being Friends.
+* Friends-only Feed posts should no longer be accessible where applicable.
+* Friends-only profile activity should no longer be visible.
+* The Friends list should update.
+* Existing private messages should follow whatever messaging policy Prayer Space uses.
+* Do not delete either user's actual content.
+
+The change should propagate throughout the app.
+
+---
+
+# 15. Blocking
+
+Audit blocking separately from unfriending.
+
+If User A blocks User B:
+
+* Remove/prevent friendship where appropriate.
+* Prevent new friend requests.
+* Hide Friends-only activity.
+* Prevent inappropriate profile interaction.
+* Prevent messaging where applicable.
+* Prevent notifications from the blocked user.
+* Ensure blocked users cannot bypass restrictions through direct URLs/API requests.
+
+Blocking should override friendship.
+
+---
+
+# 16. Friend button states
+
+The profile Friend button must always represent the real relationship.
+
+Possible states:
+
+**Add Friend**
+
+**Request Sent**
+
+**Respond to Request**
+
+**Friends**
+
+**Blocked**
+
+The UI should derive this from real relationship data.
+
+Do not maintain a separate frontend-only friendship state that becomes incorrect after refreshing.
+
+---
+
+# 17. Realtime updates
+
+Where Prayer Space already supports realtime database subscriptions, use them appropriately.
+
+For example:
+
+If I am viewing the app when someone accepts my friend request, the UI should update without requiring me to completely restart Prayer Space.
+
+Likewise, new authorised Feed activity should appear naturally.
+
+Do not introduce excessive realtime subscriptions if the existing architecture uses another refresh strategy.
+
+---
+
+# 18. Friends vs Followers
+
+Please audit whether Prayer Space currently has both:
+
+* Friends
+* Followers / Following
+
+If both concepts exist, ensure their purposes are clearly separated.
+
+A **Friend** should mean a mutually accepted relationship.
+
+A **Follower** should not automatically gain access to Friends-only content.
+
+Do not accidentally treat followers as friends in database queries or privacy rules.
+
+If Followers is leftover dummy/unfinished functionality and is not intentionally part of Prayer Space, flag this rather than building additional functionality around it.
+
+---
+
+# 19. Database security
+
+Review all database/API/RLS permissions associated with:
+
+* Friend requests
+* Friendships
+* Feed posts
+* Status updates
+* Profiles
+* Prayer activity
+* Notifications
+* Messages
+* Blocks
+
+Security must be enforced server-side/database-side where appropriate.
+
+Do not rely solely on:
+
+`if (isFriend) hide/show component`
+
+in the frontend.
+
+A malicious or unauthorised client must not be able to query Friends-only content simply by knowing another user's ID.
+
+---
+
+# 20. No dummy data
+
+As part of this audit, search all Friend-related components for:
+
+* `mock`
+* `dummy`
+* `fake`
+* `sample`
+* `demo`
+* `placeholder`
+* hard-coded user IDs
+* hard-coded names
+* hard-coded avatars
+* hard-coded friendships
+* hard-coded activity
+* hard-coded notifications
+* fake counts
+
+Remove all production dependencies on this data.
+
+If there is no real data, display a proper empty state.
+
+---
+
+# 21. Test the complete flow
+
+Test this using at least **three genuine test accounts** connected to the real development database.
+
+### Account A
+
+### Account B
+
+### Account C
+
+Initially none should be friends.
+
+Test the following complete journey:
+
+1. A searches for B.
+2. A opens B's real profile.
+3. A sends B a Friend Request.
+4. B receives the request.
+5. B accepts.
+6. A and B now appear in each other's Friends lists.
+7. Their profile buttons display Friends.
+8. A creates a Friends-visible status update.
+9. B can see it in their Feed.
+10. C cannot see it.
+11. B creates a Friends-visible prayer/activity.
+12. A sees it where privacy permits.
+13. C cannot see it.
+14. Clicking either user's content opens the correct real profile.
+15. A removes B as a friend.
+16. Friends-only content is no longer available where appropriate.
+17. Send another request and test Decline.
+18. Test blocking.
+19. Confirm blocked users cannot circumvent restrictions.
+20. Refresh/restart the app throughout testing to ensure state is genuinely persisted.
+
+Also test both directions. Do not only test A → B.
+
+---
+
+# Final expected behaviour
+
+The Friends system should feel connected to the entire Prayer Space experience:
+
+**Find someone**
+→ **Send Friend Request**
+→ **Accept**
+→ **Become Friends**
+→ **See appropriate shared activity**
+→ **See Friends-visible posts in Feed**
+→ **Interact and pray together**
+
+while always respecting:
+
+* Prayer privacy
+* Anonymous posting
+* Community privacy
+* Prayer Group privacy
+* Blocking
+* User permissions
+
+The friendship database relationship should be the single source of truth across the app.
+
+Please identify the root cause of any broken behaviour, make targeted fixes, and provide a short audit report afterwards explaining:
+
+* What was already working
+* What was broken
+* What was fixed
+* Any database/RLS changes made
+* Any remaining issues or recommended improvements
+
+Do not mark the Friends system as complete until the end-to-end flow has been tested successfully with multiple real accounts.
