@@ -48,9 +48,11 @@ function normalizePhoneForSMS(phone: string): string {
   return phone.replace(/\s/g, "");
 }
 
-function deriveUsername(name: string | null): string {
-  if (!name) return "@user";
-  return "@" + name.toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "");
+function normalizeDisplayName(name: string | null): string {
+  return (name ?? "").trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+function shortAccountId(id: string): string {
+  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 function getInitials(name: string): string {
   return name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
@@ -432,7 +434,13 @@ export default function FindFriendScreen() {
       if (!trimmed) return [];
       const { data, error } = await supabase.from("profiles").select("id, full_name, avatar_url, bio").ilike("full_name", `%${trimmed}%`).neq("id", user?.id ?? "").limit(20);
       if (error) throw error;
-      return (data as FoundUser[]) ?? [];
+      const uniqueProfiles = new Map<string, FoundUser>();
+      for (const profile of (data as FoundUser[] | null) ?? []) {
+        if (profile.id && !uniqueProfiles.has(profile.id)) {
+          uniqueProfiles.set(profile.id, profile);
+        }
+      }
+      return [...uniqueProfiles.values()];
     },
     onSuccess: (data) => { setResults(data); setHasSearched(true); setShowDropdown(data.length > 0); },
     onError: () => { Alert.alert("Search Error", "Could not search. Please try again."); },
@@ -519,6 +527,20 @@ export default function FindFriendScreen() {
   const searchableResults = results.filter((found) =>
     actionableStatuses.has(getRequestStatus(found.id))
   );
+  const duplicateNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const found of searchableResults) {
+      const key = normalizeDisplayName(found.full_name);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [searchableResults]);
+  const getSearchIdentityLabel = useCallback((found: FoundUser) => {
+    const nameKey = normalizeDisplayName(found.full_name);
+    return (duplicateNameCounts.get(nameKey) ?? 0) > 1
+      ? `Same display name · account ${shortAccountId(found.id)}`
+      : "Prayer Space profile";
+  }, [duplicateNameCounts]);
   const onAppContacts = contactsList.filter(
     (c) => !!c.existingUser && actionableStatuses.has(getRequestStatus(c.existingUser.id))
   );
@@ -577,7 +599,7 @@ export default function FindFriendScreen() {
         <View style={styles.searchSection}>
           <View style={styles.searchBar}>
             <Search size={18} color={colors.mutedForeground} />
-            <TextInput style={styles.searchInput} placeholder="Search by name or username..." placeholderTextColor={colors.mutedForeground + "80"} value={query} onChangeText={setQuery} onSubmitEditing={() => { if (query.trim()) searchMutation.mutate(query); }} returnKeyType="search" autoCapitalize="none" autoCorrect={false} />
+            <TextInput style={styles.searchInput} placeholder="Search by name..." placeholderTextColor={colors.mutedForeground + "80"} value={query} onChangeText={setQuery} onSubmitEditing={() => { if (query.trim()) searchMutation.mutate(query); }} returnKeyType="search" autoCapitalize="none" autoCorrect={false} />
             {query.length > 0 && <Pressable onPress={() => { setQuery(""); setResults([]); setHasSearched(false); setShowDropdown(false); }} hitSlop={8}><X size={18} color={colors.mutedForeground} /></Pressable>}
             {searchMutation.isPending && <ActivityIndicator size="small" color={colors.primary} />}
           </View>
@@ -592,7 +614,7 @@ export default function FindFriendScreen() {
                     <AvatarImage avatarPath={found.avatar_url} fallbackSeed={found.full_name ?? "U"} style={styles.dropdownAvatar} />
                     <View style={styles.dropdownInfo}>
                       <Text style={styles.dropdownName} numberOfLines={1}>{found.full_name ?? "User"}</Text>
-                      <Text style={styles.dropdownUsername} numberOfLines={1}>{deriveUsername(found.full_name)}</Text>
+                      <Text style={styles.dropdownUsername} numberOfLines={1}>{getSearchIdentityLabel(found)}</Text>
                     </View>
                     <View style={styles.addBtnSmall}><UserPlus size={14} color={colors.primaryForeground} /></View>
                   </Pressable>
@@ -634,7 +656,7 @@ export default function FindFriendScreen() {
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrap}><Users size={40} color={colors.primary + "40"} /></View>
               <Text style={styles.emptyTitle}>Find people on Prayer Space</Text>
-              <Text style={styles.emptyDesc}>Search by name or username to connect with friends and start praying together.</Text>
+              <Text style={styles.emptyDesc}>Search by name to connect with friends and start praying together.</Text>
               <Pressable style={({ pressed }) => [styles.emptyInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
                 <Share2 size={15} color={colors.primary} />
                 <Text style={styles.emptyInviteText}>Invite friends</Text>
