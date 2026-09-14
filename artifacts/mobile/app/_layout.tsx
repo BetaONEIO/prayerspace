@@ -138,6 +138,7 @@ function RootLayoutNav() {
       <Stack.Screen name="find-friend" options={{ headerShown: false }} />
       <Stack.Screen name="friends" options={{ headerShown: false }} />
       <Stack.Screen name="friend-requests" options={{ headerShown: false }} />
+      <Stack.Screen name="sent-friend-requests" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="edit-profile" options={{ headerShown: false }} />

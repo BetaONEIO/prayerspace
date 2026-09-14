@@ -131,7 +131,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "notifications",
           filter: `recipient_id=eq.${userId}`,

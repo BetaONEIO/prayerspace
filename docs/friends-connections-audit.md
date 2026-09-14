@@ -43,12 +43,19 @@ end-to-end checks remain explicit release blockers.
   activity query.
 - Status audience selection was not passed through to persistence; the
   community submit path forced non-anonymous posts to `friends` and anonymous
-  posts to `everyone`.
+  posts to `everyone`. This is fixed in the current client changes.
 - Anonymous posts still selected the underlying `author_id` and fetched its
   profile before mapping the UI label to Anonymous.
 - Several unrelated production paths still import mock contacts/messages or
   use hard-coded avatars. These must not be used as evidence for real
   friendship testing.
+- Conversation creation, participant insertion, message editing, and message
+  deletion still rely on table policies that do not fully enforce friendship,
+  block state, participant integrity, or time limits at the database boundary.
+- Feed, profile activity, and search use fixed result limits rather than
+  cursor-based pagination.
+- Deleted/deactivated account and deleted-content behavior is not consistently
+  represented with safe tombstones.
 
 ## Fixes made in this audit
 
@@ -64,14 +71,19 @@ The migration:
 - detects duplicate active unordered pairs and stops safely rather than
   deleting relationship history;
 - adds a unique active relationship index across both directions;
-- adds atomic security-definer RPCs for sending, responding, removing, and
-  blocking;
+- adds atomic security-definer RPCs for sending, responding, cancelling,
+  removing, blocking, and unblocking;
 - prevents direct relationship mutations from bypassing those RPCs;
-- makes blocks readable only to involved users and manageable only by the
-  blocker;
+- makes blocks readable only to involved users and mutable only through the
+  block RPCs;
 - adds durable friend-request and accepted-request notifications;
-- adds public, friends-only, and private prayer SELECT policies;
+- resolves pending-request notifications on acceptance, decline, cancellation,
+  unfriend, and block;
+- excludes blocked actors from durable notification reads;
+- adds block-aware public, friends-only, and private prayer SELECT policies;
 - applies the same parent-prayer visibility rules to prayer updates.
+- publishes friendship changes to Supabase Realtime when the publication is
+  available.
 
 The duplicate-pair preflight is intentionally fail-safe. Existing duplicate
 active rows need manual review before the migration can be applied.
@@ -87,10 +99,24 @@ active rows need manual review before the migration can be applied.
   Blocked states.
 - Added `app/friends.tsx`, a real accepted-friend list linked to each user’s
   profile and with an empty state.
+- Added `app/sent-friend-requests.tsx`, with real pending outgoing requests,
+  profile links, loading/error/empty states, and RPC-backed cancellation.
 - Find Friends now links to the real Friends list.
 - Non-interactive search/address-book rows for existing friends and pending
   requests are no longer rendered as dead rows. Declined requests remain
   retryable.
+- Incoming request rows now link to sender profiles, expose retryable query
+  errors, and link to Sent Requests.
+- Relationship mutations invalidate Friends, request, relationship, and feed
+  caches so screens do not retain stale accepted/removed states.
+- Status creation now persists the exact selected `everyone`, `friends`, or
+  `private` audience. Unsupported local-only community audiences are no longer
+  silently saved as friend/public posts.
+- Feed realtime handling now covers insert, update, and delete events, and
+  friendship realtime events invalidate both friend IDs and feed data.
+- Chat block state now checks both block directions, prevents client sends when
+  either participant has blocked the other, and uses `block_user` /
+  `unblock_user` rather than direct table writes.
 
 ## Database/RLS changes
 
@@ -102,18 +128,13 @@ it is applied:
 - the unique active-pair index will not protect concurrent requests;
 - friends-only feed visibility is not proven server-enforced;
 - durable friend notifications will not exist.
+- sent-request cancellation and secure unblock actions will not work.
 
 ## Verification performed
 
-- Restarted the Expo workflow after the client changes.
-- Ran the mobile TypeScript check. No new diagnostics were reported in the
-  touched Friends/profile/list/request files.
+- Ran the complete mobile TypeScript check successfully.
 - Ran `git diff --check`.
-- Confirmed the mobile workflow bundles successfully.
-
-The full workspace typecheck still reports pre-existing errors in community
-styles, Expo SDK typings, reminders, audio recording, and other unrelated
-files.
+- Confirmed the configured Expo workflow remains running.
 
 ## Remaining release blockers
 
@@ -122,14 +143,16 @@ files.
 2. Run the complete three-account A/B/C journey against the real development
    database, including both request directions, accept, decline, unfriend,
    block, refresh, and direct-query privacy checks.
-3. Replace the in-memory notification provider with the new durable
-   `notifications` table and mark-read/delete operations.
-4. Make status audience persistence match the selected audience and add a
-   server-side anonymous projection or RPC that does not return author
-   identity to viewers.
-5. Enforce blocks in conversation creation/message insert policies and remove
+3. Add a server-side anonymous projection or RPC that never returns author
+   identity to viewers of anonymous posts.
+4. Enforce friendship, blocks, participant integrity, edit/delete limits, and
+   delete-for-me filtering in conversation/message RPCs and policies. The
+   current chat UI checks block state, but database bypasses remain possible.
+5. Remove
    the mock/non-UUID chat branch from production navigation.
 6. Implement authorized profile activity instead of the hard-coded empty
    state.
-7. Audit and remove remaining mock user/avatar dependencies from the broader
+7. Replace fixed 20/50/100-row limits with cursor pagination and refresh
+   deleted/deactivated account behavior.
+8. Audit and remove remaining mock user/avatar dependencies from the broader
    social flows before release.

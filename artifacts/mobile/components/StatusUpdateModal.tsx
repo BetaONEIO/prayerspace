@@ -37,8 +37,7 @@ import {
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
-import { PRAYER_TAGS, type AudienceOption } from "@/constants/prayerContent";
-import { useCommunityStore } from "@/lib/communityStore";
+import { PRAYER_TAGS, type AudienceOption, type PrayerAudience } from "@/constants/prayerContent";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { dismissKeyboard } from "@/lib/keyboard";
 import FullScreenTextEditor from "@/components/FullScreenTextEditor";
@@ -54,28 +53,37 @@ const FEED_AUDIENCE: AudienceOption = {
   sublabel: "Visible to all members",
   type: "everyone",
 };
+const FRIENDS_AUDIENCE: AudienceOption = {
+  key: "friends",
+  label: "Friends",
+  sublabel: "Visible to accepted friends",
+  type: "group",
+};
+const PRIVATE_AUDIENCE: AudienceOption = {
+  key: "private",
+  label: "Only me",
+  sublabel: "Visible only to you",
+  type: "group",
+};
+const SUPPORTED_AUDIENCES: ReadonlySet<PrayerAudience> = new Set(["everyone", "friends", "private"]);
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   communityName?: string | null;
-  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => Promise<void> | void;
+  onSubmit?: (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, audience: PrayerAudience, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => Promise<void> | void;
 }
 
 export default function StatusUpdateModal({ visible, onClose, communityName, onSubmit }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { profile } = useAuth();
-  const communities = useCommunityStore();
   const audienceOptions = useMemo<AudienceOption[]>(() => {
-    const existingCommunities = communities.map((community) => ({
-      key: `community-${community.id}`,
-      label: community.name,
-      sublabel: `${community.memberCount} members`,
-      type: "community" as const,
-    }));
-    return [FEED_AUDIENCE, ...existingCommunities];
-  }, [communities]);
+    // prayer_requests only supports these three audience values. Community
+    // audiences are intentionally not offered until the schema can enforce
+    // community membership visibility.
+    return [FEED_AUDIENCE, FRIENDS_AUDIENCE, PRIVATE_AUDIENCE];
+  }, []);
   const [text, setText] = useState<string>("");
   const [statusImageUri, setStatusImageUri] = useState<string | null>(null);
   const [viewingStatusImage, setViewingStatusImage] = useState<string | null>(null);
@@ -102,11 +110,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
   useEffect(() => {
     if (visible) {
-      if (communityName) {
-        setSelectedAudience({ key: "active-community", label: communityName, sublabel: "Community members", type: "community" });
-      } else {
-        setSelectedAudience(FEED_AUDIENCE);
-      }
+      setSelectedAudience(FEED_AUDIENCE);
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -151,7 +155,7 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
       setSelectedTags([]);
       setTagsExpanded(false);
       setAudienceOpen(false);
-       setSelectedAudience(communityName ? { key: "active-community", label: communityName, sublabel: "Community members", type: "community" } : FEED_AUDIENCE);
+       setSelectedAudience(FEED_AUDIENCE);
       setIsAnonymous(false);
       setIsTimeSensitive(false);
       setStatusImageUri(null);
@@ -172,10 +176,14 @@ export default function StatusUpdateModal({ visible, onClose, communityName, onS
 
   const handleSubmit = useCallback(async () => {
     if ((!text.trim() && !voiceNoteUri) || selectedTags.length === 0) return;
+    if (!SUPPORTED_AUDIENCES.has(selectedAudience.key as PrayerAudience)) {
+      throw new Error(`Unsupported status audience: ${selectedAudience.key}`);
+    }
+    const audience = selectedAudience.key as PrayerAudience;
     setIsPosting(true);
     console.log("Status update submitted:", { text, tags: selectedTags, audience: selectedAudience.key, isAnonymous, isTimeSensitive, hasImage: !!statusImageUri, eventDate, hasVoice: !!voiceNoteUri });
     try {
-      await onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription, voiceNoteIncludeAudio, voiceNoteIncludeTranscription);
+      await onSubmit?.(text, selectedTags, isTimeSensitive, isAnonymous, audience, statusImageUri, eventDate, voiceNoteUri, voiceNoteDuration || undefined, voiceNoteTranscription, voiceNoteIncludeAudio, voiceNoteIncludeTranscription);
       handleClose();
     } catch (err) {
       console.error("[StatusUpdateModal] Submit error:", err);

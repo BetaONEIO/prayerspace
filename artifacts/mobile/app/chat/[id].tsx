@@ -155,16 +155,28 @@ export default function ChatScreen() {
   const blockedQuery = useQuery({
     queryKey: ["blocked", currentUserId, id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("blocked_users")
-        .select("*")
-        .eq("blocker_id", currentUserId)
-        .eq("blocked_id", id)
-        .maybeSingle();
-      return !!data;
+        .select("blocker_id, blocked_id")
+        .or(
+          `and(blocker_id.eq.${currentUserId},blocked_id.eq.${id}),and(blocker_id.eq.${id},blocked_id.eq.${currentUserId})`
+        );
+      if (error) throw error;
+      const rows = data ?? [];
+      return {
+        isBlocked: rows.length > 0,
+        currentUserIsBlocker: rows.some(
+          (row) => row.blocker_id === currentUserId && row.blocked_id === id
+        ),
+      };
     },
     enabled: isRealUser && !!currentUserId && !!id,
   });
+
+  const isBlocked = blockedQuery.data?.isBlocked ?? false;
+  const isCurrentUserBlocker = blockedQuery.data?.currentUserIsBlocker ?? false;
+  const sendBlocked =
+    isRealUser && (blockedQuery.isLoading || blockedQuery.isError || isBlocked);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -229,6 +241,9 @@ export default function ChatScreen() {
       image_path?: string | null;
       reply_to?: { id: string; senderName: string; content: string } | null;
     }) => {
+      if (isRealUser && (blockedQuery.isLoading || blockedQuery.isError || blockedQuery.data?.isBlocked)) {
+        throw new Error("Cannot send messages while this conversation is blocked");
+      }
       const insertData: Record<string, unknown> = {
         conversation_id: conversationId,
         sender_id: currentUserId,
@@ -340,23 +355,29 @@ export default function ChatScreen() {
 
   const blockMutation = useMutation({
     mutationFn: async () => {
-      if (blockedQuery.data) {
-        const { error } = await supabase
-          .from("blocked_users")
-          .delete()
-          .eq("blocker_id", currentUserId)
-          .eq("blocked_id", id);
+      if (blockedQuery.data?.currentUserIsBlocker) {
+        const { error } = await supabase.rpc("unblock_user", {
+          target_user_id: id,
+        });
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("blocked_users").insert({
-          blocker_id: currentUserId,
-          blocked_id: id,
+        const { error } = await supabase.rpc("block_user", {
+          target_user_id: id,
         });
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["blocked", currentUserId, id] });
+      void queryClient.invalidateQueries({ queryKey: ["blocked"] });
+      void queryClient.invalidateQueries({ queryKey: ["friends"] });
+      void queryClient.invalidateQueries({ queryKey: ["friendIds"] });
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: ["dm-conv"] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests"] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming"] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent"] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count"] });
       closeHeaderMenu();
     },
   });
@@ -401,6 +422,7 @@ export default function ChatScreen() {
   }, [headerMenuSlide, overlayOpacity]);
 
   const handleSend = useCallback(async () => {
+    if (isRealUser && sendBlocked) return;
     const text = inputText.trim();
     if (!text && !imageUri) return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -466,10 +488,19 @@ export default function ChatScreen() {
     setImageUri(null);
     setImageUploadError(null);
     setReplyingTo(null);
-  }, [inputText, imageUri, isRealUser, currentUserId, conversationId, sendMutation, replyingTo]);
+  }, [
+    inputText,
+    imageUri,
+    isRealUser,
+    sendBlocked,
+    currentUserId,
+    conversationId,
+    sendMutation,
+    replyingTo,
+  ]);
 
   const handleSharePrayer = useCallback((prayerText: string) => {
-    if (!conversationId) return;
+    if (!conversationId || sendBlocked) return;
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     sendMutation.mutate({
       content: "I'm praying for you 🙏",
@@ -477,7 +508,7 @@ export default function ChatScreen() {
       prayerContent: prayerText,
     });
     setPrayerShareVisible(false);
-  }, [conversationId, sendMutation]);
+  }, [conversationId, sendBlocked, sendMutation]);
 
   const handleEditSave = useCallback(() => {
     if (!editingMessage || !editText.trim()) return;
@@ -532,8 +563,16 @@ export default function ChatScreen() {
   );
 
   const handleBlock = useCallback(() => {
-    const isCurrentlyBlocked = blockedQuery.data;
+    const isCurrentlyBlocked = isBlocked;
     const otherName = convQuery.data?.otherName ?? "this user";
+    if (isCurrentlyBlocked && !isCurrentUserBlocker) {
+      Alert.alert(
+        "User blocked you",
+        "You cannot change this user's block. Messages are unavailable in this conversation.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
     Alert.alert(
       isCurrentlyBlocked ? "Unblock User" : "Block User",
       isCurrentlyBlocked
@@ -548,7 +587,7 @@ export default function ChatScreen() {
         },
       ]
     );
-  }, [blockedQuery.data, convQuery.data?.otherName, blockMutation]);
+  }, [isBlocked, isCurrentUserBlocker, convQuery.data?.otherName, blockMutation]);
 
   const handleReport = useCallback(() => {
     closeHeaderMenu();
@@ -635,8 +674,6 @@ export default function ChatScreen() {
       ) ?? []
     );
   }, [isRealUser, messagesQuery.data, currentUserId, mockExtraMessages]);
-
-  const isBlocked = blockedQuery.data ?? false;
 
   const renderReactions = useCallback(
     (msg: Message) => {
@@ -876,11 +913,15 @@ export default function ChatScreen() {
       {isBlocked && (
         <View style={styles.blockedBanner}>
           <Text style={styles.blockedBannerText}>
-            You've blocked this user. They cannot message you.
+            {isCurrentUserBlocker
+              ? "You've blocked this user. They cannot message you."
+              : "This user has blocked you. Messages are unavailable."}
           </Text>
-          <Pressable onPress={handleBlock}>
-            <Text style={styles.blockedBannerAction}>Unblock</Text>
-          </Pressable>
+          {isCurrentUserBlocker && (
+            <Pressable onPress={handleBlock}>
+              <Text style={styles.blockedBannerAction}>Unblock</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -984,6 +1025,7 @@ export default function ChatScreen() {
               <Pressable
                 style={styles.addBtn}
                 onPress={() => isRealUser && setPrayerShareVisible(true)}
+                disabled={sendBlocked}
               >
                 <HandHeart size={20} color={colors.primary} />
               </Pressable>
@@ -991,7 +1033,7 @@ export default function ChatScreen() {
                 imageUri={null}
                 onImageSelected={(uri) => { setImageUri(uri); setImageUploadError(null); }}
                 onRemove={() => {}}
-                disabled={isBlocked}
+                disabled={sendBlocked}
               />
               <View style={styles.inputWrap}>
                 <TextInput
@@ -1003,13 +1045,16 @@ export default function ChatScreen() {
                   onSubmitEditing={() => void handleSend()}
                   returnKeyType="send"
                   multiline
-                  editable={!isBlocked}
+                  editable={!sendBlocked}
                 />
               </View>
               <Pressable
-                style={[styles.sendBtn, (!inputText.trim() && !imageUri) && styles.sendBtnDisabled]}
+                style={[
+                  styles.sendBtn,
+                  ((!inputText.trim() && !imageUri) || sendBlocked) && styles.sendBtnDisabled,
+                ]}
                 onPress={() => void handleSend()}
-                disabled={(!inputText.trim() && !imageUri) || isBlocked}
+                disabled={(!inputText.trim() && !imageUri) || sendBlocked}
               >
                 <Send size={18} color={colors.primaryForeground} />
               </Pressable>
@@ -1145,7 +1190,11 @@ export default function ChatScreen() {
                 <UserX size={16} color={colors.destructive} />
               </View>
               <Text style={[styles.sheetOptionText, { color: colors.destructive }]}>
-                {isBlocked ? "Unblock user" : "Block user"}
+                {isCurrentUserBlocker
+                  ? "Unblock user"
+                  : isBlocked
+                    ? "Blocked by user"
+                    : "Block user"}
               </Text>
             </Pressable>
 

@@ -391,7 +391,7 @@ export default function FindFriendScreen() {
   }, [contactsPermission, user?.id]);
 
   const { data: myRequests = [] } = useQuery<FriendRequest[]>({
-    queryKey: ["friend_requests_sent", user?.id],
+    queryKey: ["friend_requests_relationships", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
@@ -461,7 +461,12 @@ export default function FindFriendScreen() {
     onSuccess: (_data, receiverId) => {
       setResults((previous) => previous.filter((result) => result.id !== receiverId));
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friends", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friendIds", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts", user?.id] });
       if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: unknown) => {

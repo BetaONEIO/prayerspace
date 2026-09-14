@@ -36,7 +36,7 @@ export default function FriendRequestsScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: requests = [], isLoading } = useQuery<FriendRequestRow[]>({
+  const { data: requests = [], isLoading, isError, error, refetch } = useQuery<FriendRequestRow[]>({
     queryKey: ["friend_requests_incoming", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -59,6 +59,9 @@ export default function FriendRequestsScreen() {
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friends", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friendIds", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["feed-posts", user?.id] });
       if (Platform.OS !== "web") void Haptics.notificationAsync(status === "accepted" ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning);
     },
@@ -80,14 +83,30 @@ export default function FriendRequestsScreen() {
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}><ChevronLeft size={20} color={colors.secondaryForeground} /></Pressable>
           <Text style={styles.headerTitle}>Friend Requests</Text>
-          {requests.length > 0 ? (
-            <View style={styles.badge}><Text style={styles.badgeText}>{requests.length}</Text></View>
-          ) : <View style={{ width: 40 }} />}
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => router.push("/sent-friend-requests" as never)} hitSlop={8}>
+              <Text style={styles.sentLink}>Sent</Text>
+            </Pressable>
+            {requests.length > 0 ? (
+              <View style={styles.badge}><Text style={styles.badgeText}>{requests.length}</Text></View>
+            ) : <View style={{ width: 40 }} />}
+          </View>
         </View>
 
         <AutoScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {isLoading ? (
             <View style={styles.loadingWrap}><ActivityIndicator color={colors.primary} /></View>
+          ) : isError ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconWrap}><Users2 size={44} color={colors.primary + "50"} /></View>
+              <Text style={styles.emptyTitle}>Could not load requests</Text>
+              <Text style={styles.emptyDesc}>
+                {error instanceof Error ? error.message : "Check your connection and try again."}
+              </Text>
+              <Pressable style={styles.retryBtn} onPress={() => void refetch()}>
+                <Text style={styles.retryBtnText}>Try Again</Text>
+              </Pressable>
+            </View>
           ) : requests.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconWrap}><Users2 size={44} color={colors.primary + "50"} /></View>
@@ -101,14 +120,14 @@ export default function FriendRequestsScreen() {
                 const name = req.sender?.full_name ?? "Someone";
                 return (
                   <View key={req.id} style={[styles.card, index < requests.length - 1 && styles.cardBorder]}>
-                    <View style={styles.cardLeft}>
+                    <Pressable style={styles.cardLeft} onPress={() => router.push(`/user/${req.sender_id}`)}>
                       <AvatarImage avatarPath={req.sender?.avatar_url ?? null} fallbackSeed={name} style={styles.avatar} />
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
                         {req.sender?.bio && <Text style={styles.cardBio} numberOfLines={1}>{req.sender.bio}</Text>}
                         <Text style={styles.cardTime}>{timeAgo(req.created_at)}</Text>
                       </View>
-                    </View>
+                    </Pressable>
                     <View style={styles.cardActions}>
                       <Pressable style={[styles.declineBtn, respondMutation.isPending && styles.btnDisabled]} onPress={() => handleDecline(req.id)} disabled={respondMutation.isPending} hitSlop={6}>
                         <X size={16} color={colors.mutedForeground} />
@@ -134,10 +153,12 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14 },
+    headerActions: { flexDirection: "row" as const, alignItems: "center" as const, gap: 10 },
     backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.secondary, alignItems: "center" as const, justifyContent: "center" as const },
     headerTitle: { fontSize: 20, fontWeight: "700" as const, color: colors.foreground },
     badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary + "18", alignItems: "center" as const, justifyContent: "center" as const },
     badgeText: { fontSize: 15, fontWeight: "800" as const, color: colors.primary },
+    sentLink: { fontSize: 13, fontWeight: "700" as const, color: colors.primary },
     scroll: { flex: 1 },
     scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40, flexGrow: 1 },
     loadingWrap: { flex: 1, alignItems: "center" as const, justifyContent: "center" as const, paddingTop: 80 },
@@ -160,5 +181,7 @@ function createStyles(colors: ThemeColors) {
     acceptBtn: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 14, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
     acceptBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
     btnDisabled: { opacity: 0.5 },
+    retryBtn: { marginTop: 20, backgroundColor: colors.primary, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 11 },
+    retryBtnText: { fontSize: 13, fontWeight: "700" as const, color: colors.primaryForeground },
   });
 }

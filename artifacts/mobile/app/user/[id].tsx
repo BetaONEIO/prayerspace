@@ -12,7 +12,7 @@ import {
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams, Stack } from "expo-router";
+import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from "expo-router";
 import {
   ChevronLeft,
   MoreHorizontal,
@@ -28,6 +28,7 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ProfileData = {
   id: string;
@@ -45,6 +46,7 @@ export default function UserProfileScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [prayerCount, setPrayerCount] = useState<number | null>(null);
@@ -111,8 +113,9 @@ export default function UserProfileScreen() {
     const [requestsResult, blocksResult] = await Promise.all([
       supabase
         .from("friend_requests")
-        .select("sender_id, receiver_id, status")
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+        .select("sender_id, receiver_id, status, created_at")
+        .or(`and(sender_id.eq.${user.id},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${user.id})`)
+        .order("created_at", { ascending: false }),
       supabase
         .from("blocked_users")
         .select("blocker_id, blocked_id")
@@ -136,17 +139,40 @@ export default function UserProfileScreen() {
     }
   }, [id, user?.id]);
 
+  useFocusEffect(
+    useCallback(() => {
+      void fetchRelationship();
+    }, [fetchRelationship]),
+  );
+
   useEffect(() => {
-    void fetchRelationship();
-  }, [fetchRelationship]);
+    if (!user?.id || !id || user.id === id) return;
+    const channel = supabase
+      .channel(`profile-relationship:${user.id}:${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests" }, () => {
+        void fetchRelationship();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "blocked_users" }, () => {
+        void fetchRelationship();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetchRelationship, id, user?.id]);
 
   const handleRelationshipAction = useCallback(() => {
     if (!user?.id || !id || relationshipLoading) return;
+    const currentUserId = user.id;
     if (relationshipStatus === "respond") {
       router.push("/friend-requests" as never);
       return;
     }
-    if (relationshipStatus === "sent" || relationshipStatus === "blocked") return;
+    if (relationshipStatus === "sent") {
+      router.push("/sent-friend-requests" as never);
+      return;
+    }
+    if (relationshipStatus === "blocked") return;
     if (relationshipStatus === "friends") {
       Alert.alert(
         "Remove Friend?",
@@ -164,6 +190,10 @@ export default function UserProfileScreen() {
                   Alert.alert("Could not remove friend", rpcError.message);
                 } else {
                   setRelationshipStatus("add");
+                  void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", currentUserId] });
+                  void queryClient.invalidateQueries({ queryKey: ["friends", currentUserId] });
+                  void queryClient.invalidateQueries({ queryKey: ["friendIds", currentUserId] });
+                  void queryClient.invalidateQueries({ queryKey: ["feed-posts", currentUserId] });
                 }
                 setRelationshipLoading(false);
               })();
@@ -180,10 +210,17 @@ export default function UserProfileScreen() {
         Alert.alert("Could not add friend", rpcError.message);
       } else {
         setRelationshipStatus("sent");
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["friends", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["friendIds", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["feed-posts", currentUserId] });
       }
       setRelationshipLoading(false);
     })();
-  }, [id, profile?.full_name, relationshipLoading, relationshipStatus, router, user?.id]);
+  }, [id, profile?.full_name, queryClient, relationshipLoading, relationshipStatus, router, user?.id]);
 
   const handleMoreAction = useCallback(() => {
     if (!id || isOwnProfile || relationshipStatus === "blocked") return;
@@ -203,6 +240,15 @@ export default function UserProfileScreen() {
                 Alert.alert("Could not block user", rpcError.message);
               } else {
                 setRelationshipStatus("blocked");
+                  if (user?.id) {
+                    void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["friends", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["friendIds", user.id] });
+                    void queryClient.invalidateQueries({ queryKey: ["feed-posts", user.id] });
+                  }
               }
               setRelationshipLoading(false);
             })();
@@ -210,7 +256,7 @@ export default function UserProfileScreen() {
         },
       ],
     );
-  }, [id, isOwnProfile, relationshipStatus]);
+  }, [id, isOwnProfile, queryClient, relationshipStatus, user?.id]);
 
   const handleFavourite = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

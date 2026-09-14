@@ -26,6 +26,8 @@ export interface AudienceOption {
   type: "everyone" | "community" | "group";
 }
 
+export type PrayerAudience = "everyone" | "friends" | "private";
+
 export const AUDIENCE_OPTIONS: AudienceOption[] = [
   { key: "everyone", label: "Feed", sublabel: "Visible to all members", type: "everyone" },
 ];

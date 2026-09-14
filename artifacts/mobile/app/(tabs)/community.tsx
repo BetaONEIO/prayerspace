@@ -92,11 +92,13 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { communityStore, StoredCommunity } from "@/lib/communityStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useDiscoverCommunities, DiscoverCommunity } from "@/lib/useDiscoverCommunities";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { dismissKeyboard } from "@/lib/keyboard";
+import type { PrayerAudience } from "@/constants/prayerContent";
 
 type Tab = "Feed" | "Community" | "Groups";
+const PRAYER_REQUEST_AUDIENCES: ReadonlySet<PrayerAudience> = new Set(["everyone", "friends", "private"]);
 
 interface Community {
   id: string;
@@ -273,6 +275,7 @@ export default function CommunityScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { profile, session } = useAuth();
   const currentUserId = session?.user?.id ?? "user-1";
+  const queryClient = useQueryClient();
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
@@ -345,7 +348,7 @@ export default function CommunityScreen() {
   });
 
   // Fetch real feed posts from Supabase: own posts + friends' posts (RLS-enforced).
-  const { data: dbFeedPosts = [], refetch: refetchFeed } = useQuery<FeedPost[]>({
+  const { data: dbFeedPosts = [], refetch: refetchFeed, isSuccess: isFeedQuerySuccess } = useQuery<FeedPost[]>({
     queryKey: ["feed-posts", currentUserId],
     queryFn: async () => {
       if (!currentUserId || currentUserId === "user-1") return [];
@@ -356,7 +359,8 @@ export default function CommunityScreen() {
         .in("audience", ["everyone", "friends"])
         .order("created_at", { ascending: false })
         .limit(50);
-      if (error || !rows || rows.length === 0) return [];
+      if (error) throw error;
+      if (!rows || rows.length === 0) return [];
       // Batch-fetch author profiles for display
       const authorIds = [...new Set((rows as DbPrayerRow[]).map((r) => r.author_id).filter(Boolean))];
       const { data: profiles } = await supabase
@@ -414,7 +418,7 @@ export default function CommunityScreen() {
 
   // Sync DB-fetched posts into local feed state, preserving optimistic local posts.
   useEffect(() => {
-    if (!dbFeedPosts.length) return;
+    if (!isFeedQuerySuccess) return;
     setAllFeedPosts((prev) => {
       const dbIds = new Set(dbFeedPosts.map((p) => p.id));
       // Keep only freshly-created local posts whose IDs haven't landed in the DB yet
@@ -425,10 +429,10 @@ export default function CommunityScreen() {
       );
       return [...localOnly, ...dbFeedPosts];
     });
-  }, [dbFeedPosts]);
+  }, [dbFeedPosts, isFeedQuerySuccess]);
 
-  // Realtime: refetch the feed whenever a new prayer_request is inserted so
-  // friends see new posts without reloading the app.
+  // Realtime: keep the feed current for every prayer request lifecycle event.
+  // UPDATE covers audience/status changes and DELETE removes stale posts.
   useEffect(() => {
     if (!currentUserId || currentUserId === "user-1") return;
     let cancelled = false;
@@ -445,11 +449,16 @@ export default function CommunityScreen() {
       }
       if (cancelled) return;
 
+      const invalidateFeed = () => {
+        void queryClient.invalidateQueries({ queryKey: ["feed-posts", currentUserId] });
+        void refetchFeedRef.current();
+      };
+
       channel = supabase
         .channel("feed-posts-realtime")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "prayer_requests" }, () => {
-          void refetchFeedRef.current();
-        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "prayer_requests" }, invalidateFeed)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "prayer_requests" }, invalidateFeed)
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "prayer_requests" }, invalidateFeed)
         .subscribe();
     };
 
@@ -458,7 +467,46 @@ export default function CommunityScreen() {
       cancelled = true;
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [currentUserId, queryClient]);
+
+  // Friend acceptance/removal changes which audience=friends posts are
+  // visible. Invalidate both queries so friendIds and the feed are refreshed
+  // without requiring navigation or a manual reload.
+  useEffect(() => {
+    if (!currentUserId || currentUserId === "user-1") return;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupChannel = async () => {
+      const existingChannel = supabase
+        .getChannels()
+        .find((candidate) => candidate.topic === "realtime:friend-requests-realtime");
+      if (existingChannel) {
+        await supabase.removeChannel(existingChannel);
+      }
+      if (cancelled) return;
+
+      const invalidateFriendQueries = () => {
+        void queryClient.invalidateQueries({ queryKey: ["friendIds", currentUserId] });
+        void queryClient.invalidateQueries({ queryKey: ["feed-posts", currentUserId] });
+        void queryClient.refetchQueries({ queryKey: ["friendIds", currentUserId], type: "active" });
+        void queryClient.refetchQueries({ queryKey: ["feed-posts", currentUserId], type: "active" });
+      };
+
+      channel = supabase
+        .channel("friend-requests-realtime")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "friend_requests" }, invalidateFriendQueries)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "friend_requests" }, invalidateFriendQueries)
+        .on("postgres_changes", { event: "DELETE", schema: "public", table: "friend_requests" }, invalidateFriendQueries)
+        .subscribe();
+    };
+
+    void setupChannel();
+    return () => {
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [currentUserId, queryClient]);
 
   const router = useRouter();
 
@@ -603,8 +651,10 @@ export default function CommunityScreen() {
     setRepostTarget(post);
   }, []);
 
-  const handleStatusSubmit = useCallback(async (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => {
-    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const handleStatusSubmit = useCallback(async (text: string, tags: string[], isTimeSensitive: boolean, isAnonymous: boolean, audience: PrayerAudience, imageUri?: string | null, eventDate?: string | null, audioUri?: string | null, audioDurationMs?: number, audioTranscription?: string, includeAudio?: boolean, includeTranscription?: boolean) => {
+    if (!PRAYER_REQUEST_AUDIENCES.has(audience)) {
+      throw new Error(`Unsupported status audience: ${audience}`);
+    }
 
     const isVoicePost = !!(audioUri);
     const shouldIncludeAudio = includeAudio !== false;
@@ -628,25 +678,23 @@ export default function CommunityScreen() {
     // Persist to Supabase so friends can see this post in their feed
     let persistedPostId = `status_${Date.now()}`;
     if (currentUserId && currentUserId !== "user-1") {
-      try {
-        const { data: prData } = await supabase
-          .from("prayer_requests")
-          .insert({
-            author_id: currentUserId,
-            content: text,
-            is_anonymous: isAnonymous,
-            is_time_sensitive: isTimeSensitive,
-            audience: isAnonymous ? "everyone" : "friends",
-            tags,
-            image_url: imageUri ?? null,
-            event_date: eventDate ?? null,
-          })
-          .select("id")
-          .single();
-        if (prData?.id) persistedPostId = prData.id as string;
-      } catch (e) {
-        console.warn("[Community] Failed to persist status post to Supabase:", e);
-      }
+      const { data: prData, error: persistError } = await supabase
+        .from("prayer_requests")
+        .insert({
+          author_id: currentUserId,
+          content: text,
+          is_anonymous: isAnonymous,
+          is_time_sensitive: isTimeSensitive,
+          audience,
+          tags,
+          image_url: imageUri ?? null,
+          event_date: eventDate ?? null,
+        })
+        .select("id")
+        .single();
+      if (persistError) throw persistError;
+      if (!prData?.id) throw new Error("The status update was not saved.");
+      persistedPostId = prData.id as string;
     }
 
     const newPost: FeedPost = {
@@ -677,6 +725,7 @@ export default function CommunityScreen() {
     setAllFeedPosts((prev) => [newPost, ...prev]);
     setAllCommunityPosts((prev) => [newPost, ...prev]);
     setLastAddedPostId(newPost.id);
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     console.log("[Community] Status update posted:", newPost.id, "type:", newPost.postType, "includeAudio:", shouldIncludeAudio, "includeTranscription:", shouldIncludeTranscription);
   }, [activeCommunity.id, profile, currentUserId]);
 
