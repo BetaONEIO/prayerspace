@@ -26,6 +26,7 @@ function ok(result, label) {
 }
 function denied(result, label) {
   assert.ok(result.error, `${label}: unexpectedly succeeded`);
+  assert.notEqual(result.error.code, "PGRST202", `${label}: RPC is missing from live database`);
   pass(label);
 }
 async function pending(actor, ownerColumn, ownerId) {
@@ -114,17 +115,19 @@ async function run() {
     denied(await a.api.rpc("send_friend_request", { target_user_id: b.id }), "duplicate request rejected");
     denied(await b.api.rpc("send_friend_request", { target_user_id: a.id }), "crossed request rejected");
     denied(await c.api.rpc("respond_to_friend_request", { request_id: first.id, next_status: "accepted" }), "non-recipient cannot accept");
-    denied(await b.api.rpc("cancel_friend_request", { request_id: first.id }), "non-sender cannot cancel");
     assert.equal((await pending(b.api, "receiver_id", b.id)).length, 1);
 
     ok(await b.api.rpc("respond_to_friend_request", { request_id: first.id, next_status: "accepted" }), "B accepts");
+    const acceptedNotices = ok(await a.api.from("notifications")
+      .select("id, type").eq("recipient_id", a.id).eq("request_id", first.id), "read acceptance notification");
+    assert.ok(acceptedNotices.some((row) => row.type === "friend_request_accepted"));
     assert.equal((await pending(a.api, "sender_id", a.id)).length, 0);
     assert.equal((await pending(b.api, "receiver_id", b.id)).length, 0);
     assert.equal((await friends(a.api, a.id, b.id)).length, 1);
     assert.equal((await friends(b.api, b.id, a.id)).length, 1);
     denied(await b.api.rpc("respond_to_friend_request", { request_id: first.id, next_status: "accepted" }), "second acceptance rejected");
     denied(await a.api.rpc("send_friend_request", { target_user_id: b.id }), "existing friends cannot be requested");
-    pass("accept updates both friend lists, clears both pending lists, and is not repeatable");
+    pass("accept updates both friend lists, notifies sender, clears pending lists, and is not repeatable");
 
     ok(await a.api.rpc("remove_friend", { target_user_id: b.id }), "remove A-B friendship for reverse test");
     const reverse = ok(await b.api.rpc("send_friend_request", { target_user_id: a.id }), "B sends A request");
@@ -158,12 +161,6 @@ async function run() {
     assert.equal((await friends(a.api, a.id, c.id)).length, 0);
     pass("decline clears both request lists without friendship");
 
-    const cancelled = ok(await b.api.rpc("send_friend_request", { target_user_id: c.id }), "B sends C request");
-    ok(await b.api.rpc("cancel_friend_request", { request_id: cancelled.id }), "B cancels C request");
-    assert.equal((await pending(b.api, "sender_id", b.id)).length, 0);
-    assert.equal((await pending(c.api, "receiver_id", c.id)).length, 0);
-    pass("cancel clears both request lists");
-
     const crossing = await Promise.all([
       a.api.rpc("send_friend_request", { target_user_id: c.id }),
       c.api.rpc("send_friend_request", { target_user_id: a.id }),
@@ -187,6 +184,20 @@ async function run() {
       sender_id: b.id, receiver_id: c.id, status: "pending",
     }), "direct sender impersonation rejected");
     pass("authenticated client cannot bypass relationship RPC");
+
+    // Keep this last so a missing live RPC does not hide the independent checks.
+    const cancelled = ok(await a.api.rpc("send_friend_request", { target_user_id: c.id }), "A sends C request for cancellation");
+    denied(await c.api.rpc("cancel_friend_request", { request_id: cancelled.id }), "non-sender cannot cancel");
+    ok(await a.api.rpc("cancel_friend_request", { request_id: cancelled.id }), "A cancels C request");
+    assert.equal((await pending(a.api, "sender_id", a.id)).length, 0);
+    assert.equal((await pending(c.api, "receiver_id", c.id)).length, 0);
+    pass("cancel clears both request lists");
+
+    ok(await b.api.rpc("unblock_user", { target_user_id: c.id }), "B unblocks C");
+    const afterUnblock = ok(await b.api.rpc("send_friend_request", { target_user_id: c.id }), "B requests C after unblock");
+    assert.equal((await pending(c.api, "receiver_id", c.id)).filter((row) => row.id === afterUnblock.id).length, 1);
+    ok(await c.api.rpc("respond_to_friend_request", { request_id: afterUnblock.id, next_status: "declined" }), "C declines post-unblock request");
+    pass("unblock restores connection eligibility");
   } finally {
     await cleanup();
   }
