@@ -156,3 +156,67 @@ it is applied:
    deleted/deactivated account behavior.
 8. Audit and remove remaining mock user/avatar dependencies from the broader
    social flows before release.
+
+## Critical Friend Request follow-up (not yet complete)
+
+The Find → Send → Receive → Accept flow has **not** been verified end-to-end.
+Do not mark this audit complete or release the flow on the basis of these code
+changes alone.
+
+### Confirmed code-level failure and changes
+
+- Incoming and sent request queries attempted embedded joins from
+  `friend_requests` to `profiles` using the request foreign-key names. Those
+  request IDs reference `auth.users`, not `profiles`, so the embedded joins
+  cannot resolve in PostgREST. The two request screens now fetch pending rows
+  by `receiver_id`/`sender_id` and `status = pending`, then fetch matching
+  public profiles by ID. Query errors are shown rather than silently returning
+  an empty list. This fixes a concrete receiving/display failure, but has not
+  been tested against the live database.
+- Find Friends previously hid users with pending/accepted relationships and
+  treated an error loading relationships as "no relationship." Search now keeps
+  real results visible, opens the real profile on row tap, displays the actual
+  direction of pending requests, and prevents sending when relationship state
+  cannot be checked. Sending only changes the displayed state after the RPC
+  succeeds and the relationship query has refreshed.
+- Profile relationship lookup now treats database errors as unavailable rather
+  than displaying Add Friend; it re-reads the relationship after a send.
+  Incoming/sent lists and Friends list refresh while open. Friends now links
+  directly to Requests.
+- The separately supplied `20260926_friend_notifications_best_effort.sql`
+  migration makes a notification-write failure non-fatal to the request or
+  response transaction. **It has not been applied to Supabase.**
+- A prior auth-provider change removes a redundant initial session read and
+  defers OAuth profile queries until after the auth callback returns. The
+  reported token-lock crash has not been reproduced or verified fixed on the
+  affected device.
+
+### Live environment and verification
+
+Read-only checks to the configured Supabase `/auth/v1/health` and
+`/rest/v1/friend_requests` endpoints returned Cloudflare **502/521 gateway
+errors** on September 26, 2026. No friend records were written, no test
+accounts were created, and no live SQL/RLS policies could be inspected.
+Therefore the **root cause of the reported sending failure is not established**:
+the unavailable backend and an unapplied RPC migration are both plausible
+blockers, not proven causes of the earlier user-reported failure.
+
+The mobile TypeScript check and whitespace check passed. Expo restarted and
+Metro served the web bundle, but its initial web screenshot was blank while
+the backend was unavailable; this is **not** end-to-end runtime verification.
+
+**Sending test:** blocked; no authenticated request could be sent.
+**Receiving test:** blocked; no live pending row could be queried.
+**Accept/decline/cancel tests:** blocked; no live RPC could be called.
+**Multi-account A/B/C tests in both directions:** not run.
+**Notification test:** not run. **RLS:** reviewed in the checked-in migration,
+not verified against the live database; no live policy was changed.
+
+Once the *development* Supabase project is reachable, apply
+`20260827_friends_connections_security.sql` if absent, then
+`20260926_friend_notifications_best_effort.sql`. Review the first migration's
+duplicate-pair preflight before applying it. Confirm the live RPCs and policies
+before running the user's complete three-account checklist, including refresh,
+restart, crossed requests, blocked users, notification independence, friends
+lists, and friends-visible activity. Do not use a production project for
+automatically created test users.

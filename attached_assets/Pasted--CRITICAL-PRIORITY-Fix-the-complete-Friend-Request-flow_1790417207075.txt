@@ -1,0 +1,517 @@
+# CRITICAL PRIORITY: Fix the complete Friend Request flow first
+
+The **Find Friends → Send Friend Request → Receive Friend Request → Accept/Decline → Become Friends** flow is currently not working reliably.
+
+This is the highest-priority part of this audit.
+
+Do not move on to secondary Friends features until this complete flow has been verified end-to-end using multiple real accounts.
+
+## 1. Find Friends must work fully
+
+Audit the entire **Find Friends** experience.
+
+When searching for another Prayer Space user:
+
+- Search genuine user/profile records from the database.
+- Return the correct users.
+- Never show dummy users.
+- Do not show the currently logged-in user as someone they can add.
+- Display the user's real profile image and display name.
+- Tapping a result should open that person's real profile.
+- The correct `user_id` must be used throughout the flow.
+
+Each result must also display the correct relationship state:
+
+**Add Friend**
+if there is currently no relationship.
+
+**Request Sent**
+if I have already sent them a request.
+
+**Respond to Request**
+if they have sent me a request.
+
+**Friends**
+if we are already confirmed Friends.
+
+Do not determine this from temporary frontend state.
+
+Fetch the genuine relationship from the database.
+
+---
+
+# 2. Sending a Friend Request must actually create the request
+
+At the moment Friend Requests do not appear to be sending reliably.
+
+Trace the complete request from the button through to the database.
+
+When User A taps:
+
+**Add Friend**
+
+the app must:
+
+1. Confirm User A's authenticated `user_id`.
+2. Confirm User B's actual `user_id`.
+3. Check that A and B are not already Friends.
+4. Check there isn't already a pending request in either direction.
+5. Create one genuine pending Friend Request.
+6. Confirm the database write succeeded.
+7. Only then update the UI to **Request Sent**.
+8. Create the appropriate notification for User B.
+9. Make the request available immediately in User B's incoming Friend Requests.
+
+Do not optimistically display **Request Sent** if the database write failed.
+
+If the request fails, show an appropriate error and allow the user to retry.
+
+---
+
+# 3. Receiving Friend Requests must work fully
+
+This is also currently unreliable.
+
+When User A sends User B a Friend Request, User B must actually receive it.
+
+Audit:
+
+- Database queries
+- User IDs
+- Sender/recipient mapping
+- Authentication
+- RLS/database permissions
+- Realtime subscriptions
+- Caching
+- Notifications
+- Friend Request UI
+
+User B should see the request under:
+
+**Friends → Requests**
+
+The request must show User A's real:
+
+- Profile image
+- Display name
+- Username where applicable
+- Relevant public profile information
+
+The request should provide:
+
+**Accept**
+
+and
+
+**Decline**
+
+Do not rely exclusively on a notification.
+
+Even if the notification fails, the genuine pending request should still exist and be visible in the Requests section.
+
+---
+
+# 4. Notifications must not be the source of truth
+
+A Friend Request and its notification are two separate things.
+
+The actual Friend Request database record must be the source of truth.
+
+For example:
+
+`friend_request`
+→ sender ID  
+→ recipient ID  
+→ pending status
+
+Then separately:
+
+`notification`
+→ "David sent you a friend request"
+
+If notification creation fails, the Friend Request should still exist.
+
+Likewise, deleting/dismissing a notification must NOT delete the actual Friend Request.
+
+---
+
+# 5. Incoming Requests
+
+Create/audit a clear:
+
+**Incoming Requests**
+
+section.
+
+Query genuine pending requests where:
+
+`recipient_user_id = authenticated_user_id`
+
+and:
+
+`status = pending`
+
+Make sure the query is not accidentally looking at requests the user sent themselves.
+
+Display genuine sender profile information by resolving:
+
+`sender_user_id → profile`
+
+---
+
+# 6. Sent Requests
+
+Create/audit a clear:
+
+**Sent Requests**
+
+section.
+
+Query genuine pending requests where:
+
+`sender_user_id = authenticated_user_id`
+
+and:
+
+`status = pending`
+
+Users should be able to see who they have already requested.
+
+Provide:
+
+**Cancel Request**
+
+Cancelling must genuinely update/remove the pending request and update both users' interfaces.
+
+---
+
+# 7. Accept must work completely
+
+When User B accepts User A's request:
+
+1. Verify B is actually the recipient.
+2. Update the Friend Request atomically.
+3. Establish the confirmed friendship.
+4. Update both A and B.
+5. Remove the request from Incoming Requests.
+6. Remove it from Sent Requests.
+7. Update the relevant notification.
+8. Update both Friends lists.
+9. Update Friend counts.
+10. Change profile relationship buttons to **Friends**.
+11. Allow appropriate Friends-visible content according to privacy rules.
+
+Do not allow the same request to be accepted twice.
+
+The operation should be atomic/transactional where appropriate so the app cannot end up in a half-completed friendship state.
+
+---
+
+# 8. Decline must work completely
+
+When User B selects:
+
+**Decline**
+
+the request must:
+
+- Be resolved in the database.
+- Disappear from B's Incoming Requests.
+- Disappear from A's Sent Requests.
+- Not create a friendship.
+- Update the relevant notification.
+- Update both profile button states appropriately.
+
+Do not simply hide the request on User B's device.
+
+---
+
+# 9. Handle requests crossing over
+
+Handle this scenario properly:
+
+User A sends User B a request.
+
+Before seeing it, User B tries to send User A a request.
+
+Do not create two separate pending requests.
+
+Instead, detect the existing reverse request and provide an appropriate state such as:
+
+**Respond to Request**
+
+Prevent duplicate relationship records.
+
+---
+
+# 10. Prevent duplicate requests
+
+The system must prevent:
+
+- A → B twice
+- B → A while A → B is pending
+- Requests between existing Friends
+- Requests involving blocked users
+- Requests to yourself
+- Repeated requests caused by double tapping
+- Duplicate database rows caused by network retries
+
+Enforce this at the database/backend level where possible, not only through disabled frontend buttons.
+
+---
+
+# 11. Friend Request state must survive refresh
+
+Test this specifically.
+
+User A sends User B a request.
+
+Then:
+
+- Refresh A's app.
+- Close/reopen A's app.
+- Log out/in as A.
+
+A should still see:
+
+**Request Sent**
+
+Then log into B.
+
+B should still see the incoming request.
+
+Friend Requests must not depend on React/local/frontend state.
+
+---
+
+# 12. Realtime updates
+
+Where the existing architecture supports realtime updates:
+
+When A sends B a request while B has Prayer Space open:
+
+B's Requests screen and relevant notification indicator should update naturally.
+
+When B accepts:
+
+A's UI should update to **Friends** naturally.
+
+However, realtime is an enhancement.
+
+The underlying database flow must work correctly even if realtime subscriptions temporarily fail.
+
+A refresh should always resolve to the correct state.
+
+---
+
+# 13. Database/RLS audit
+
+This is particularly important because the current sending/receiving issue may be caused by database permissions.
+
+Inspect the relevant database policies.
+
+Confirm:
+
+### Sending
+
+Authenticated User A is permitted to create a request where:
+
+`sender_user_id = auth.uid()`
+
+but cannot impersonate another sender.
+
+### Receiving
+
+Authenticated User B is permitted to read requests where:
+
+`recipient_user_id = auth.uid()`
+
+### Sent Requests
+
+User A can read their own outgoing requests.
+
+### Accept/Decline
+
+Only the intended recipient can accept or decline a pending request.
+
+### Cancel
+
+Only the sender can cancel their pending request.
+
+### Friendship
+
+Both parties should be able to read the resulting confirmed relationship where required.
+
+Do not weaken RLS/security simply to make Friend Requests work.
+
+Fix the policies correctly.
+
+---
+
+# 14. Loading and error states
+
+Every Friend action needs a proper state.
+
+For example:
+
+**Add Friend**
+
+↓
+
+**Sending...**
+
+↓
+
+**Request Sent**
+
+If it fails:
+
+**Couldn't send Friend Request. Try again.**
+
+For accepting:
+
+**Accept**
+
+↓
+
+**Accepting...**
+
+↓
+
+**Friends**
+
+Disable repeated taps while requests are processing.
+
+Do not silently fail.
+
+---
+
+# 15. Test with real accounts
+
+Do not mark this fixed based only on code inspection.
+
+Use at least three genuine test accounts connected to the development database:
+
+### Account A
+### Account B
+### Account C
+
+Run this exact test:
+
+1. A searches for B.
+2. B appears correctly.
+3. A opens B's real profile.
+4. B displays **Add Friend**.
+5. A taps Add Friend.
+6. Confirm the pending request exists in the database.
+7. A now sees **Request Sent**.
+8. B receives the request.
+9. B sees A under Incoming Requests.
+10. B receives the appropriate notification.
+11. B opens A's real profile.
+12. B sees **Respond to Request**, not Add Friend.
+13. B accepts.
+14. Confirm the database relationship changes correctly.
+15. B's Incoming Request disappears.
+16. A's Sent Request disappears.
+17. A and B appear in each other's Friends lists.
+18. Both profiles display **Friends**.
+19. Refresh both accounts.
+20. Confirm they are still Friends.
+21. Restart both sessions.
+22. Confirm they are still Friends.
+23. Test A → C.
+24. C declines.
+25. Confirm no friendship is created.
+26. Test cancelling a Sent Request.
+27. Test simultaneous/crossed requests.
+28. Test double tapping Add Friend.
+29. Test sending to an existing Friend.
+30. Test blocked users.
+31. Test logout/login during a pending request.
+
+Do this in **both directions**, not just A → B.
+
+---
+
+# 16. Debug the root cause, don't patch the UI
+
+The current problem is that Friend Requests are not sending and/or being received correctly.
+
+Do not simply add frontend refreshes until it appears to work.
+
+Trace the entire flow:
+
+**Button**
+→ **authenticated user**
+→ **recipient**
+→ **request service**
+→ **database write**
+→ **RLS**
+→ **database record**
+→ **recipient query**
+→ **notification**
+→ **recipient UI**
+→ **accept/decline**
+→ **confirmed friendship**
+
+Identify exactly where the existing implementation is failing.
+
+Add useful development logging around failures, but do not expose private user information in production logs.
+
+---
+
+# 17. Priority order
+
+Please complete this work in this order:
+
+**Priority 1**
+Find Friends works.
+
+**Priority 2**
+Send Friend Request works.
+
+**Priority 3**
+Receive Friend Request works.
+
+**Priority 4**
+Accept / Decline / Cancel works.
+
+**Priority 5**
+Friends lists and profile relationship state work.
+
+**Priority 6**
+Friends-visible Feed and Activity work.
+
+**Priority 7**
+Notifications, realtime behaviour and additional social features.
+
+Do not spend time polishing secondary Friend features while the core Friend Request lifecycle remains broken.
+
+# Definition of Done
+
+The Friends system is NOT considered fixed until this works reliably:
+
+**Find User**
+→ **Add Friend**
+→ **Request genuinely saves**
+→ **Other user genuinely receives it**
+→ **Accept**
+→ **Both become Friends**
+→ **Both Friends lists update**
+→ **Relationship survives refresh/restart**
+→ **Friends can see appropriate Friends-visible activity**
+
+Please provide an audit report afterwards stating:
+
+- The root cause of the existing Friend Request failure.
+- What code was changed.
+- What database queries were changed.
+- What RLS/security policies were changed, if any.
+- How sending was tested.
+- How receiving was tested.
+- How Accept/Decline was tested.
+- Results of the multi-account tests.
+- Any remaining issues.
+
+Do not report this as complete until the entire flow has been successfully tested with multiple real accounts.

@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import { ChevronLeft, Users2 } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import AvatarImage from "@/components/AvatarImage";
@@ -50,7 +50,12 @@ export default function FriendsScreen() {
       return (profiles as FriendProfile[] | null) ?? [];
     },
     enabled: !!user?.id,
+    refetchInterval: 15000,
   });
+
+  useFocusEffect(useCallback(() => {
+    if (user?.id) void refetch();
+  }, [user?.id, refetch]));
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
@@ -60,7 +65,9 @@ export default function FriendsScreen() {
           <ChevronLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
         <Text style={styles.headerTitle}>Friends</Text>
-        <View style={styles.headerSpacer} />
+        <Pressable onPress={() => router.push("/friend-requests" as never)} accessibilityRole="button">
+          <Text style={styles.requestsLink}>Requests</Text>
+        </Pressable>
       </View>
 
       <AutoScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -140,6 +147,7 @@ function createStyles(colors: ThemeColors) {
     },
     headerTitle: { fontSize: 20, fontWeight: "800", color: colors.foreground },
     headerSpacer: { width: 40 },
+    requestsLink: { fontSize: 14, fontWeight: "700", color: colors.primary },
     content: { flexGrow: 1, padding: 20 },
     loading: { marginTop: 50 },
     list: {

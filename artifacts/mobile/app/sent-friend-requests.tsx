@@ -10,19 +10,8 @@ import AvatarImage from "@/components/AvatarImage";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
+import { loadPendingFriendRequests, type PendingFriendRequest } from "@/lib/friendRequests";
 import { useAuth } from "@/providers/AuthProvider";
-
-interface SentFriendRequestRow {
-  id: string;
-  receiver_id: string;
-  created_at: string;
-  recipient: {
-    id: string;
-    full_name: string | null;
-    avatar_url: string | null;
-    bio: string | null;
-  } | null;
-}
 
 function formatDateTime(dateString: string): string {
   const date = new Date(dateString);
@@ -37,20 +26,11 @@ export default function SentFriendRequestsScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: requests = [], isLoading, isError, error, refetch } = useQuery<SentFriendRequestRow[]>({
+  const { data: requests = [], isLoading, isError, error, refetch } = useQuery<PendingFriendRequest[]>({
     queryKey: ["friend_requests_sent", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error: queryError } = await supabase
-        .from("friend_requests")
-        .select("id, receiver_id, created_at, recipient:profiles!friend_requests_receiver_id_fkey(id, full_name, avatar_url, bio)")
-        .eq("sender_id", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-      if (queryError) throw queryError;
-      return (data as unknown as SentFriendRequestRow[]) ?? [];
-    },
+    queryFn: () => loadPendingFriendRequests(user!.id, "sent"),
     enabled: !!user?.id,
+    refetchInterval: 15000,
   });
 
   const cancelMutation = useMutation({
@@ -129,21 +109,21 @@ export default function SentFriendRequestsScreen() {
             <View style={styles.list}>
               <Text style={styles.listLabel}>WAITING FOR A RESPONSE</Text>
               {requests.map((request, index) => {
-                const name = request.recipient?.full_name?.trim() || "Prayer Space User";
+                const name = request.profile?.full_name?.trim() || "Profile unavailable";
                 return (
                   <View key={request.id} style={[styles.card, index < requests.length - 1 && styles.cardBorder]}>
                     <Pressable
                       style={styles.cardLeft}
-                      onPress={() => router.push(`/user/${request.recipient?.id ?? request.receiver_id}`)}
+                      onPress={() => router.push(`/user/${request.receiver_id}`)}
                     >
                       <AvatarImage
-                        avatarPath={request.recipient?.avatar_url ?? null}
+                        avatarPath={request.profile?.avatar_url ?? null}
                         fallbackSeed={name}
                         style={styles.avatar}
                       />
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
-                        {request.recipient?.bio ? <Text style={styles.cardBio} numberOfLines={1}>{request.recipient.bio}</Text> : null}
+                        {request.profile?.bio ? <Text style={styles.cardBio} numberOfLines={1}>{request.profile.bio}</Text> : null}
                         <Text style={styles.cardTime}>{formatDateTime(request.created_at)}</Text>
                       </View>
                     </Pressable>
@@ -155,7 +135,9 @@ export default function SentFriendRequestsScreen() {
                       accessibilityLabel={`Cancel request to ${name}`}
                     >
                       <X size={15} color={colors.mutedForeground} />
-                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                      <Text style={styles.cancelBtnText}>
+                        {cancelMutation.isPending && cancelMutation.variables === request.id ? "Cancelling..." : "Cancel"}
+                      </Text>
                     </Pressable>
                   </View>
                 );

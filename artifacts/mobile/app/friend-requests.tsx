@@ -9,15 +9,9 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
+import { loadPendingFriendRequests, type PendingFriendRequest } from "@/lib/friendRequests";
 import { useAuth } from "@/providers/AuthProvider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-interface FriendRequestRow {
-  id: string;
-  sender_id: string;
-  created_at: string;
-  sender: { full_name: string | null; avatar_url: string | null; bio: string | null; } | null;
-}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -36,15 +30,11 @@ export default function FriendRequestsScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: requests = [], isLoading, isError, error, refetch } = useQuery<FriendRequestRow[]>({
+  const { data: requests = [], isLoading, isError, error, refetch } = useQuery<PendingFriendRequest[]>({
     queryKey: ["friend_requests_incoming", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase.from("friend_requests").select("id, sender_id, created_at, sender:profiles!friend_requests_sender_id_fkey(full_name, avatar_url, bio)").eq("receiver_id", user.id).eq("status", "pending").order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data as unknown as FriendRequestRow[]) ?? [];
-    },
+    queryFn: () => loadPendingFriendRequests(user!.id, "incoming"),
     enabled: !!user?.id,
+    refetchInterval: 15000,
   });
 
   const respondMutation = useMutation({
@@ -117,24 +107,28 @@ export default function FriendRequestsScreen() {
             <View style={styles.list}>
               <Text style={styles.listLabel}>PEOPLE WHO WANT TO CONNECT</Text>
               {requests.map((req, index) => {
-                const name = req.sender?.full_name ?? "Someone";
+                const name = req.profile?.full_name?.trim() || "Profile unavailable";
                 return (
                   <View key={req.id} style={[styles.card, index < requests.length - 1 && styles.cardBorder]}>
                     <Pressable style={styles.cardLeft} onPress={() => router.push(`/user/${req.sender_id}`)}>
-                      <AvatarImage avatarPath={req.sender?.avatar_url ?? null} fallbackSeed={name} style={styles.avatar} />
+                      <AvatarImage avatarPath={req.profile?.avatar_url ?? null} fallbackSeed={name} style={styles.avatar} />
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardName} numberOfLines={1}>{name}</Text>
-                        {req.sender?.bio && <Text style={styles.cardBio} numberOfLines={1}>{req.sender.bio}</Text>}
+                        {req.profile?.bio && <Text style={styles.cardBio} numberOfLines={1}>{req.profile.bio}</Text>}
                         <Text style={styles.cardTime}>{timeAgo(req.created_at)}</Text>
                       </View>
                     </Pressable>
                     <View style={styles.cardActions}>
-                      <Pressable style={[styles.declineBtn, respondMutation.isPending && styles.btnDisabled]} onPress={() => handleDecline(req.id)} disabled={respondMutation.isPending} hitSlop={6}>
-                        <X size={16} color={colors.mutedForeground} />
+                      <Pressable style={[styles.declineBtn, respondMutation.isPending && styles.btnDisabled]} onPress={() => handleDecline(req.id)} disabled={respondMutation.isPending} hitSlop={6} accessibilityRole="button" accessibilityLabel="Decline friend request">
+                        {respondMutation.isPending && respondMutation.variables?.requestId === req.id && respondMutation.variables?.status === "declined"
+                          ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                          : <X size={16} color={colors.mutedForeground} />}
                       </Pressable>
                       <Pressable style={[styles.acceptBtn, respondMutation.isPending && styles.btnDisabled]} onPress={() => handleAccept(req.id)} disabled={respondMutation.isPending}>
                         <UserCheck size={15} color={colors.primaryForeground} />
-                        <Text style={styles.acceptBtnText}>Accept</Text>
+                        <Text style={styles.acceptBtnText}>
+                          {respondMutation.isPending && respondMutation.variables?.requestId === req.id && respondMutation.variables?.status === "accepted" ? "Accepting..." : "Accept"}
+                        </Text>
                       </Pressable>
                     </View>
                   </View>

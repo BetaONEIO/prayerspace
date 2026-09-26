@@ -7,7 +7,7 @@ import {
 import { AutoScrollView } from '@/components/AutoScrollView';
 import AvatarImage from "@/components/AvatarImage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useFocusEffect } from "expo-router";
 import {
   ChevronLeft, Search, UserPlus, Users, X, BookUser, UserCheck,
   Clock, ChevronRight, Share2, MessageCircle, Link2, MessageSquare,
@@ -390,7 +390,7 @@ export default function FindFriendScreen() {
     void loadContacts();
   }, [contactsPermission, user?.id]);
 
-  const { data: myRequests = [] } = useQuery<FriendRequest[]>({
+  const { data: myRequests = [], isLoading: relationshipsLoading, isError: relationshipsError, refetch: refetchRelationships } = useQuery<FriendRequest[]>({
     queryKey: ["friend_requests_relationships", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
@@ -398,29 +398,59 @@ export default function FindFriendScreen() {
         .from("friend_requests")
         .select("id, sender_id, receiver_id, status")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
-      if (error) return [];
+      if (error) throw error;
       return (data as FriendRequest[]) ?? [];
     },
     enabled: !!user?.id,
+    refetchInterval: 15000,
   });
 
-  const { data: incomingCount = 0 } = useQuery<number>({
+  const { data: incomingCount = 0, refetch: refetchIncomingCount } = useQuery<number>({
     queryKey: ["friend_requests_incoming_count", user?.id],
     queryFn: async () => {
       if (!user?.id) return 0;
       const { count, error } = await supabase.from("friend_requests").select("id", { count: "exact", head: true }).eq("receiver_id", user.id).eq("status", "pending");
-      if (error) return 0;
+      if (error) throw error;
       return count ?? 0;
     },
     enabled: !!user?.id,
+    refetchInterval: 15000,
   });
 
-  const getRequestStatus = useCallback((userId: string): "none" | "pending" | "accepted" | "declined" => {
-    const req = myRequests.find(
-      (r) => r.sender_id === userId || r.receiver_id === userId
+  useFocusEffect(useCallback(() => {
+    if (user?.id) {
+      void refetchRelationships();
+      void refetchIncomingCount();
+    }
+  }, [user?.id, refetchRelationships, refetchIncomingCount]));
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`find-friends-requests:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests", filter: `sender_id=eq.${user.id}` }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user.id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "friend_requests", filter: `receiver_id=eq.${user.id}` }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user.id] });
+        void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user.id] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
+
+  const getRequestStatus = useCallback((userId: string): "add" | "sent" | "respond" | "friends" => {
+    const matches = myRequests.filter((request) =>
+      (request.sender_id === user?.id && request.receiver_id === userId)
+      || (request.receiver_id === user?.id && request.sender_id === userId)
     );
-    return req ? req.status : "none";
-  }, [myRequests]);
+    const accepted = matches.find((request) => request.status === "accepted");
+    if (accepted) return "friends";
+    const pending = matches.find((request) => request.status === "pending");
+    if (pending) return pending.sender_id === user?.id ? "sent" : "respond";
+    return "add";
+  }, [myRequests, user?.id]);
 
   const handleRequestContactsPermission = useCallback(async () => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -458,10 +488,9 @@ export default function FindFriendScreen() {
       });
       if (error) throw error;
     },
-    onSuccess: (_data, receiverId) => {
-      setResults((previous) => previous.filter((result) => result.id !== receiverId));
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", user?.id] });
-      void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming_count", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friends", user?.id] });
@@ -474,11 +503,8 @@ export default function FindFriendScreen() {
       const message = error instanceof Error
         ? error.message
         : supabaseError?.message ?? "";
-      console.error("[FindFriend] send request failed", {
-        code: supabaseError?.code,
-        message,
-        details: supabaseError?.details,
-      });
+      if (__DEV__) console.warn("[FindFriend] send request failed", supabaseError?.code ?? "network");
+      void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", user?.id] });
       if (isMissingRelationshipRpc(error)) {
         Alert.alert(
           "Friend features need setup",
@@ -538,11 +564,7 @@ export default function FindFriendScreen() {
     setInvitedIds((prev) => new Set([...prev, contactId]));
   }, []);
 
-  // Only show contacts who have a matching Prayer Space account
-  const actionableStatuses = new Set(["none", "declined"]);
-  const searchableResults = results.filter((found) =>
-    actionableStatuses.has(getRequestStatus(found.id))
-  );
+  const searchableResults = results;
   const duplicateNameCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const found of searchableResults) {
@@ -557,9 +579,7 @@ export default function FindFriendScreen() {
       ? `Same display name · account ${shortAccountId(found.id)}`
       : "Prayer Space profile";
   }, [duplicateNameCounts]);
-  const onAppContacts = contactsList.filter(
-    (c) => !!c.existingUser && actionableStatuses.has(getRequestStatus(c.existingUser.id))
-  );
+  const onAppContacts = contactsList.filter((contact) => !!contact.existingUser);
 
   const showContactsList = contactsPermission === "granted" && !query.trim() && Platform.OS !== "web";
 
@@ -621,18 +641,45 @@ export default function FindFriendScreen() {
           </View>
         </View>
 
+        {relationshipsError && (
+          <Pressable style={styles.incomingBanner} onPress={() => void refetchRelationships()}>
+            <Text style={styles.incomingBannerText}>Could not check friend status. Tap to retry.</Text>
+          </Pressable>
+        )}
+
         {showDropdown && searchableResults.length > 0 && (
           <View style={styles.dropdownContainer}>
             <ScrollView style={styles.dropdownScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} nestedScrollEnabled>
               {searchableResults.map((found, index) => {
                 return (
-                  <Pressable key={found.id} style={[styles.dropdownItem, index < searchableResults.length - 1 && styles.dropdownItemBorder]} onPress={() => sendRequestMutation.mutate(found.id)}>
+                  <Pressable key={found.id} style={[styles.dropdownItem, index < searchableResults.length - 1 && styles.dropdownItemBorder]} onPress={() => router.push(`/user/${found.id}`)}>
                     <AvatarImage avatarPath={found.avatar_url} fallbackSeed={found.full_name ?? "U"} style={styles.dropdownAvatar} />
                     <View style={styles.dropdownInfo}>
                       <Text style={styles.dropdownName} numberOfLines={1}>{found.full_name ?? "User"}</Text>
                       <Text style={styles.dropdownUsername} numberOfLines={1}>{getSearchIdentityLabel(found)}</Text>
                     </View>
-                    <View style={styles.addBtnSmall}><UserPlus size={14} color={colors.primaryForeground} /></View>
+                    {relationshipsLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : getRequestStatus(found.id) === "add" ? (
+                      <Pressable
+                        style={[styles.addBtnSmall, sendRequestMutation.isPending && styles.btnDisabled]}
+                        disabled={relationshipsError || sendRequestMutation.isPending}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          sendRequestMutation.mutate(found.id);
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add ${found.full_name ?? "user"} as friend`}
+                      >
+                        {sendRequestMutation.isPending && sendRequestMutation.variables === found.id
+                          ? <Text style={styles.addBtnSmallText}>Sending...</Text>
+                          : <UserPlus size={14} color={colors.primaryForeground} />}
+                      </Pressable>
+                    ) : (
+                      <Text style={styles.statusBadgeTextPrimary}>
+                        {getRequestStatus(found.id) === "friends" ? "Friends" : getRequestStatus(found.id) === "sent" ? "Request Sent" : "Respond to Request"}
+                      </Text>
+                    )}
                   </Pressable>
                 );
               })}
@@ -640,10 +687,10 @@ export default function FindFriendScreen() {
           </View>
         )}
 
-        {hasSearched && searchableResults.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
+        {hasSearched && results.length === 0 && !searchMutation.isPending && query.trim().length > 0 && (
           <View style={styles.noResultsDropdown}>
             <Text style={styles.noResultsText}>
-              {results.length > 0 ? "No new people to add" : "User not found"}
+              User not found
             </Text>
             {results.length === 0 && (
               <Pressable style={({ pressed }) => [styles.noResultsInviteBtn, pressed && { opacity: 0.75 }]} onPress={() => openInviteSheet()}>
@@ -682,7 +729,7 @@ export default function FindFriendScreen() {
 
           {showContactsList && (
             <View style={styles.contactsSection}>
-              <Text style={styles.contactsSectionTitle}>Friends on Prayer Space</Text>
+              <Text style={styles.contactsSectionTitle}>People on Prayer Space</Text>
               {loadingContacts ? (
                 <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 24 }} />
               ) : onAppContacts.length === 0 ? (
@@ -696,29 +743,32 @@ export default function FindFriendScreen() {
                   return (
                     <View key={contact.id} style={[styles.contactRow, !isLast && styles.contactRowBorder]}>
                       {contact.existingUser!.avatar_url ? (
-                        <AvatarImage avatarPath={contact.existingUser!.avatar_url} fallbackSeed={contact.name} style={styles.contactAvatar} />
+                        <AvatarImage avatarPath={contact.existingUser!.avatar_url} fallbackSeed={contact.existingUser!.full_name ?? contact.name} style={styles.contactAvatar} />
                       ) : (
                         <View style={[styles.contactAvatar, styles.contactInitialsWrap]}>
                           <Text style={styles.contactInitials}>{contact.initials}</Text>
                         </View>
                       )}
-                      <View style={styles.contactInfo}>
-                        <Text style={styles.contactName} numberOfLines={1}>{contact.name}</Text>
-                        <Text style={styles.contactOnApp}>On Prayer Space</Text>
-                      </View>
-                      {status === "accepted" ? (
+                      <Pressable style={styles.contactInfo} onPress={() => router.push(`/user/${contact.existingUser!.id}`)}>
+                        <Text style={styles.contactName} numberOfLines={1}>{contact.existingUser!.full_name?.trim() || "Profile unavailable"}</Text>
+                        <Text style={styles.contactOnApp}>View profile</Text>
+                      </Pressable>
+                      {relationshipsLoading || relationshipsError ? (
+                        <Text style={styles.contactStatusTextMuted}>{relationshipsError ? "Status unavailable" : "Checking..."}</Text>
+                      ) : status === "friends" ? (
                         <View style={[styles.contactStatusBadge, styles.contactStatusFriends]}>
                           <UserCheck size={12} color={colors.primary} />
                           <Text style={styles.contactStatusTextPrimary}>Friends</Text>
                         </View>
-                      ) : status === "pending" ? (
+                      ) : status === "sent" || status === "respond" ? (
                         <View style={[styles.contactStatusBadge, styles.contactStatusPending]}>
                           <Clock size={12} color={colors.mutedForeground} />
-                          <Text style={styles.contactStatusTextMuted}>Requested</Text>
+                          <Text style={styles.contactStatusTextMuted}>{status === "sent" ? "Request Sent" : "Respond to Request"}</Text>
                         </View>
                       ) : (
                         <Pressable
                           style={({ pressed }) => [styles.contactAddBtn, pressed && { opacity: 0.75 }]}
+                          disabled={relationshipsLoading || relationshipsError || sendRequestMutation.isPending}
                           onPress={() => sendRequestMutation.mutate(contact.existingUser!.id)}
                         >
                           <UserPlus size={13} color={colors.primaryForeground} />
@@ -781,7 +831,9 @@ function createStyles(colors: ThemeColors) {
     dropdownInfo: { flex: 1, gap: 2 },
     dropdownName: { fontSize: 15, fontWeight: "600" as const, color: colors.foreground },
     dropdownUsername: { fontSize: 13, fontWeight: "500" as const, color: colors.mutedForeground },
-    addBtnSmall: { width: 34, height: 34, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center" as const, justifyContent: "center" as const },
+    addBtnSmall: { minWidth: 34, height: 34, paddingHorizontal: 8, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center" as const, justifyContent: "center" as const },
+    addBtnSmallText: { fontSize: 11, color: colors.primaryForeground, fontWeight: "700" as const },
+    btnDisabled: { opacity: 0.55 },
     statusBadge: { flexDirection: "row" as const, alignItems: "center" as const, gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
     statusBadgeFriends: { backgroundColor: colors.primary + "14" },
     statusBadgePending: { backgroundColor: colors.secondary },

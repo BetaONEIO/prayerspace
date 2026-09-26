@@ -38,7 +38,7 @@ type ProfileData = {
   favorite_verse: string | null;
 };
 
-type RelationshipStatus = "add" | "sent" | "respond" | "friends" | "blocked";
+type RelationshipStatus = "checking" | "unavailable" | "add" | "sent" | "respond" | "friends" | "blocked";
 
 export default function UserProfileScreen() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function UserProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isFavourited, setIsFavourited] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>("add");
+  const [relationshipStatus, setRelationshipStatus] = useState<RelationshipStatus>("checking");
   const [relationshipLoading, setRelationshipLoading] = useState(false);
 
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
@@ -121,13 +121,18 @@ export default function UserProfileScreen() {
         .select("blocker_id, blocked_id")
         .or(`and(blocker_id.eq.${user.id},blocked_id.eq.${id}),and(blocker_id.eq.${id},blocked_id.eq.${user.id})`),
     ]);
+    if (requestsResult.error || blocksResult.error) {
+      if (__DEV__) console.warn("[UserProfile] relationship lookup failed", requestsResult.error?.code ?? blocksResult.error?.code);
+      setRelationshipStatus("unavailable");
+      return;
+    }
     if (blocksResult.data?.length) {
       setRelationshipStatus("blocked");
       return;
     }
-    const request = (requestsResult.data ?? []).find(
-      (row) => row.sender_id === id || row.receiver_id === id
-    );
+    const requests = requestsResult.data ?? [];
+    const request = requests.find((row) => row.status === "accepted")
+      ?? requests.find((row) => row.status === "pending");
     if (!request) {
       setRelationshipStatus("add");
     } else if (request.status === "accepted") {
@@ -163,6 +168,12 @@ export default function UserProfileScreen() {
 
   const handleRelationshipAction = useCallback(() => {
     if (!user?.id || !id || relationshipLoading) return;
+    if (relationshipStatus === "checking") return;
+    if (relationshipStatus === "unavailable") {
+      setRelationshipStatus("checking");
+      void fetchRelationship();
+      return;
+    }
     const currentUserId = user.id;
     if (relationshipStatus === "respond") {
       router.push("/friend-requests" as never);
@@ -208,8 +219,9 @@ export default function UserProfileScreen() {
       const { error: rpcError } = await supabase.rpc("send_friend_request", { target_user_id: id });
       if (rpcError) {
         Alert.alert("Could not add friend", rpcError.message);
+        void fetchRelationship();
       } else {
-        setRelationshipStatus("sent");
+        await fetchRelationship();
         void queryClient.invalidateQueries({ queryKey: ["friend_requests_sent", currentUserId] });
         void queryClient.invalidateQueries({ queryKey: ["friend_requests_relationships", currentUserId] });
         void queryClient.invalidateQueries({ queryKey: ["friend_requests_incoming", currentUserId] });
@@ -220,7 +232,7 @@ export default function UserProfileScreen() {
       }
       setRelationshipLoading(false);
     })();
-  }, [id, profile?.full_name, queryClient, relationshipLoading, relationshipStatus, router, user?.id]);
+  }, [id, profile?.full_name, queryClient, relationshipLoading, relationshipStatus, router, user?.id, fetchRelationship]);
 
   const handleMoreAction = useCallback(() => {
     if (!id || isOwnProfile || relationshipStatus === "blocked") return;
@@ -361,13 +373,17 @@ export default function UserProfileScreen() {
                 <Pressable
                   style={[styles.friendBtn, relationshipStatus === "blocked" && styles.disabledBtn]}
                   onPress={handleRelationshipAction}
-                  disabled={relationshipLoading || relationshipStatus === "blocked"}
+                  disabled={relationshipLoading || relationshipStatus === "blocked" || relationshipStatus === "checking"}
                 >
                   <User size={16} color={colors.primaryForeground} />
                   <Text style={styles.friendBtnText}>
                     {relationshipLoading
                       ? "Updating…"
-                      : relationshipStatus === "sent"
+                      : relationshipStatus === "checking"
+                        ? "Checking..."
+                        : relationshipStatus === "unavailable"
+                          ? "Retry status"
+                          : relationshipStatus === "sent"
                         ? "Request Sent"
                         : relationshipStatus === "respond"
                           ? "Respond"
