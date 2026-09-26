@@ -49,15 +49,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   useEffect(() => {
     console.log("[Auth] Checking initial session...");
-    void supabase.auth.getSession().then(({ data: { session: s } }) => {
-      console.log("[Auth] Initial session:", s ? `Found (${s.user.email})` : "None");
-      setSession(s);
-      setIsInitialized(true);
-    });
+    let isActive = true;
+    let oauthProfileTimer: ReturnType<typeof setTimeout> | null = null;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       console.log("[Auth] State changed:", event, s?.user?.email ?? "no user");
       setSession(s);
+      if (event === "INITIAL_SESSION") {
+        setIsInitialized(true);
+      }
       if (!s) {
         queryClient.clear();
         return;
@@ -65,50 +65,63 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       if (event === "SIGNED_IN") {
         const provider = s.user.app_metadata?.provider;
         if (provider && provider !== "email") {
-          void (async () => {
-            const { data: existingProfile, error: profileCheckErr } = await supabase
-              .from("profiles")
-              .select("id, deletion_requested_at")
-              .eq("id", s.user.id)
-              .single();
+          // Auth callbacks run while Supabase coordinates access to persisted
+          // tokens. Do not make Supabase requests until this callback returns:
+          // those requests may ask the same client for a token and contend for
+          // the auth lock.
+          if (oauthProfileTimer) clearTimeout(oauthProfileTimer);
+          oauthProfileTimer = setTimeout(() => {
+            oauthProfileTimer = null;
+            if (!isActive) return;
+            void (async () => {
+              const { data: existingProfile, error: profileCheckErr } = await supabase
+                .from("profiles")
+                .select("id, deletion_requested_at")
+                .eq("id", s.user.id)
+                .single();
 
-            if (profileCheckErr && profileCheckErr.code !== "PGRST116") {
-              console.error("[Auth] OAuth profile check error (non-fatal):", profileCheckErr.message);
-              return;
-            }
-
-            if (existingProfile?.deletion_requested_at) {
-              console.log("[Auth] OAuth sign in blocked — account pending deletion:", s.user.id);
-              await supabase.auth.signOut();
-              return;
-            }
-
-            if (!existingProfile) {
-              console.log("[Auth] Creating profile for new OAuth user (provider:", provider, ")...");
-              const fullName = s.user.user_metadata?.full_name ?? s.user.user_metadata?.name ?? "";
-              const avatarUrl = s.user.user_metadata?.avatar_url ?? s.user.user_metadata?.picture ?? null;
-              const { error: upsertError } = await supabase.from("profiles").upsert(
-                {
-                  id: s.user.id,
-                  full_name: fullName,
-                  avatar_url: avatarUrl,
-                  updated_at: new Date().toISOString(),
-                },
-                { onConflict: "id" }
-              );
-              if (upsertError) {
-                console.error("[Auth] Failed to create OAuth user profile (non-fatal):", upsertError.message);
-              } else {
-                console.log("[Auth] OAuth user profile created");
-                void queryClient.invalidateQueries({ queryKey: ["profile"] });
+              if (profileCheckErr && profileCheckErr.code !== "PGRST116") {
+                console.error("[Auth] OAuth profile check error (non-fatal):", profileCheckErr.message);
+                return;
               }
-            }
-          })();
+
+              if (existingProfile?.deletion_requested_at) {
+                console.log("[Auth] OAuth sign in blocked — account pending deletion:", s.user.id);
+                await supabase.auth.signOut();
+                return;
+              }
+
+              if (!existingProfile) {
+                console.log("[Auth] Creating profile for new OAuth user (provider:", provider, ")...");
+                const fullName = s.user.user_metadata?.full_name ?? s.user.user_metadata?.name ?? "";
+                const avatarUrl = s.user.user_metadata?.avatar_url ?? s.user.user_metadata?.picture ?? null;
+                const { error: upsertError } = await supabase.from("profiles").upsert(
+                  {
+                    id: s.user.id,
+                    full_name: fullName,
+                    avatar_url: avatarUrl,
+                    updated_at: new Date().toISOString(),
+                  },
+                  { onConflict: "id" }
+                );
+                if (upsertError) {
+                  console.error("[Auth] Failed to create OAuth user profile (non-fatal):", upsertError.message);
+                } else {
+                  console.log("[Auth] OAuth user profile created");
+                  void queryClient.invalidateQueries({ queryKey: ["profile"] });
+                }
+              }
+            })();
+          }, 0);
         }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isActive = false;
+      if (oauthProfileTimer) clearTimeout(oauthProfileTimer);
+      subscription.unsubscribe();
+    };
   }, [queryClient]);
 
   const profileQuery = useQuery({
