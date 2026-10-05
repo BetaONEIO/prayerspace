@@ -34,7 +34,7 @@ async function getApiKey() {
     }
   )
     .then((res) => res.json())
-    .then((data) => data.items?.[0]);
+    .then((data) => (data as { items?: Array<typeof connectionSettings> }).items?.[0]);
 
   const accessToken =
     connectionSettings?.settings?.access_token ||

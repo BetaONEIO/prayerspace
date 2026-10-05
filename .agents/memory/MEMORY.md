@@ -2,3 +2,4 @@
 - [Friend-based feed & RLS](friend-based-feed.md) — DB-backed feed with RLS; SQL migration must be run manually in Supabase dashboard before friends can see each other's posts.
 - [Native voice playback lifecycle](voice-playback-lifecycle.md) — check Expo Sound load state and guard cleanup/playback races before calling native playback methods.
 - [Supabase connection SQL boundary](supabase-sql-boundary.md) — the connected Supabase data proxy cannot create SQL functions; confirm a separate SQL path before promising migrations.
+- [Live billing app identity](live-billing-identity.md) — confirm the actual store listing before changing RevenueCat app identifiers; a connected project may still target a legacy app.
