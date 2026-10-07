@@ -22,9 +22,9 @@ export default function InvitePreviewScreen() {
 
       <View style={styles.body}>
         <View style={styles.avatarGroup}>
-          <Image source={{ uri: "https://randomuser.me/api/portraits/women/42.jpg" }} style={styles.avatarLeft} />
+          <Image source={require("../assets/images/anon_user.png")} style={styles.avatarLeft} />
           <View style={styles.callCircle}><Phone size={22} color={colors.primaryForeground} /></View>
-          <Image source={{ uri: "https://randomuser.me/api/portraits/men/12.jpg" }} style={styles.avatarRight} />
+          <Image source={require("../assets/images/anon_user.png")} style={styles.avatarRight} />
         </View>
         <Text style={styles.invitingText}>Inviting Chris Evans</Text>
 

@@ -15,8 +15,8 @@ export default function ContactDetailInfoScreen() {
   const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
   const { contactName, contactAvatar } = useLocalSearchParams<{ contactName?: string; contactAvatar?: string }>();
 
-  const name = contactName ?? "Michael Scott";
-  const avatar = contactAvatar ?? "https://randomuser.me/api/portraits/men/32.jpg";
+  const name = contactName ?? "Prayer Space member";
+  const avatar = contactAvatar ?? "";
 
   const handleSelect = () => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

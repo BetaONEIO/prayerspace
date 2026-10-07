@@ -31,15 +31,6 @@ interface PreviewRecipient {
   avatar: string;
   channel: DeliveryChannel;
 }
-
-const PLACEHOLDER_AVATARS = [
-  "https://randomuser.me/api/portraits/men/32.jpg",
-  "https://randomuser.me/api/portraits/women/44.jpg",
-  "https://randomuser.me/api/portraits/men/52.jpg",
-  "https://randomuser.me/api/portraits/women/62.jpg",
-  "https://randomuser.me/api/portraits/men/22.jpg",
-];
-
 function mapSourceToChannel(source: string, onApp: boolean): DeliveryChannel {
   if (onApp) return "app";
   if (source === "whatsapp") return "whatsapp";
@@ -259,7 +250,7 @@ export default function MessagePreviewFinalScreen() {
     return selectedRecipients.map((r, i) => ({
       id: r.id,
       name: r.name,
-      avatar: r.avatar || PLACEHOLDER_AVATARS[i % PLACEHOLDER_AVATARS.length],
+      avatar: r.avatar ?? "",
       channel: mapSourceToChannel(r.source, r.onApp),
     }));
   }, [selectedRecipients]);
@@ -296,7 +287,7 @@ export default function MessagePreviewFinalScreen() {
   }, [feedPostMeta?.photoUrls, photoUrlsParam]);
 
   const safeIdx = Math.min(selectedIdx, Math.max(recipients.length - 1, 0));
-  const selected = recipients[safeIdx] || { id: "0", name: "Friend", avatar: PLACEHOLDER_AVATARS[0], channel: "app" as DeliveryChannel };
+  const selected = recipients[safeIdx] || { id: "", name: "Select a recipient", avatar: "", channel: "app" as DeliveryChannel };
   const selectedMeta = CHANNEL_META[selected.channel];
   const titleSuffix = useMemo(() => {
     if (selected.channel === "whatsapp") return "WhatsApp";

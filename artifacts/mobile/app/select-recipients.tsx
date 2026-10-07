@@ -355,7 +355,7 @@ export default function SelectRecipientsScreen() {
           <View style={styles.groupCard}>
             {prayerGroupPayloads.map((group, index) => {
               const isSelected = selectedGroupIds.includes(group.id);
-              const avatarUri = group.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(group.name)}&background=random&color=fff&size=128`;
+              const avatarUri = group.avatar ?? "";
               return (
                 <View key={group.id}>
                   {index > 0 && <View style={styles.divider} />}

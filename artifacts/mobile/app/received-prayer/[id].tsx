@@ -28,12 +28,26 @@ import {
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { receivedPrayerRequests } from "@/mocks/data";
-import { checkHasPrayed, checkIsJournaled, markAsJournaled, markAsPrayed } from "@/mocks/prayerSessionState";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { scheduleReceivedPrayerReminders, shouldShowReminderBadge } from "@/lib/prayerReminders";
+
+type ReceivedPrayer = {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  type: "text" | "voice";
+  content: string;
+  voiceDuration?: string;
+  sentAt: string;
+  prayerCount: number;
+  prayedByAvatars: string[];
+  eventDate?: string | null;
+  eventTime?: string | null;
+  hasPrayerDate?: boolean;
+};
 
 export default function ReceivedPrayerScreen() {
   const colors = useThemeColors();
@@ -58,16 +72,15 @@ export default function ReceivedPrayerScreen() {
   const tooltipSlideAnim = useRef(new Animated.Value(8)).current;
   const dotsAnim = useRef(new Animated.Value(0)).current;
 
-  const prayer = receivedPrayerRequests.find((p) => p.id === id);
+  // Received requests are loaded by the feed when the backend data is available.
+  // Never render a local/demo request when a route is opened directly.
+  const prayer = useMemo<ReceivedPrayer | null>(() => null, [id]);
 
   useFocusEffect(
     useCallback(() => {
       if (id) {
-        const prayed = checkHasPrayed(id);
-        const journaled = checkIsJournaled(id);
-        setHasPrayed(prayed);
-        setIsJournaled(journaled);
-        console.log("[ReceivedPrayer] focus check - prayed:", prayed, "journaled:", journaled);
+        setHasPrayed(false);
+        setIsJournaled(false);
       }
     }, [id])
   );
@@ -116,7 +129,6 @@ export default function ReceivedPrayerScreen() {
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    if (id) markAsJournaled(id);
     setIsJournaled(true);
     addJournalEntry({
       title: `Praying for ${prayer?.senderName ?? "Someone"}`,
@@ -162,8 +174,6 @@ export default function ReceivedPrayerScreen() {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     if (id) {
-      markAsJournaled(id);
-      markAsPrayed(id);
       markRequestPrayed(id);
     }
     if (prayer?.hasPrayerDate && prayer.eventDate) {

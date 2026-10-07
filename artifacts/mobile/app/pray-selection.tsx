@@ -7,7 +7,6 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { usePrayer } from "@/providers/PrayerProvider";
-import { markAsPrayed, markAsJournaled } from "@/mocks/prayerSessionState";
 
 export default function PraySelectionScreen() {
   const router = useRouter();
@@ -39,20 +38,17 @@ export default function PraySelectionScreen() {
 
   const handlePrayForThem = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (prayerId) markAsPrayed(prayerId);
     openJournalPrompt();
   }, [prayerId, openJournalPrompt]);
 
   const handleAddToJournal = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (prayerId) { markAsPrayed(prayerId); markAsJournaled(prayerId); }
     addJournalEntry({ title: `Praying for ${senderName ?? "Someone"}`, body: `Prayer request from ${senderName ?? "Someone"}.`, tag: "praying_for", contactName: senderName ?? undefined, contactAvatar: contactAvatar ?? undefined, prayerRequest: prayerRequest ?? undefined });
     router.replace({ pathname: "/journal-added-success", params: { senderName: senderName ?? "Someone" } });
   }, [addJournalEntry, senderName, contactAvatar, prayerRequest, router, prayerId]);
 
   const handleJournalYes = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (prayerId) markAsJournaled(prayerId);
     addJournalEntry({ title: `Praying for ${senderName ?? "Someone"}`, body: `Prayer request from ${senderName ?? "Someone"}.`, tag: "praying_for", contactName: senderName ?? undefined, contactAvatar: contactAvatar ?? undefined, prayerRequest: prayerRequest ?? undefined });
     setShowJournalPrompt(false);
     router.replace({ pathname: "/journal-added-success", params: { senderName: senderName ?? "Someone" } });

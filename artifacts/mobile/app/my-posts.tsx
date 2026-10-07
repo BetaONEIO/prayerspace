@@ -40,6 +40,7 @@ import { usePrayer } from "@/providers/PrayerProvider";
 import type { ArchivedPost } from "@/providers/PrayerProvider";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import AvatarImage from "@/components/AvatarImage";
 
 type UpdateTag = "still_need_prayer" | "answered";
 type FilterTab = "All" | "Ongoing" | "Answered" | "Archived";
@@ -555,6 +556,7 @@ interface RepostComposerModalProps {
 function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: RepostComposerModalProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState<string>("");
   const [selectedTag, setSelectedTag] = useState<UpdateTag | null>(null);
@@ -648,12 +650,13 @@ function RepostComposerModal({ originalPost, isAnswered, onClose, onSubmit }: Re
                 <View style={styles.originalPreviewBar} />
                 <View style={styles.originalPreviewInner}>
                   <View style={styles.originalPreviewAuthor}>
-                    <Image
-                      source={{ uri: "https://randomuser.me/api/portraits/women/44.jpg" }}
+                    <AvatarImage
+                      avatarPath={profile?.avatar_url}
+                      fallbackSeed={profile?.full_name ?? ""}
                       style={styles.originalPreviewAvatar}
                     />
                     <View>
-                      <Text style={styles.originalPreviewName}>Sarah</Text>
+                      <Text style={styles.originalPreviewName}>{profile?.full_name ?? "Prayer Space member"}</Text>
                       <Text style={styles.originalPreviewTime}>{originalPost.postedAt}</Text>
                     </View>
                   </View>

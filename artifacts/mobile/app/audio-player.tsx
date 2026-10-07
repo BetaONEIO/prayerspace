@@ -33,7 +33,7 @@ export default function AudioPlayerScreen() {
         <View style={styles.content}>
           <View style={styles.artworkWrap}>
             <View style={styles.artworkShadow} />
-            <Image source={{ uri: "https://randomuser.me/api/portraits/men/42.jpg" }} style={styles.artwork} />
+            <Image source={require("../assets/images/anon_user.png")} style={styles.artwork} />
           </View>
 
           <View style={styles.trackInfo}>

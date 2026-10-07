@@ -1,4 +1,3 @@
-import type { PrayerStatus } from "@/mocks/data";
 import { isDatePassed, reminderDateFor, daysUntil } from "./prayerDateUtils";
 import { SchedulableTriggerInputTypes } from "expo-notifications";
 
@@ -257,3 +256,9 @@ export async function cancelPrayerReminders(prayerRequestId: string): Promise<vo
     Notifications.cancelScheduledNotificationAsync(notifIdFor(prayerRequestId, "day_of")).catch(() => {}),
   ]);
 }
+
+export type PrayerStatus =
+  | "ongoing"
+  | "answered"
+  | "still_need_prayer"
+  | "archived";

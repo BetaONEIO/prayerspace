@@ -149,7 +149,6 @@ function RootLayoutNav() {
       <Stack.Screen name="new-request" options={{ presentation: "modal", headerShown: false }} />
       <Stack.Screen name="explore" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
-      <Stack.Screen name="bulk-notify" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
       <Stack.Screen name="complete-profile" options={{ headerShown: false }} />
       <Stack.Screen name="help-centre" options={{ headerShown: false }} />

@@ -41,11 +41,6 @@ import {
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useCommunityStore } from "@/lib/communityStore";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import {
-  receivedPrayerRequests,
-  type ReceivedPrayerRequest,
-  type ActivityItem,
-} from "@/mocks/data";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { useFavourites } from "@/providers/FavouritesProvider";
 import { useDailyVerse } from "@/hooks/useDailyVerse";
@@ -60,14 +55,41 @@ import { supabase } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeColors } from "@/constants/colors";
 
+type ReceivedPrayerRequest = {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  type: "text" | "voice";
+  content: string;
+  voiceDuration?: string;
+  sentAt: string;
+  prayerCount: number;
+  prayedByAvatars: string[];
+  eventDate?: string | null;
+  eventTime?: string | null;
+  hasPrayerDate?: boolean;
+};
+
+type ActivityItem = {
+  id: string;
+  type: "sent_inapp" | "sent_whatsapp" | "sent_sms" | "received" | "prayed_for_me";
+  contactName: string;
+  contactAvatar?: string;
+  contactId?: string;
+  message: string;
+  channel: string;
+  time: string;
+  dateGroup: string;
+  thanksSent?: boolean;
+};
+
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning,";
   if (hour < 17) return "Good afternoon,";
   return "Good evening,";
 }
-
-import { recentActivity as initialActivity } from "@/mocks/data";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -97,7 +119,7 @@ export default function HomeScreen() {
   const [drawerVisible, setDrawerVisible] = useState<boolean>(false);
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
   const [statusVisible, setStatusVisible] = useState<boolean>(false);
-  const [activity, setActivity] = useState<ActivityItem[]>(initialActivity);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [thankToast, setThankToast] = useState<{ name: string } | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
@@ -653,15 +675,9 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Prayer Requests</Text>
-          {receivedPrayerRequests.filter((r) => !hasBeenPrayed(r.id)).length === 0 ? (
-            <View style={styles.emptyRequests}>
-              <Text style={styles.emptyRequestsText}>No prayer requests yet.</Text>
-            </View>
-          ) : (
-            receivedPrayerRequests
-              .filter((r) => !hasBeenPrayed(r.id))
-              .map((req) => renderPrayerRequest({ item: req }))
-          )}
+          <View style={styles.emptyRequests}>
+            <Text style={styles.emptyRequestsText}>No prayer requests yet.</Text>
+          </View>
         </View>
 
         <View style={styles.section}>

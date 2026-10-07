@@ -35,19 +35,21 @@ import { Image } from "expo-image";
 const ANON_AVATAR = require("../assets/images/anon_user.png");
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { dismissKeyboard } from "@/lib/keyboard";
 import FullScreenTextEditor from "@/components/FullScreenTextEditor";
-import { currentUser } from "@/mocks/data";
 import { useNotifications } from "@/providers/NotificationsProvider";
 import { useUnsavedChangesWarning } from "@/hooks/useUnsavedChangesWarning";
 import { PRAYER_TAGS, AUDIENCE_OPTIONS, type AudienceOption } from "@/constants/prayerContent";
 import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { scheduleOwnPrayerReminders } from "@/lib/prayerReminders";
+import { supabase } from "@/lib/supabase";
 
 export default function NewRequestScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const { user, profile } = useAuth();
   const { addNotification } = useNotifications();
   const communities = useCommunityStore();
   const audienceOptions = useMemo<AudienceOption[]>(() => [
@@ -129,18 +131,39 @@ export default function NewRequestScreen() {
     }).start();
   }, [dateExpanded, dateHeightAnim]);
 
-  const handlePost = useCallback(() => {
+  const handlePost = useCallback(async () => {
     if (!content.trim()) {
       Alert.alert("Empty Request", "Please describe your prayer request.");
       return;
     }
+    if (!user?.id) {
+      Alert.alert("Sign in required", "You need an account before posting a prayer request.");
+      return;
+    }
     Keyboard.dismiss();
     console.log("Post request:", { content, isAnonymous, isTimeSensitive, selectedTags, audience: selectedAudience.key, hasImage: !!requestImageUri, eventDate });
-    const senderName = isAnonymous ? "Someone" : currentUser.name;
-    const requestId = `request-${Date.now()}`;
+    const senderName = isAnonymous ? "Someone" : (profile?.full_name?.trim() || "Prayer Space member");
+    const { data: prayerRequest, error } = await supabase
+      .from("prayer_requests")
+      .insert({
+        author_id: user.id,
+        content: content.trim(),
+        is_anonymous: isAnonymous,
+        is_time_sensitive: isTimeSensitive,
+        audience: selectedAudience.type === "everyone" ? "everyone" : "friends",
+        tags: selectedTags,
+        event_date: eventDate,
+      })
+      .select("id")
+      .single();
+    if (error || !prayerRequest?.id) {
+      console.error("[NewRequest] Failed to save prayer request:", error?.message);
+      Alert.alert("Could not post", "Your prayer request was not saved. Please try again.");
+      return;
+    }
     if (eventDate) {
       void scheduleOwnPrayerReminders({
-        prayerRequestId: requestId,
+        prayerRequestId: prayerRequest.id,
         snippet: content.trim(),
         eventDate,
       });
@@ -150,7 +173,7 @@ export default function NewRequestScreen() {
       title: `${senderName} posted a prayer request`,
       body: `"${content.trim()}"`,
       time: "Just now",
-      avatar: isAnonymous ? undefined : currentUser.avatar,
+      avatar: isAnonymous ? undefined : (profile?.avatar_url ?? undefined),
       unread: true,
     });
     // Clear draft after successful post
@@ -158,7 +181,7 @@ export default function NewRequestScreen() {
     Alert.alert("Posted!", "Your prayer request has been shared.", [
       { text: "OK", onPress: () => router.back() },
     ]);
-  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, eventDate, router, addNotification, DRAFT_KEY]);
+  }, [content, isAnonymous, isTimeSensitive, selectedTags, selectedAudience, eventDate, router, addNotification, DRAFT_KEY, user?.id, profile, requestImageUri]);
 
   const handleTagPress = useCallback((id: string) => {
     setSelectedTags((prev) =>
@@ -212,9 +235,13 @@ export default function NewRequestScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.userRow}>
-            <Image source={isAnonymous ? ANON_AVATAR : { uri: currentUser.avatar }} style={styles.userAvatar} />
+            {isAnonymous || !profile?.avatar_url ? (
+              <Image source={ANON_AVATAR} style={styles.userAvatar} />
+            ) : (
+              <Image source={{ uri: profile.avatar_url }} style={styles.userAvatar} />
+            )}
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{isAnonymous ? "Anonymous" : currentUser.name}</Text>
+              <Text style={styles.userName}>{isAnonymous ? "Anonymous" : (profile?.full_name?.trim() || "Prayer Space member")}</Text>
               <Pressable
                 style={styles.audienceBtn}
                 onPress={() => setAudienceOpen((v) => !v)}

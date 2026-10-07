@@ -16,6 +16,7 @@ const MOCK_EVENT_DATE = (() => {
   d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 })();
+const ANON_AVATAR = require("../../assets/images/anon_user.png");
 
 export default function PrayerDetailScreen() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function PrayerDetailScreen() {
         <AutoScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.mainCard}>
             <View style={styles.authorRow}>
-              <Image source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }} style={styles.authorAvatar} />
+              <Image source={ANON_AVATAR} style={styles.authorAvatar} />
               <View><Text style={styles.authorName}>Emma Wilson</Text><Text style={styles.postTime}>Posted 2 hours ago</Text></View>
             </View>
 
@@ -78,8 +79,8 @@ export default function PrayerDetailScreen() {
 
             <View style={styles.prayerCountRow}>
               <View style={styles.avatarStack}>
-                <Image source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }} style={styles.stackAvatar} />
-                <Image source={{ uri: "https://randomuser.me/api/portraits/women/44.jpg" }} style={[styles.stackAvatar, { marginLeft: -8 }]} />
+                <Image source={ANON_AVATAR} style={styles.stackAvatar} />
+                <Image source={ANON_AVATAR} style={[styles.stackAvatar, { marginLeft: -8 }]} />
                 <View style={[styles.stackCount, { marginLeft: -8 }]}><Text style={styles.stackCountText}>+12</Text></View>
               </View>
               <Text style={styles.prayerCountText}><Text style={styles.prayerCountBold}>{prayerCount} people</Text>{" "}are praying for this</Text>

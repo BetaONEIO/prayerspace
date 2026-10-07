@@ -4,15 +4,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { ALL_RECIPIENTS } from "@/providers/SelectedRecipientsProvider";
-import { allContacts, favouriteContacts, type Contact } from "@/mocks/data";
 
 const STORAGE_KEY = "prayerful_favourites";
+
+export interface Contact {
+  id: string;
+  name: string;
+  avatar: string;
+  email?: string;
+  phone?: string;
+}
 
 function lookupAvatar(id: string): string {
   const fromRecipients = ALL_RECIPIENTS.find((r) => r.id === id);
   if (fromRecipients?.avatar) return fromRecipients.avatar;
-  const fromContacts = allContacts.find((c) => c.id === id);
-  if (fromContacts?.avatar) return fromContacts.avatar;
   return "";
 }
 
@@ -35,7 +40,7 @@ function getFrequencyLabel(count: number): string {
 export const [FavouritesProvider, useFavourites] = createContextHook(() => {
   const queryClient = useQueryClient();
   const { prayers } = usePrayer();
-  const [favourites, setFavourites] = useState<Contact[]>(favouriteContacts);
+  const [favourites, setFavourites] = useState<Contact[]>([]);
 
   const favouritesQuery = useQuery({
     queryKey: ["favourites"],
@@ -47,7 +52,7 @@ export const [FavouritesProvider, useFavourites] = createContextHook(() => {
         console.log("[FavouritesProvider] Loaded", parsed.length, "favourites");
         return parsed;
       }
-      return favouriteContacts;
+      return [];
     },
   });
 

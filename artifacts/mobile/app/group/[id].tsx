@@ -128,14 +128,8 @@ interface Member {
   joinedDate?: string;
 }
 
-// Group member count and admin status are resolved from real group state at runtime.
-// Do NOT add hardcoded members here.
-const TOTAL_GROUP_MEMBERS = 0;
+// Group members and messages are populated only from connected group data.
 const IS_CURRENT_USER_ADMIN = false;
-
-const CHAT_MESSAGES: ChatMessage[] = [];
-
-const MEMBERS: Member[] = [];
 
 function getUpdateTagLabels(colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> {
   return {
@@ -159,14 +153,14 @@ export default function GroupDetailScreen() {
     sharedUpdateTag?: string;
   }>();
   const { id } = params;
-  const groupId = id || "group-1";
+  const groupId = id ?? "";
   const groupState = useGroupState(groupId);
   const insets = useSafeAreaInsets();
   const { isPremiumCommunity, isOwner } = useChurchEntitlements();
   const [activeTab, setActiveTab] = useState<GroupTab>("Chat");
 
   const [chatInput, setChatInput] = useState<string>("");
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(CHAT_MESSAGES);
+  const [chatMessages] = useState<ChatMessage[]>([]);
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
   const [memberActionsTarget, setMemberActionsTarget] = useState<Member | null>(null);
   const [viewingMediaItem, setViewingMediaItem] = useState<MediaItem | null>(null);
@@ -180,7 +174,6 @@ export default function GroupDetailScreen() {
   const groupMenuAnim = useRef(new Animated.Value(260)).current;
   const groupMenuBackdrop = useRef(new Animated.Value(0)).current;
   const msgPositionsRef = useRef<Map<string, number>>(new Map());
-  const injectedRef = useRef<boolean>(false);
   const chatScrollRef = useRef<ScrollView>(null);
 
   const openGroupMenu = useCallback(() => {
@@ -216,41 +209,13 @@ export default function GroupDetailScreen() {
     }
   }, []);
 
-  const handleAddPrayReaction = useCallback((msgId: string) => {
-    setChatMessages((prev) =>
-      prev.map((m) => {
-        if (m.id !== msgId) return m;
-        const existing = (m.reactions ?? []).find((r) => r.userId === "me" && r.type === "pray");
-        if (existing) return m;
-        return {
-          ...m,
-          reactions: [
-            ...(m.reactions ?? []),
-            { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "pray" as const, createdAt: "Just now" },
-          ],
-        };
-      })
-    );
+  const handleAddPrayReaction = useCallback((_msgId: string) => {
+    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
     setContextMsg(null);
   }, []);
 
-  const handleAddEmojiReaction = useCallback((msgId: string, emoji: string) => {
-    setChatMessages((prev) =>
-      prev.map((m) => {
-        if (m.id !== msgId) return m;
-        const existing = (m.reactions ?? []).find((r) => r.userId === "me" && r.type === "emoji" && r.emoji === emoji);
-        if (existing) {
-          return { ...m, reactions: (m.reactions ?? []).filter((r) => !(r.userId === "me" && r.type === "emoji" && r.emoji === emoji)) };
-        }
-        return {
-          ...m,
-          reactions: [
-            ...(m.reactions ?? []),
-            { userId: "me", userName: "Me", userAvatar: "https://randomuser.me/api/portraits/women/44.jpg", type: "emoji" as const, emoji, createdAt: "Just now" },
-          ],
-        };
-      })
-    );
+  const handleAddEmojiReaction = useCallback((_msgId: string, _emoji: string) => {
+    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
     setContextMsg(null);
   }, []);
 
@@ -261,37 +226,10 @@ export default function GroupDetailScreen() {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          setChatMessages((prev) => prev.filter((m) => m.id !== msgId));
           setContextMsg(null);
         },
       },
     ]);
-  }, []);
-
-  React.useEffect(() => {
-    if (injectedRef.current) return;
-    if (!params.sharedPostContent) return;
-    injectedRef.current = true;
-    console.log("[GroupChat] Injecting shared prayer message from params");
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const sharedMsg: ChatMessage = {
-      id: `shared_${Date.now()}`,
-      senderId: "me",
-      senderName: "Me",
-      senderAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      text: params.pendingSharedMessage ?? "",
-      time: timeStr,
-      isOwn: true,
-      sharedPrayer: {
-        authorName: params.sharedAuthorName ?? "",
-        authorAvatar: params.sharedAuthorAvatar ?? "",
-        postContent: (params.sharedPostContent ?? "").replace(/^"|"$/g, ""),
-        updateTag: params.sharedUpdateTag || undefined,
-      },
-    };
-    setChatMessages((prev) => [...prev, sharedMsg]);
-    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 150);
   }, []);
 
   const handleTabPress = useCallback((tab: GroupTab) => {
@@ -302,42 +240,12 @@ export default function GroupDetailScreen() {
   const handleSendMessage = useCallback(() => {
     const trimmed = chatInput.trim();
     if (!trimmed && !groupImageUri) return;
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const newMsg: ChatMessage = {
-      id: `cm_${Date.now()}`,
-      senderId: "me",
-      senderName: "Me",
-      senderAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      text: trimmed,
-      imageUrl: groupImageUri ?? undefined,
-      time: "Just now",
-      isOwn: true,
-      replyTo: replyingTo ?? undefined,
-    };
-    setChatMessages((prev) => [...prev, newMsg]);
-    setChatInput("");
-    setGroupImageUri(null);
-    setReplyingTo(null);
-    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [chatInput, groupImageUri, replyingTo]);
+    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
+  }, [chatInput, groupImageUri]);
 
-  const handleSendVoiceMessage = useCallback((uri: string, durationMs: number) => {
+  const handleSendVoiceMessage = useCallback((_uri: string, _durationMs: number) => {
     setShowVoiceRecorder(false);
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const newMsg: ChatMessage = {
-      id: `vm_${Date.now()}`,
-      senderId: "me",
-      senderName: "Me",
-      senderAvatar: "https://randomuser.me/api/portraits/women/44.jpg",
-      text: "",
-      time: "Just now",
-      isOwn: true,
-      isVoice: true,
-      audioUri: uri,
-      audioDurationMs: durationMs,
-    };
-    setChatMessages((prev) => [...prev, newMsg]);
-    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100);
+    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
   }, []);
 
   const filteredMembers = groupState.members.filter((m) =>
@@ -367,7 +275,7 @@ export default function GroupDetailScreen() {
         <View style={[styles.banner, { paddingTop: insets.top + 12 }]}>
           <Image
             source={{
-              uri: groupState.photoUri ?? "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&q=80",
+              uri: groupState.photoUri ?? "",
             }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
@@ -391,7 +299,9 @@ export default function GroupDetailScreen() {
                   <Text style={styles.premiumPillText}>✦ Premium Community</Text>
                 </View>
               )}
-              <Text style={styles.groupStats}>128 Members · Active Now</Text>
+              <Text style={styles.groupStats}>
+                {groupState.members.length} {groupState.members.length === 1 ? "Member" : "Members"}
+              </Text>
             </View>
             <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
               <MoreVertical size={18} color={colors.foreground} />
@@ -407,7 +317,9 @@ export default function GroupDetailScreen() {
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.chatHeaderName}>{groupState.name}</Text>
-            <Text style={styles.chatHeaderSub}>128 Members · 12 Active</Text>
+            <Text style={styles.chatHeaderSub}>
+              {groupState.members.length} {groupState.members.length === 1 ? "Member" : "Members"}
+            </Text>
           </View>
           <Pressable style={styles.settingsBtn} onPress={openGroupMenu}>
             <MoreVertical size={18} color={colors.foreground} />
@@ -452,16 +364,24 @@ export default function GroupDetailScreen() {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-            <View style={styles.dateDivider}>
-              <Text style={styles.dateDividerText}>Today</Text>
-            </View>
-            {chatMessages.map((msg, index) => {
+            {chatMessages.length === 0 ? (
+              <View style={styles.emptyGroupChatState}>
+                <Text style={styles.emptyGroupChatTitle}>No group messages yet</Text>
+                <Text style={styles.emptyGroupChatText}>Messages will appear here when this group is connected.</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.dateDivider}>
+                  <Text style={styles.dateDividerText}>Today</Text>
+                </View>
+                {chatMessages.map((msg, index) => {
               const prevMsg = chatMessages[index - 1];
               const isFirstInGroup = !prevMsg || prevMsg.senderId !== msg.senderId;
               return msg.isOwn ? (
                 <OwnMessage
                   key={msg.id}
                   message={msg}
+                  totalMembers={groupState.members.length}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
                   onReply={handleReply}
@@ -480,7 +400,9 @@ export default function GroupDetailScreen() {
                   onLayout={(y) => msgPositionsRef.current.set(msg.id, y)}
                 />
               );
-            })}
+                })}
+              </>
+            )}
           </ScrollView>
 
           <View style={styles.chatInputOuter}>
@@ -1361,8 +1283,9 @@ function PrayingReactions({ reactions }: { reactions?: MessageReaction[] }) {
   );
 }
 
-function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+function OwnMessage({ message, totalMembers, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
   message: ChatMessage;
+  totalMembers: number;
   onImagePress?: (uri: string) => void;
   onLongPress?: (msg: ChatMessage) => void;
   onReply?: (msg: ChatMessage) => void;
@@ -1418,7 +1341,7 @@ function OwnMessage({ message, onImagePress, onLongPress, onReply, onScrollToMes
         <PrayingReactions reactions={message.reactions} />
         <View style={styles.ownMeta}>
           <Text style={styles.ownTime}>{message.time}</Text>
-          <ReadReceipt readBy={message.readBy} totalMembers={TOTAL_GROUP_MEMBERS} />
+          <ReadReceipt readBy={message.readBy} totalMembers={totalMembers} />
         </View>
       </View>
     </SwipeableMessage>
@@ -2239,6 +2162,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     gap: 10,
+  },
+  emptyGroupChatState: {
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    paddingHorizontal: 28,
+    paddingVertical: 96,
+  },
+  emptyGroupChatTitle: {
+    color: colors.foreground,
+    fontSize: 17,
+    fontWeight: "700" as const,
+    marginBottom: 8,
+  },
+  emptyGroupChatText: {
+    color: colors.mutedForeground,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center" as const,
   },
   dateDivider: {
     alignSelf: "center" as const,

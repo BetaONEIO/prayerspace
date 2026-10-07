@@ -1,22 +1,69 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ScrollView } from "react-native";
-import { Image } from "expo-image";
+import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Search, X, CheckCircle2 } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
-import { allContacts, type Contact } from "@/mocks/data";
 import { dismissKeyboard } from "@/lib/keyboard";
+import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "@/lib/supabase";
+import { useQuery } from "@tanstack/react-query";
+import AvatarImage from "@/components/AvatarImage";
+
+type Contact = {
+  id: string;
+  name: string;
+  avatar: string;
+  email?: string;
+  phone?: string;
+};
 
 export default function SelectContactsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Contact[]>([]);
 
-  const filtered = allContacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const contactsQuery = useQuery<Contact[]>({
+    queryKey: ["select-contacts", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: relationships, error: relationshipError } = await supabase
+        .from("friend_requests")
+        .select("sender_id, receiver_id")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .eq("status", "accepted");
+      if (relationshipError) throw relationshipError;
+
+      const friendIds = (relationships ?? [])
+        .map((relationship) =>
+          relationship.sender_id === user.id
+            ? relationship.receiver_id
+            : relationship.sender_id
+        )
+        .filter((id): id is string => Boolean(id && id !== user.id));
+      if (friendIds.length === 0) return [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, email")
+        .in("id", [...new Set(friendIds)]);
+      if (profileError) throw profileError;
+
+      return (profiles ?? []).map((profile) => ({
+        id: profile.id,
+        name: profile.full_name?.trim() || "Prayer Space member",
+        avatar: profile.avatar_url ?? "",
+        email: profile.email ?? undefined,
+      }));
+    },
+  });
+  const contacts = contactsQuery.data ?? [];
+  const filtered = contacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
   const toggleContact = useCallback((contact: Contact) => {
     setSelected((prev) => {
       const exists = prev.find((c) => c.id === contact.id);
@@ -39,7 +86,7 @@ export default function SelectContactsScreen() {
             {selected.map((c) => (
               <View key={c.id} style={styles.selectedItem}>
                 <View style={styles.selectedAvatarWrap}>
-                  <Image source={{ uri: c.avatar }} style={styles.selectedAvatar} />
+                  <AvatarImage avatarPath={c.avatar} fallbackSeed={c.name} style={styles.selectedAvatar} />
                   <Pressable style={styles.removeBtn} onPress={() => toggleContact(c)}><X size={10} color={colors.primaryForeground} /></Pressable>
                 </View>
                 <Text style={styles.selectedName} numberOfLines={1}>{c.name.split(" ")[0]}</Text>
@@ -68,12 +115,23 @@ export default function SelectContactsScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        ListHeaderComponent={
+          contactsQuery.isLoading ? (
+            <ActivityIndicator color={colors.primary} style={styles.loading} />
+          ) : contactsQuery.isError ? (
+            <Text style={styles.emptyText}>Could not load friends.</Text>
+          ) : filtered.length === 0 ? (
+            <Text style={styles.emptyText}>
+              {contacts.length === 0 ? "No friends available yet." : "No friends match your search."}
+            </Text>
+          ) : null
+        }
         renderItem={({ item }) => {
           const sel = isSelected(item.id);
           return (
             <Pressable style={styles.contactRow} onPress={() => toggleContact(item)}>
               <View style={styles.contactLeft}>
-                <Image source={{ uri: item.avatar }} style={styles.avatar} />
+                <AvatarImage avatarPath={item.avatar} fallbackSeed={item.name} style={styles.avatar} />
                 <View><Text style={styles.contactName}>{item.name}</Text><Text style={styles.contactSub}>{item.email ?? item.phone ?? ""}</Text></View>
               </View>
               <View style={[styles.checkCircle, sel && styles.checkCircleSelected]}>
@@ -104,6 +162,8 @@ function createStyles(colors: ThemeColors) {
     searchBar: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: colors.card, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
     searchInput: { flex: 1, fontSize: 14, color: colors.foreground, padding: 0 },
     list: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24 },
+    loading: { marginTop: 24 },
+    emptyText: { color: colors.mutedForeground, textAlign: "center", paddingVertical: 28, lineHeight: 20 },
     contactRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12 },
     contactLeft: { flexDirection: "row", alignItems: "center", gap: 14, flex: 1 },
     avatar: { width: 44, height: 44, borderRadius: 22 },

@@ -55,7 +55,6 @@ import {
   type Message,
   type ReactionType,
 } from "@/lib/chat";
-import { allContacts, chatMessages } from "@/mocks/data";
 import ImageAttachment from "@/components/ImageAttachment";
 import ImageViewer from "@/components/ImageViewer";
 import { uploadPostImage } from "@/lib/storage";
@@ -102,8 +101,6 @@ export default function ChatScreen() {
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; content: string } | null>(null);
-  const [mockExtraMessages, setMockExtraMessages] = useState<Message[]>([]);
-  const [mockReactions, setMockReactions] = useState<Record<string, { reaction_type: ReactionType; user_id: string }[]>>({});
   const contextSlide = useRef(new Animated.Value(400)).current;
   const headerMenuSlide = useRef(new Animated.Value(300)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -218,7 +215,7 @@ export default function ChatScreen() {
   }, [conversationId, queryClient]);
 
   useEffect(() => {
-    if (isRealUser || !autoMessage) return;
+    if (!isRealUser || !autoMessage) return;
     const raw = Array.isArray(autoMessage) ? autoMessage[0] : autoMessage;
     const parts = raw.split("\n\n");
     const mainText = parts[0] ?? raw;
@@ -383,7 +380,6 @@ export default function ChatScreen() {
   });
 
 
-
   const openContextMenu = useCallback((msg: Message) => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedMessage(msg);
@@ -446,44 +442,13 @@ export default function ChatScreen() {
       setIsImageUploading(false);
     }
 
-    if (!isRealUser) {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setMockExtraMessages((prev) => [
-        ...prev,
-        {
-          id: `mock-sent-${Date.now()}`,
-          conversation_id: "mock",
-          sender_id: "user-1",
-          content: text || "",
-          type: "text" as const,
-          prayer_request_content: null,
-          image_url: imageUri ?? null,
-          image_path: null,
-          is_edited: false,
-          edited_at: null,
-          deleted_for_everyone: false,
-          deleted_for_sender: false,
-          created_at: timeStr,
-          message_reactions: [],
-        },
-      ]);
-      setInputText("");
-      setImageUri(null);
-      setImageUploadError(null);
-      setReplyingTo(null);
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-      return;
-    }
-
-    if (isRealUser && conversationId) {
-      sendMutation.mutate({
-        content: text || "",
-        image_url: uploadedUrl,
-        image_path: uploadedPath,
-        reply_to: replyingTo ? { id: replyingTo.id, senderName: replyingTo.senderName, content: replyingTo.content } : null,
-      });
-    }
+    if (!isRealUser || !conversationId) return;
+    sendMutation.mutate({
+      content: text || "",
+      image_url: uploadedUrl,
+      image_path: uploadedPath,
+      reply_to: replyingTo ? { id: replyingTo.id, senderName: replyingTo.senderName, content: replyingTo.content } : null,
+    });
     setInputText("");
     setImageUri(null);
     setImageUploadError(null);
@@ -539,23 +504,8 @@ export default function ChatScreen() {
   const handleReact = useCallback(
     (messageId: string, reactionType: ReactionType) => {
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      if (!isRealUser) {
-        const MOCK_USER_ID = "user-1";
-        setMockReactions((prev) => {
-          const existing = prev[messageId] ?? [];
-          const alreadyReacted = existing.some(
-            (r) => r.reaction_type === reactionType && r.user_id === MOCK_USER_ID
-          );
-          return {
-            ...prev,
-            [messageId]: alreadyReacted
-              ? existing.filter((r) => !(r.reaction_type === reactionType && r.user_id === MOCK_USER_ID))
-              : [...existing, { reaction_type: reactionType, user_id: MOCK_USER_ID }],
-          };
-        });
-      } else {
-        reactMutation.mutate({ messageId, reactionType });
-      }
+      if (!isRealUser) return;
+      reactMutation.mutate({ messageId, reactionType });
       setReactionPickerMessageId(null);
       if (contextMenuVisible) closeContextMenu();
     },
@@ -609,7 +559,7 @@ export default function ChatScreen() {
   const handleReply = useCallback((msg: Message) => {
     closeContextMenu();
     setTimeout(() => {
-      const isMine = msg.sender_id === currentUserId || (!isRealUser && msg.sender_id === "user-1");
+      const isMine = msg.sender_id === currentUserId;
       setReplyingTo({
         id: msg.id,
         senderName: isMine ? "You" : (convQuery.data?.otherName ?? "them"),
@@ -632,61 +582,27 @@ export default function ChatScreen() {
     }, 300);
   }, [selectedMessage, closeContextMenu]);
 
-  const mockContact = useMemo(
-    () => (!isRealUser ? allContacts.find((c) => c.id === id) : null),
-    [isRealUser, id]
-  );
-
-  const otherName = isRealUser
-    ? convQuery.data?.otherName ?? "Loading..."
-    : mockContact?.name ?? "Prayer Partner";
-
-  const otherAvatar = isRealUser
-    ? convQuery.data?.otherAvatar
-    : mockContact?.avatar;
+  const otherName = convQuery.data?.otherName ?? "Loading...";
+  const otherAvatar = convQuery.data?.otherAvatar;
+  const canChat = isRealUser && !!currentUserId;
 
   const messages: Message[] = useMemo(() => {
-    if (!isRealUser) {
-      const base = chatMessages.map((m) => {
-        const raw = m as Record<string, unknown>;
-        return {
-          id: raw.id as string,
-          conversation_id: "mock",
-          sender_id: (raw.senderId ?? raw.sender_id ?? "") as string,
-          content: (raw.text ?? raw.content ?? "") as string,
-          type: "text" as const,
-          prayer_request_content: null,
-          image_url: null,
-          image_path: null,
-          is_edited: false,
-          edited_at: null,
-          deleted_for_everyone: false,
-          deleted_for_sender: false,
-          created_at: (raw.time ?? "") as string,
-          message_reactions: [],
-        };
-      });
-      return [...base, ...mockExtraMessages];
-    }
     return (
       messagesQuery.data?.filter(
         (m) => !(m.sender_id === currentUserId && m.deleted_for_sender)
       ) ?? []
     );
-  }, [isRealUser, messagesQuery.data, currentUserId, mockExtraMessages]);
+  }, [messagesQuery.data, currentUserId]);
 
   const renderReactions = useCallback(
     (msg: Message) => {
-      const localReactions = mockReactions[msg.id] ?? [];
-      const allReactions = [...(msg.message_reactions ?? []), ...localReactions];
+      const allReactions = msg.message_reactions ?? [];
       if (!allReactions.length) return null;
-      const MOCK_USER_ID = "user-1";
-      const effectiveUserId = isRealUser ? currentUserId : MOCK_USER_ID;
       const grouped: Partial<Record<ReactionType, { count: number; isMine: boolean }>> = {};
       for (const r of allReactions) {
         if (!grouped[r.reaction_type]) grouped[r.reaction_type] = { count: 0, isMine: false };
         grouped[r.reaction_type]!.count += 1;
-        if (r.user_id === effectiveUserId) grouped[r.reaction_type]!.isMine = true;
+        if (r.user_id === currentUserId) grouped[r.reaction_type]!.isMine = true;
       }
       return (
         <View style={styles.reactionsRow}>
@@ -717,12 +633,12 @@ export default function ChatScreen() {
         </View>
       );
     },
-    [currentUserId, isRealUser, mockReactions, handleReact]
+    [currentUserId, handleReact]
   );
 
   const renderMessage = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
-      const isMine = item.sender_id === currentUserId || (!isRealUser && item.sender_id === "user-1");
+      const isMine = item.sender_id === currentUserId;
       const prevItem = index > 0 ? messages[index - 1] : null;
       const isFirstInGroup = !prevItem || prevItem.sender_id !== item.sender_id;
 
@@ -812,7 +728,7 @@ export default function ChatScreen() {
               </View>
               <View style={styles.timeRow}>
                 <Text style={styles.msgTime}>
-                  {isRealUser ? formatMessageTime(item.created_at) : item.created_at}
+                {formatMessageTime(item.created_at)}
                 </Text>
               </View>
               {renderReactions(item)}
@@ -864,7 +780,7 @@ export default function ChatScreen() {
           </View>
           <View style={[styles.timeRow, styles.timeRowRight]}>
             <Text style={styles.msgTime}>
-              {isRealUser ? formatMessageTime(item.created_at) : item.created_at}
+              {formatMessageTime(item.created_at)}
             </Text>
             <CheckCheck size={12} color={colors.primary} />
           </View>
@@ -875,7 +791,7 @@ export default function ChatScreen() {
     [currentUserId, isRealUser, openContextMenu, renderReactions, handleReply, colors, messages, otherAvatar, otherName]
   );
 
-  const isLoading = isRealUser && (convQuery.isLoading || messagesQuery.isLoading);
+  const isLoading = canChat && (convQuery.isLoading || messagesQuery.isLoading);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -886,31 +802,31 @@ export default function ChatScreen() {
         </Pressable>
         <View style={styles.headerCenter}>
           <View style={styles.headerAvatarWrap}>
-            {otherAvatar ? (
+            {canChat && otherAvatar ? (
               <Image source={{ uri: otherAvatar }} style={styles.headerAvatar} />
-            ) : (
+            ) : canChat ? (
               <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
                 <Text style={styles.headerAvatarInitial}>
                   {otherName.charAt(0).toUpperCase()}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
           <View>
-            <Text style={styles.headerName}>{otherName}</Text>
-            {isMuted && (
+            <Text style={styles.headerName}>{canChat ? otherName : "Conversation unavailable"}</Text>
+            {canChat && isMuted && (
               <Text style={styles.mutedLabel}>🔕 Muted</Text>
             )}
           </View>
         </View>
-        {isRealUser && (
+        {canChat && (
           <Pressable style={styles.headerMenuBtn} onPress={openHeaderMenu}>
             <MoreVertical size={20} color={colors.foreground} />
           </Pressable>
         )}
       </View>
 
-      {isBlocked && (
+      {canChat && isBlocked && (
         <View style={styles.blockedBanner}>
           <Text style={styles.blockedBannerText}>
             {isCurrentUserBlocker
@@ -930,7 +846,17 @@ export default function ChatScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
-        {isLoading ? (
+        {!canChat ? (
+          <View style={[styles.emptyChat, styles.flex]}>
+            <View style={styles.emptyChatIcon}>
+              <Text style={styles.emptyChatEmoji}>—</Text>
+            </View>
+            <Text style={styles.emptyChatTitle}>Conversation unavailable</Text>
+            <Text style={styles.emptyChatSub}>
+              Open a chat from a real friend profile or activity item.
+            </Text>
+          </View>
+        ) : isLoading ? (
           <View style={[styles.loadingState, styles.flex]}>
             <Text style={styles.loadingText}>Opening conversation...</Text>
           </View>
@@ -968,7 +894,7 @@ export default function ChatScreen() {
           />
         )}
 
-        {editingMessage ? (
+        {canChat && editingMessage ? (
           <SafeAreaView edges={["bottom"]} style={styles.editingBar}>
             <View style={styles.editingHeader}>
               <Pencil size={14} color={colors.primary} />
@@ -995,7 +921,7 @@ export default function ChatScreen() {
               </Pressable>
             </View>
           </SafeAreaView>
-        ) : (
+        ) : canChat ? (
           <SafeAreaView edges={["bottom"]} style={styles.inputAreaWrap}>
             {replyingTo && (
               <View style={styles.replyBanner}>
@@ -1060,7 +986,7 @@ export default function ChatScreen() {
               </Pressable>
             </View>
           </SafeAreaView>
-        )}
+        ) : null}
       </KeyboardAvoidingView>
 
       {/* Context Menu */}
@@ -1114,7 +1040,7 @@ export default function ChatScreen() {
             <View style={styles.sheetDivider} />
 
             {selectedMessage &&
-              (selectedMessage.sender_id === currentUserId || (!isRealUser && selectedMessage.sender_id === "user-1")) && (
+              selectedMessage.sender_id === currentUserId && (
                 <>
                   <Pressable style={styles.sheetOption} onPress={handleStartEdit}>
                     <View style={[styles.sheetOptionIcon, { backgroundColor: "#EEF2FF" }]}>

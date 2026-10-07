@@ -27,6 +27,8 @@ import { AutoScrollView } from '@/components/AutoScrollView';
 import VoiceNotePlayer from '@/components/VoiceNotePlayer';
 import { uploadVoiceNote } from '@/lib/storage';
 import { Image, ImageSource } from "expo-image";
+import AvatarImage from "@/components/AvatarImage";
+import { isUUID } from "@/lib/chat";
 const ANON_AVATAR = require("../../assets/images/anon_user.png") as ImageSource;
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -274,7 +276,7 @@ export default function CommunityScreen() {
   const colors = themeColors;
   const tabBarHeight = useBottomTabBarHeight();
   const { profile, session } = useAuth();
-  const currentUserId = session?.user?.id ?? "user-1";
+  const currentUserId = session?.user?.id ?? "";
   const queryClient = useQueryClient();
   const cpStyles = useMemo(() => createCpStyles(colors), [colors]);
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -351,7 +353,7 @@ export default function CommunityScreen() {
   const { data: dbFeedPosts = [], refetch: refetchFeed, isSuccess: isFeedQuerySuccess } = useQuery<FeedPost[]>({
     queryKey: ["feed-posts", currentUserId],
     queryFn: async () => {
-      if (!currentUserId || currentUserId === "user-1") return [];
+      if (!currentUserId) return [];
       const { data: rows, error } = await supabase
         .from("prayer_requests")
         .select("id, author_id, content, audience, tags, is_anonymous, is_time_sensitive, image_url, status, prayer_count, created_at, event_date")
@@ -371,7 +373,7 @@ export default function CommunityScreen() {
         Object.fromEntries((profiles ?? []).map((p) => [p.id as string, { full_name: p.full_name as string | null, avatar_url: p.avatar_url as string | null }]));
       return (rows as DbPrayerRow[]).map((row) => rowToFeedPost(row, profileMap));
     },
-    enabled: !!currentUserId && currentUserId !== "user-1",
+    enabled: !!currentUserId,
     staleTime: 30_000,
   });
   const refetchFeedRef = useRef(refetchFeed);
@@ -434,7 +436,7 @@ export default function CommunityScreen() {
   // Realtime: keep the feed current for every prayer request lifecycle event.
   // UPDATE covers audience/status changes and DELETE removes stale posts.
   useEffect(() => {
-    if (!currentUserId || currentUserId === "user-1") return;
+    if (!currentUserId) return;
     let cancelled = false;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -473,7 +475,7 @@ export default function CommunityScreen() {
   // visible. Invalidate both queries so friendIds and the feed are refreshed
   // without requiring navigation or a manual reload.
   useEffect(() => {
-    if (!currentUserId || currentUserId === "user-1") return;
+    if (!currentUserId) return;
     let cancelled = false;
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -539,7 +541,7 @@ export default function CommunityScreen() {
   }, [newUpdateAnim]);
 
   const handleAvatarPress = useCallback((authorId: string) => {
-    if (authorId === "anonymous") return;
+    if (!isUUID(authorId)) return;
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     router.push(`/user/${authorId}`);
   }, [router]);
@@ -655,6 +657,9 @@ export default function CommunityScreen() {
     if (!PRAYER_REQUEST_AUDIENCES.has(audience)) {
       throw new Error(`Unsupported status audience: ${audience}`);
     }
+    if (!currentUserId) {
+      throw new Error("Sign in before posting a prayer request.");
+    }
 
     const isVoicePost = !!(audioUri);
     const shouldIncludeAudio = includeAudio !== false;
@@ -676,32 +681,29 @@ export default function CommunityScreen() {
     }
 
     // Persist to Supabase so friends can see this post in their feed
-    let persistedPostId = `status_${Date.now()}`;
-    if (currentUserId && currentUserId !== "user-1") {
-      const { data: prData, error: persistError } = await supabase
-        .from("prayer_requests")
-        .insert({
-          author_id: currentUserId,
-          content: text,
-          is_anonymous: isAnonymous,
-          is_time_sensitive: isTimeSensitive,
-          audience,
-          tags,
-          image_url: imageUri ?? null,
-          event_date: eventDate ?? null,
-        })
-        .select("id")
-        .single();
-      if (persistError) throw persistError;
-      if (!prData?.id) throw new Error("The status update was not saved.");
-      persistedPostId = prData.id as string;
-    }
+    const { data: prData, error: persistError } = await supabase
+      .from("prayer_requests")
+      .insert({
+        author_id: currentUserId,
+        content: text,
+        is_anonymous: isAnonymous,
+        is_time_sensitive: isTimeSensitive,
+        audience,
+        tags,
+        image_url: imageUri ?? null,
+        event_date: eventDate ?? null,
+      })
+      .select("id")
+      .single();
+    if (persistError) throw persistError;
+    if (!prData?.id) throw new Error("The status update was not saved.");
+    const persistedPostId = prData.id as string;
 
     const newPost: FeedPost = {
       id: persistedPostId,
       communityId: activeCommunity.id,
       authorId: isAnonymous ? "anonymous" : currentUserId,
-      authorName: isAnonymous ? "Anonymous" : (profile?.full_name ?? "Me"),
+      authorName: isAnonymous ? "Anonymous" : (profile?.full_name ?? "Prayer Space member"),
       authorAvatar: isAnonymous ? "" : (profile?.avatar_url ?? ""),
       category: tags.length > 0 ? tags[0].replace(/_/g, ' ').toUpperCase() : "UPDATE",
       tags: tags,
@@ -2447,7 +2449,7 @@ function MyGroupsContent() {
       name: c.name,
       memberCount: 1,
       lastActivity: "Just now",
-      avatar: c.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=random&color=fff&size=128`,
+      avatar: c.avatar ?? "",
       activeRequests: 0,
       isAdmin: true,
     })),
@@ -4204,6 +4206,7 @@ interface CommentsModalProps {
 function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { profile } = useAuth();
   const [inputText, setInputText] = useState<string>("");
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-700)).current;
@@ -4276,7 +4279,11 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
           >
             {post.comments.map((comment) => (
               <View key={comment.id} style={styles.commentItem}>
-                <Image source={{ uri: comment.authorAvatar }} style={styles.commentAvatar} />
+                <AvatarImage
+                  avatarPath={comment.authorAvatar}
+                  fallbackSeed={comment.authorName}
+                  style={styles.commentAvatar}
+                />
                 <View style={styles.commentBubble}>
                   <View style={styles.commentBubbleHeader}>
                     <Text style={styles.commentAuthor}>{comment.authorName}</Text>
@@ -4294,8 +4301,9 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
           </ScrollView>
 
           <View style={styles.inputRow}>
-            <Image
-              source={{ uri: "https://randomuser.me/api/portraits/women/68.jpg" }}
+            <AvatarImage
+              avatarPath={profile?.avatar_url}
+              fallbackSeed={profile?.full_name ?? ""}
               style={styles.inputAvatar}
             />
             <TextInput

@@ -54,7 +54,7 @@ export default function ExploreScreen() {
               <View style={styles.gridCardContent}>
                 <Text style={styles.gridCardTitle}>Finding Inner Peace</Text>
                 <View style={styles.gridCardAuthor}>
-                  <Image source={{ uri: "https://randomuser.me/api/portraits/men/42.jpg" }} style={styles.gridCardAvatar} />
+                  <Image source={require("../assets/images/anon_user.png")} style={styles.gridCardAvatar} />
                   <Text style={styles.gridCardAuthorText}>PASTOR SAM</Text>
                 </View>
               </View>
@@ -66,7 +66,7 @@ export default function ExploreScreen() {
               <View style={styles.gridCardContent}>
                 <Text style={styles.gridCardTitle}>Nighttime Reflections</Text>
                 <View style={styles.gridCardAuthor}>
-                  <Image source={{ uri: "https://randomuser.me/api/portraits/women/42.jpg" }} style={styles.gridCardAvatar} />
+                  <Image source={require("../assets/images/anon_user.png")} style={styles.gridCardAvatar} />
                   <Text style={styles.gridCardAuthorText}>DR. EMMA</Text>
                 </View>
               </View>

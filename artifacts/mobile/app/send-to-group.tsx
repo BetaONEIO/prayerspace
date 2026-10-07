@@ -90,7 +90,7 @@ export default function SendToGroupScreen() {
       name: g.name,
       memberCount: 1,
       lastActivity: "Just now",
-      avatar: g.avatar ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(g.name)}&background=random&color=fff&size=128`,
+      avatar: g.avatar ?? "",
       activeRequests: 0,
     })),
     [createdPayloads],

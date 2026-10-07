@@ -31,10 +31,15 @@ import {
 import * as Contacts from "expo-contacts";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
-import { type Contact } from "@/mocks/data";
 import { useFavourites } from "@/providers/FavouritesProvider";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+
+type Contact = {
+  id: string;
+  name: string;
+  avatar: string;
+};
 
 interface DeviceContact {
   id: string;

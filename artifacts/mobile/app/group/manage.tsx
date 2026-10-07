@@ -66,7 +66,7 @@ export default function ManageGroupScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { isPremiumCommunity, isOwner, tierLabel } = useChurchEntitlements();
   const params = useLocalSearchParams<{ id?: string }>();
-  const groupId = params.id || "group-1";
+  const groupId = params.id ?? "";
   const initialState = groupStore.get(groupId);
 
   const [groupName, setGroupName] = useState(initialState.name);
