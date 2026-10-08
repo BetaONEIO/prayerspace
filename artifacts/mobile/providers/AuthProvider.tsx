@@ -6,41 +6,9 @@ import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
-
-export interface UserProfile {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  bio: string | null;
-  favorite_verse: string | null;
-  date_of_birth: string | null;
-  updated_at: string | null;
-  deletion_requested_at: string | null;
-}
-
-function isValidIsoDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [y, m, d] = value.split("-").map((n) => Number(n));
-  if (!y || !m || !d) return false;
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return (
-    dt.getUTCFullYear() === y &&
-    dt.getUTCMonth() === m - 1 &&
-    dt.getUTCDate() === d &&
-    dt.getTime() <= Date.now()
-  );
-}
-
-function calculateAgeFromIso(iso: string): number {
-  const [y, m, d] = iso.split("-").map((n) => Number(n));
-  const today = new Date();
-  let age = today.getFullYear() - y;
-  const monthDiff = today.getMonth() + 1 - m;
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < d)) {
-    age -= 1;
-  }
-  return age;
-}
+import { checkRegistrationStorage, loadEmailRegistrationProfile, readOwnRegistrationProfile, writeOwnRegistrationProfile, validateDateOfBirth } from "@/lib/registrationProfile";
+import type { UserProfile } from "@/lib/registrationProfile";
+export type { UserProfile } from "@/lib/registrationProfile";
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -129,40 +97,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     queryFn: async () => {
       if (!session?.user?.id) return null;
       console.log("[Auth] Fetching profile:", session.user.id);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", session.user.id)
-        .single();
-      if (error) {
-        if (error.code !== "PGRST116") {
-          console.error("[Auth] Profile fetch error:", error.message);
-        }
-        return null;
+      if ((session.user.app_metadata?.provider ?? "email") === "email") {
+        return await loadEmailRegistrationProfile(supabase, session.user) as UserProfile | null;
       }
+      const data = await readOwnRegistrationProfile(supabase);
       return data as UserProfile;
     },
     enabled: !!session?.user?.id && isInitialized,
+    retry: false,
   });
 
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<Omit<UserProfile, "id">>) => {
       if (!session?.user?.id) throw new Error("No user session");
       console.log("[Auth] Updating profile...");
-      const { data, error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: session.user.id,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-      if (error) throw error;
+      const data = await writeOwnRegistrationProfile(supabase, session.user.id, updates);
       return data as UserProfile;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    onSuccess: (profile) => {
+      queryClient.setQueryData(["profile", profile.id], profile);
+      void queryClient.invalidateQueries({ queryKey: ["profile", profile.id] });
     },
     onError: (error) => {
       console.error("[Auth] Profile update error:", error);
@@ -180,14 +134,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       throw error;
     }
     if (data.user) {
-      const { data: profile, error: profileFetchError } = await supabase
-        .from("profiles")
-        .select("deletion_requested_at")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileFetchError && profileFetchError.code !== "PGRST116") {
-        console.error("[Auth] Profile check error (non-fatal):", profileFetchError.message);
+      let profile: UserProfile | null;
+      try {
+        profile = await loadEmailRegistrationProfile(supabase, data.user) as UserProfile | null;
+      } catch (error) {
+        await supabase.auth.signOut();
+        throw error;
       }
 
       if (profile?.deletion_requested_at) {
@@ -196,23 +148,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         throw new Error("ACCOUNT_DELETED");
       }
 
-      if (!profile && !profileFetchError?.message?.includes("schema cache")) {
-        console.log("[Auth] No profile found on sign in, creating one...");
-        const fullName = data.user.user_metadata?.full_name ?? "";
-        const { error: upsertError } = await supabase.from("profiles").upsert(
-          {
-            id: data.user.id,
-            full_name: fullName,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
-        if (upsertError) {
-          console.error("[Auth] Failed to create profile on sign in (non-fatal):", upsertError.message);
-        } else {
-          console.log("[Auth] Profile created on sign in");
-        }
-      }
     }
     return data;
   }, []);
@@ -225,13 +160,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   ) => {
     console.log("[Auth] Signing up:", email);
 
-    if (!isValidIsoDate(dateOfBirth)) {
-      throw new Error("Please enter a valid date of birth.");
-    }
-    const age = calculateAgeFromIso(dateOfBirth);
-    if (age < 13) {
-      throw new Error("You must be at least 13 years old to create an account.");
-    }
+    validateDateOfBirth(dateOfBirth);
+    await checkRegistrationStorage(supabase);
 
     let data: Awaited<ReturnType<typeof supabase.auth.signUp>>["data"];
     let error: Awaited<ReturnType<typeof supabase.auth.signUp>>["error"];
@@ -282,25 +212,32 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     console.log("[Auth] Sign up complete. Email confirmation required:", emailConfirmationRequired, "user:", data.user?.id);
 
     if (data.user && data.session) {
-      console.log("[Auth] Creating profile for new user...");
-      const { error: profileError } = await supabase.from("profiles").upsert(
-        {
-          id: data.user.id,
-          full_name: fullName,
-          date_of_birth: dateOfBirth,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
-      if (profileError) {
-        console.warn("[Auth] Failed to create profile (non-fatal):", profileError.message);
-      } else {
-        console.log("[Auth] Profile created successfully");
+      try {
+        const profile = await loadEmailRegistrationProfile(supabase, data.user);
+        if (profile?.date_of_birth !== dateOfBirth) throw new Error("Your date of birth was not saved.");
+      } catch (error) {
+        await supabase.auth.signOut();
+        throw error;
       }
     }
 
     return { ...data, emailConfirmationRequired };
   }, []);
+
+  const verifyRegistration = useCallback(async (email: string, token: string) => {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: "signup" });
+    if (error) throw error;
+    try {
+      if (!data.user || !data.session) throw new Error("Verification did not create a session. Please sign in again.");
+      const profile = await loadEmailRegistrationProfile(supabase, data.user);
+      if (profile?.deletion_requested_at) throw new Error("ACCOUNT_DELETED");
+      if (!profile?.date_of_birth) throw new Error("Your required date of birth is missing. Please sign in to complete your profile.");
+      queryClient.setQueryData(["profile", data.user.id], profile);
+    } catch (error) {
+      await supabase.auth.signOut();
+      throw new Error(`${error instanceof Error ? error.message : "Profile could not be saved."} Your email is verified; sign in to retry.`);
+    }
+  }, [queryClient]);
 
   const signInWithGoogle = useCallback(async () => {
     console.log("[Auth] Starting Google sign in...");
@@ -416,8 +353,11 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     profile: profileQuery.data ?? null,
     isInitialized,
     isProfileLoading: profileQuery.isLoading,
+    profileError: profileQuery.error,
+    retryProfile: profileQuery.refetch,
     signIn,
     signUp,
+    verifyRegistration,
     signOut,
     signInWithGoogle,
     markAccountForDeletion,
@@ -427,9 +367,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     session,
     profileQuery.data,
     profileQuery.isLoading,
+    profileQuery.error,
+    profileQuery.refetch,
     isInitialized,
     signIn,
     signUp,
+    verifyRegistration,
     signOut,
     signInWithGoogle,
     markAccountForDeletion,

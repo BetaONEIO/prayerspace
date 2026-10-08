@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useCallback } from "react";
-import { Alert } from "react-native";
+import { Alert, View, Text, Pressable, ActivityIndicator, StyleSheet, Modal } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
@@ -10,7 +10,7 @@ import { PrayerProvider } from "@/providers/PrayerProvider";
 import { FavouritesProvider } from "@/providers/FavouritesProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
 import { SelectedRecipientsProvider } from "@/providers/SelectedRecipientsProvider";
-import { ThemeProvider } from "@/providers/ThemeProvider";
+import { ThemeProvider, useThemeColors } from "@/providers/ThemeProvider";
 import SmartRatingModal from "@/components/SmartRatingModal";
 import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
 import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
@@ -43,7 +43,7 @@ const queryClient = new QueryClient();
 const ONBOARDING_PREVIEW_EMAILS = ["david@betaone.io"];
 
 function AuthGuard() {
-  const { session, isInitialized, user, profile, isProfileLoading } = useAuth();
+  const { session, isInitialized, user, profile, isProfileLoading, profileError } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -67,21 +67,17 @@ function AuthGuard() {
       return;
     }
 
-    if (session && inAuthGroup && segments[0] !== "verify-otp") {
-      const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
-      console.log("[AuthGuard] Session found, redirecting to", destination);
-      router.replace(destination);
-      return;
-    }
-
-    if (session && !inAuthGroup) {
-      if (isProfileLoading) return;
+    // Verification controls its own save/readback outcome. Everywhere else,
+    // required DOB completion takes priority over onboarding/home redirects.
+    if (session && segments[0] !== "verify-otp") {
+      if (isProfileLoading || profileError) return;
       const isOAuthUser =
         session.user.app_metadata?.provider &&
         session.user.app_metadata.provider !== "email";
-      const needsDob = isOAuthUser && profile !== null && !profile?.date_of_birth;
+      const isEmailUser = (session.user.app_metadata?.provider ?? "email") === "email";
+      const needsDob = (isEmailUser || (isOAuthUser && profile !== null)) && !profile?.date_of_birth;
       if (needsDob && !inCompleteProfile) {
-        console.log("[AuthGuard] OAuth user missing DOB, redirecting to complete-profile");
+        console.log("[AuthGuard] User missing required DOB, redirecting to complete-profile");
         router.replace("/complete-profile" as never);
         return;
       }
@@ -90,8 +86,12 @@ function AuthGuard() {
         router.replace("/");
         return;
       }
+      if (!needsDob && inAuthGroup) {
+        const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
+        router.replace(destination);
+      }
     }
-  }, [session, isInitialized, segments, user, profile, isProfileLoading]);
+  }, [session, isInitialized, segments, user, profile, isProfileLoading, profileError]);
 
   return null;
 }
@@ -117,9 +117,38 @@ function GlobalRatingPrompt() {
 }
 
 function RootLayoutNav() {
+  const { session, isProfileLoading, profileError, retryProfile, signOut } = useAuth();
+  const colors = useThemeColors();
+  const segments = useSegments();
+  // Verification handles its own save error. Keep the navigator mounted but
+  // prevent interaction elsewhere while the required profile cannot load.
+  const profileBlocked = session && segments[0] !== "verify-otp" &&
+    (isProfileLoading || profileError);
+  const profileGate = (
+    <Modal visible={!!profileBlocked} animationType="none" onRequestClose={() => {}}>
+      <View style={[profileGateStyles.container, { backgroundColor: colors.background }]}>
+        {isProfileLoading ? <ActivityIndicator color={colors.primary} /> : (
+          <>
+            <Text style={[profileGateStyles.title, { color: colors.foreground }]}>Profile Could Not Load</Text>
+            <Text style={[profileGateStyles.message, { color: colors.mutedForeground }]}>
+              {profileError?.message ?? "Your required profile could not be loaded. Please try again."}
+            </Text>
+            <Pressable onPress={() => void retryProfile()} accessibilityRole="button"
+              style={[profileGateStyles.button, { backgroundColor: colors.primary }]}>
+              <Text style={{ color: colors.primaryForeground }}>Retry</Text>
+            </Pressable>
+            <Pressable onPress={() => void signOut()} accessibilityRole="button" style={profileGateStyles.button}>
+              <Text style={{ color: colors.foreground }}>Sign Out</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+    </Modal>
+  );
   return (
     <>
       <AuthGuard />
+      {profileGate}
       <GlobalRatingPrompt />
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -159,6 +188,13 @@ function RootLayoutNav() {
     </>
   );
 }
+
+const profileGateStyles = StyleSheet.create({
+  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28, gap: 16 },
+  title: { fontSize: 22, fontWeight: "700" },
+  message: { fontSize: 15, textAlign: "center", lineHeight: 22 },
+  button: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 18 },
+});
 
 export default Sentry.wrap(function RootLayout() {
   useEffect(() => {

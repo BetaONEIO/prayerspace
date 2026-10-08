@@ -112,10 +112,11 @@ export default function CompleteProfileScreen() {
     }
 
     try {
-      await updateProfile({ date_of_birth: iso });
+      const saved = await updateProfile({ date_of_birth: iso });
+      if (saved.date_of_birth !== iso) throw new Error("Your date of birth was not saved. Please try again.");
       router.replace("/");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const message = error instanceof Error ? error.message : "Your date of birth could not be saved. Please try again.";
       Alert.alert("Could Not Save", message);
     }
   }, [dobDay, dobMonth, dobYear, updateProfile, router]);

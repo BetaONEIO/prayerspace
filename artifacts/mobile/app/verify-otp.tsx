@@ -20,6 +20,7 @@ import { Mail, ArrowLeft, CheckCircle } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 const LOGO_URI = "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/for3p4uznzmpb3n9cpn1e.png";
 const CODE_LENGTH = 8;
@@ -32,6 +33,7 @@ export default function VerifyOtpScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { email, from } = useLocalSearchParams<{ email: string; from?: string }>();
+  const { verifyRegistration } = useAuth();
 
   const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -135,11 +137,12 @@ export default function VerifyOtpScreen() {
     setIsVerifying(true);
     setError("");
     try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: code,
-        type: "signup",
-      });
+      let verifyError: { message: string } | null = null;
+      try {
+        await verifyRegistration(email, code);
+      } catch (error) {
+        verifyError = { message: error instanceof Error ? error.message : "Unable to verify and save your profile. Please try again." };
+      }
       if (verifyError) {
         const msg = (verifyError.message ?? "").toLowerCase();
         let userMessage = verifyError.message || "Invalid code. Please try again.";
@@ -165,7 +168,7 @@ export default function VerifyOtpScreen() {
     } finally {
       setIsVerifying(false);
     }
-  }, [digits, email, triggerShake, router, successAnim]);
+  }, [digits, email, from, triggerShake, router, successAnim, verifyRegistration]);
 
   useEffect(() => {
     const code = digits.join("");
