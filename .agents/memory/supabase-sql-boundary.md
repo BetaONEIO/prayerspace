@@ -20,3 +20,9 @@ Empty grant metadata from a restricted SQL reader does not prove that client rol
 **Why:** Catalog visibility depends on the querying role. Its limited view is not a privacy guarantee for other roles.
 
 **How to apply:** Check effective access for the actual anonymous and authenticated client roles, including both field permissions and row policies. Confirm with normal client requests; row-level read-all policies do not provide field privacy.
+
+The separately authorized Supabase Management API now provides SQL administration for the app-configured project. Its `read_only: true` query mode uses a restricted database role; that role's lack of CREATE privilege does not mean the management credential lacks migration access.
+
+**Why:** A read-only permission probe returned a restricted role with CREATE denied, while the same SELECT-only probe in normal query mode returned an administrative role with CREATE allowed.
+
+**How to apply:** Keep diagnostics read-only by default. When checking administrative capability, a SELECT-only permission query in normal mode can distinguish the restricted execution role from the credential's actual authority without changing data. Reconfirm project identity and access before migrations; the separate REST connector remains a different target.
