@@ -1474,7 +1474,7 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fadeAnim]);
 
-  const { communities: dbCommunities, loading: dbLoading, error: dbError } = useDiscoverCommunities("");
+  const { communities: dbCommunities, loading: dbLoading, error: dbError, refetch: refetchCommunities } = useDiscoverCommunities("");
 
   const handleTogglePrivate = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -1559,7 +1559,13 @@ function InlineBrowseCommunities({ joinedCommunityIds, onJoin, onViewProfile, on
       ) : dbError ? (
         <View style={styles.browseNoResults}>
           <Globe size={28} color={colors.mutedForeground + "60"} />
-          <Text style={styles.browseNoResultsText}>Browse available communities</Text>
+          <Text style={styles.browseNoResultsText}>{dbError}</Text>
+          <Pressable
+            style={[styles.browseCommunityJoinBtn, { marginTop: 12, paddingHorizontal: 20 }]}
+            onPress={refetchCommunities}
+          >
+            <Text style={styles.browseCommunityJoinText}>Retry</Text>
+          </Pressable>
         </View>
       ) : dbCommunities.length > 0 ? (
         dbCommunities.map((community: DiscoverCommunity) => {
@@ -1841,6 +1847,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
 
   useEffect(() => {
     if (visible) {
+      refetchCommunities();
       setSearchQuery("");
       setPrivateExpanded(false);
       setPrivateCode("");
@@ -1855,7 +1862,7 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
       Keyboard.dismiss();
       Animated.timing(slideAnim, { toValue: 900, duration: 260, useNativeDriver: true }).start();
     }
-  }, [visible, slideAnim, privateRevealAnim, privateExpandAnim]);
+  }, [visible, slideAnim, privateRevealAnim, privateExpandAnim, refetchCommunities]);
 
   const handleTogglePrivate = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -1971,10 +1978,10 @@ function BrowseCommunitiesModal({ visible, joinedCommunityIds, onJoin, onViewPro
                 <ActivityIndicator size="small" color={colors.primary} />
                 <Text style={[styles.browseNoResultsText, { marginTop: 8 }]}>Loading communities...</Text>
               </View>
-            ) : dbError && dbCommunities.length > 0 ? (
+            ) : dbError ? (
               <View style={styles.browseNoResults}>
                 <Globe size={28} color={colors.mutedForeground + "60"} />
-                <Text style={styles.browseNoResultsText}>We couldn't load communities right now.</Text>
+                <Text style={styles.browseNoResultsText}>{dbError}</Text>
                 <Pressable
                   style={[styles.browseCommunityJoinBtn, { marginTop: 12, paddingHorizontal: 20 }]}
                   onPress={refetchCommunities}

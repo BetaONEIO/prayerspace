@@ -79,11 +79,13 @@ export function useDiscoverCommunities(searchQuery: string) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    let active = true;
+    const controller = new AbortController();
     const delay = searchQuery.trim() ? 300 : 0;
+    setLoading(true);
+    setError(null);
 
     debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
       try {
         let query = supabase
           .from("communities")
@@ -91,36 +93,42 @@ export function useDiscoverCommunities(searchQuery: string) {
           .eq("is_private", false)
           .order("is_official", { ascending: false })
           .order("member_count", { ascending: false })
-          .limit(50);
+          .order("id", { ascending: true })
+          .limit(50)
+          .abortSignal(controller.signal);
 
         if (searchQuery.trim()) {
-          const term = `%${searchQuery.trim()}%`;
+          // Quote the filter value so commas/parentheses in a community name
+          // cannot become additional PostgREST filter expressions.
+          const term = JSON.stringify(`%${searchQuery.trim().replace(/[\\%_]/g, "\\$&")}%`);
           query = query.or(`name.ilike.${term},description.ilike.${term}`);
         }
 
         const { data, error: sbError } = await query;
+        if (!active) return;
 
         if (sbError) {
+          setCommunities([]);
           const isTableMissing =
-            sbError.code === "42P01" ||
-            sbError.message?.includes("does not exist") ||
-            sbError.message?.includes("relation");
-          if (isTableMissing) {
-            setCommunities([]);
-          } else {
-            setError("We couldn't load communities right now.");
-          }
+            sbError.code === "42P01" || sbError.code === "PGRST205";
+          setError(isTableMissing
+            ? "Community discovery isn't set up yet. Please try again later."
+            : "We couldn't load communities right now.");
         } else {
-          setCommunities((data as DBRow[]).map(mapRow));
+          setCommunities(((data ?? []) as DBRow[]).map(mapRow));
         }
       } catch {
+        if (!active) return;
+        setCommunities([]);
         setError("We couldn't load communities right now.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }, delay);
 
     return () => {
+      active = false;
+      controller.abort();
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [searchQuery, retryCount]);

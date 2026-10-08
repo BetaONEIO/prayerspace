@@ -1,5 +1,11 @@
 # Prayer Space app test report
 
+> Historical test snapshot. DOB registration storage was subsequently repaired
+> and verified; see `docs/registration-dob-repair.md`. Community discovery's
+> missing catalogue and error handling were subsequently repaired; see
+> `docs/community-discovery-repair.md`. Other findings below are not claimed
+> resolved by those repairs.
+
 ## Scope and result
 
 Tested the running development Expo web app at a mobile viewport of 402 × 874,
