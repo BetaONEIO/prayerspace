@@ -334,7 +334,7 @@ export default function CommunityScreen() {
   useEffect(() => {
     if (!isTourActive || !tourSection) return;
     setActiveTab(tourSection);
-    setFeedFilter(tourStep === 6 ? "mine" : "all");
+    setFeedFilter("all");
     feedScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [isTourActive, tourStep, tourSection]);
   const [lastAddedPostId, setLastAddedPostId] = useState<string | null>(null);

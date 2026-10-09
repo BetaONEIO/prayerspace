@@ -45,7 +45,7 @@ async function run() {
   }
   for (const status of ["not_started", "in_progress", "skipped", "completed"]) {
     const response = await request(a, "POST", "?on_conflict=user_id", {
-      user_id: a.id, status, step: status === "completed" ? 12 : 3, updated_at: new Date().toISOString(),
+      user_id: a.id, status, step: status === "completed" ? 4 : 3, tour_version: 2, updated_at: new Date().toISOString(),
     });
     assert.ok(response.ok, `own ${status} save`);
     const rows = await (await request(a, "GET", `?user_id=eq.${a.id}&select=status,step`)).json();
@@ -59,7 +59,7 @@ async function run() {
   });
   assert.equal(foreignWrite.status, 403);
   console.log("PASS another account cannot read or overwrite tour progress");
-  const invalid = await request(a, "POST", "?on_conflict=user_id", { user_id: a.id, status: "in_progress", step: 13 });
+  const invalid = await request(a, "POST", "?on_conflict=user_id", { user_id: a.id, status: "in_progress", tour_version: 2, step: 5 });
   assert.equal(invalid.status, 400);
   const anonymous = await request(null, "GET", "?select=status");
   assert.equal(anonymous.status, 401);

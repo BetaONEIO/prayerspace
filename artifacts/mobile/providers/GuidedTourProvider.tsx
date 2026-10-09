@@ -56,7 +56,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
     const id = accountRef.current;
     if (!id) return;
     const timestamp = Math.max(Date.now(), (progressRef.current ? Date.parse(progressRef.current.updated_at) : 0) + 1);
-    const next: TourProgress = { status, step: nextStep, updated_at: new Date(timestamp).toISOString() };
+    const next: TourProgress = { status, step: nextStep, updated_at: new Date(timestamp).toISOString(), tour_version: 2 };
     progressRef.current = next;
     setProgress(next);
     // Save locally without waiting for a slow network; serialize/coalesce remote writes separately.
@@ -98,7 +98,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
       let remote: TourProgress | null = null;
       let remoteFailed = false;
       try {
-        const result = await supabase.from("user_tour_progress").select("status,step,updated_at")
+        const result = await supabase.from("user_tour_progress").select("status,step,updated_at,tour_version")
           .eq("user_id", id).abortSignal(controller.signal).maybeSingle();
         if (result.error) throw result.error;
         remote = parseTourProgress(result.data);
@@ -170,7 +170,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
   const begin = useCallback((replay = false) => {
     if (!accountRef.current) return;
     setLoadedId(accountRef.current);
-    const next = replay ? 0 : progressRef.current?.step ?? 0;
+    const next = replay || progressRef.current?.status !== "in_progress" ? 0 : progressRef.current.step;
     presented.current = true;
     save("in_progress", next); setMode("step"); navigate(next);
   }, [save, navigate]);
@@ -202,7 +202,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-          const { data, error } = await supabase.from("user_tour_progress").select("status,step,updated_at")
+          const { data, error } = await supabase.from("user_tour_progress").select("status,step,updated_at,tour_version")
             .eq("user_id", id).abortSignal(controller.signal).maybeSingle();
           if (error) throw error;
           if (accountRef.current !== id) return;
@@ -225,7 +225,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
   const formOpen = isActive && step === 1 && pathname === "/new-request";
   useEffect(() => {
     // Following the real empty-feed Find Friends button moves into its matching step.
-    if (isActive && step === 2 && pathname === "/find-friend") save("in_progress", 3);
+    if (isActive && current.target === "prayer-controls" && pathname === "/find-friend") save("in_progress", 2);
     // If someone chooses to begin a real solo session, let them pray normally
     // rather than keeping an unrelated tour overlay over the session.
     if (isActive && current.target === "solo-tour" && pathname === "/meditative-prayer-session") {
@@ -233,8 +233,9 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
     }
   }, [isActive, step, pathname, save, current.target]);
   const keyboardHeight = Math.max(0, viewport.height - (keyboardY - origin.current.y));
+  const friendSearchOpen = step === 2 && pathname === "/find-friend";
   const wantedTarget = formOpen ? formPhase === "write" ? "prayer-form" : "prayer-audience"
-    : step === 3 && keyboardHeight === 0 && anchors.current.has("friend-request") ? "friend-request" : current.target;
+    : friendSearchOpen ? keyboardHeight === 0 && anchors.current.has("friend-request") ? "friend-request" : "find-friends" : current.target;
   useEffect(() => {
     if (!isActive || !wantedTarget) { setRect(null); return; }
     let cancelled = false;
@@ -291,9 +292,9 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
                 ? formPhase === "write"
                   ? "Tap the highlighted box to try writing what's on your heart. Then choose Choose Audience to explore who can see it. Posting and draft saving are paused. Your existing drafts are untouched."
                   : "Tap the audience selector to choose who can see your request. This is only practice—nothing is published or saved as a draft. Tap Next when you're ready."
-                : step === 3 && actualTarget === "friend-request"
+                : friendSearchOpen && actualTarget === "friend-request"
                   ? "This + person button sends a Friend Request to the person beside it. Sending is optional—nothing happens unless you tap it. You can keep exploring or choose Next."
-                : step === 2 && actualTarget !== "prayer-controls" ? current.emptyDescription! : current.description}
+                : current.emptyDescription && actualTarget !== current.target ? current.emptyDescription : current.description}
               target={rect} viewport={viewport}
               insets={{ ...insets, bottom: insets.bottom + (pathname === "/community" || pathname === "/" ? 86 : 8) }}
               keyboardHeight={keyboardHeight}

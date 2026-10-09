@@ -14,3 +14,15 @@ The user also wants the tutorial to cover Prayer Journal, prayer requests sent t
 **Why:** The user explicitly asked for the app's broader features and provided the main navigation menu as a reference.
 
 **How to apply:** Include the real feature entry points without automatically starting recording, prayer sessions, contacts permission requests or sending/sharing actions.
+
+Keep the tutorial condensed to five key steps, covering the broader features together instead of giving each its own checkpoint.
+
+**Why:** The user said the expanded tutorial felt too long and asked for five key steps.
+
+**How to apply:** Keep each explanation brief and preserve Skip, Back, pause/resume and Settings replay.
+
+When reorganizing tutorial chapters, preserve completed/skipped status and translate unfinished checkpoints by feature rather than reusing their old numeric positions.
+
+**Why:** A shorter layout must not restart completed tutorials or resume users at an unrelated feature.
+
+**How to apply:** Version the stored layout and maintain compatibility with previously saved progress.

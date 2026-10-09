@@ -2,7 +2,7 @@
 
 ## Scope
 
-The welcome uses the requested copy and existing theme/icon library. The thirteen checkpoints use the actual Feed, safe prayer form, prayer interaction controls, Find Friends, Groups, Community, Mine/answered controls, Prayer Journal, My Requests, solo prayer, Text/Voice composition, recipient selection and Home screens.
+The welcome uses the requested copy and existing theme/icon library. The tour now has exactly five key chapters: Feed/support/answered prayers; sharing requests; friends/groups/communities; Prayer Journal; and solo/written/recorded/shared prayer. Each chapter uses a real screen, with concise copy. Finishing is the action on the fifth chapter, not an extra checkpoint.
 
 Empty screens stay empty. The tour does not create demo users, prayers, groups, communities, messages or activity. Searching is optional; no friend request is sent automatically. Communities are not created or joined automatically. Prayer practice never publishes or loads/overwrites a saved draft.
 
@@ -10,17 +10,19 @@ Settings → **Take a Tour of Prayer Space** starts a fresh replay. **Pause Tour
 
 ## Storage
 
-The additive `20261009_guided_tour.sql` and `20261009_guided_tour_features.sql` migrations have been applied to the verified app-configured development Supabase project. Authenticated users can read, insert and update only their own progress. Anonymous access is not granted. The table stores status, step and timestamp, not practice content.
+The additive `20261009_guided_tour.sql`, `20261009_guided_tour_features.sql` and `20261009_guided_tour_five_steps.sql` migrations have been applied to the verified app-configured development Supabase project. Authenticated users can read, insert and update only their own progress. Anonymous access is not granted. The table stores status, step, layout version and timestamp, not practice content.
 
 Progress is also saved with an account-specific local key. Local writes do not wait for network writes. Remote writes are coalesced and timeout after five seconds. Restore uses the newer valid local/account checkpoint; foreground reconciliation reads the remote checkpoint before retrying so another device's newer completion is not blindly overwritten.
 
-Apply both additive migrations to the intended production database before releasing the update there. The app does not depend on a SQL-capable connected-data proxy.
+Apply all three additive migrations in order to the intended production database before releasing the update there. The app does not depend on a SQL-capable connected-data proxy.
+
+Older eight/thirteen-step progress is read as layout version 1 and mapped to the corresponding five-step chapter. Completed/skipped accounts keep their terminal status and do not restart. New progress uses version 2 with indices 0–4; the database still accepts legacy version 1 so existing clients and rows remain valid.
 
 ## Checks completed
 
 - Mobile TypeScript compilation.
-- Three pure expanded-tour-definition/progress-validation/merge tests.
-- Authenticated database checks of welcome/progress/skip/completion writes and reloads.
+- Four pure current five-step definition, validation, legacy-checkpoint compatibility and merge tests.
+- Previously completed authenticated database checks of welcome/progress/skip/completion writes and reloads; RLS policies are unchanged.
 - Cross-account reads return no rows; cross-account writes are forbidden.
 - Invalid step values and anonymous reads are rejected.
 
@@ -33,7 +35,9 @@ pnpm --filter @workspace/scripts exec tsx --test ../artifacts/mobile/lib/tourSte
 TOUR_TEST_DEV_PROJECT_CONFIRMED=yes node artifacts/mobile/scripts/verify-tour-progress.cjs
 ```
 
-## Browser and device verification
+## Historical browser verification and device checklist
+
+The browser observations below exercised the previous thirteen-step layout. The five-step condensation has been checked with TypeScript and pure compatibility tests; these historical browser results are not a claim that a new authenticated five-step browser pass was run.
 
 The initial signed-in browser pass confirmed welcome, the Feed and safe prayer form. Its empty-account assertion failed because the repair harness had created a public anonymous test prayer visible to all accounts—not because the tour inserted data. That scratch-owned row was restricted to friends; a real authenticated query then confirmed account C's authorized feed is empty. Remaining expanded-tour observations are recorded below after continuation.
 
