@@ -19,6 +19,7 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useTourTarget } from "@/providers/GuidedTourProvider";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface FoundUser { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; }
@@ -277,6 +278,7 @@ function createSheetStyles(colors: ThemeColors) {
 // ─── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function FindFriendScreen() {
+  const findFriendsTarget = useTourTarget("find-friends");
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -565,6 +567,11 @@ export default function FindFriendScreen() {
   }, []);
 
   const searchableResults = results;
+  const requestTourTarget = useTourTarget(
+    showDropdown && !relationshipsLoading && !relationshipsError &&
+    searchableResults[0] && getRequestStatus(searchableResults[0].id) === "add"
+      ? "friend-request" : null
+  );
   const duplicateNameCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const found of searchableResults) {
@@ -633,7 +640,7 @@ export default function FindFriendScreen() {
         )}
 
         <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
+          <View {...findFriendsTarget} style={styles.searchBar}>
             <Search size={18} color={colors.mutedForeground} />
             <TextInput style={styles.searchInput} placeholder="Search by name..." placeholderTextColor={colors.mutedForeground + "80"} value={query} onChangeText={setQuery} onSubmitEditing={() => { if (query.trim()) searchMutation.mutate(query); }} returnKeyType="search" autoCapitalize="none" autoCorrect={false} />
             {query.length > 0 && <Pressable onPress={() => { setQuery(""); setResults([]); setHasSearched(false); setShowDropdown(false); }} hitSlop={8}><X size={18} color={colors.mutedForeground} /></Pressable>}
@@ -662,6 +669,8 @@ export default function FindFriendScreen() {
                       <ActivityIndicator size="small" color={colors.primary} />
                     ) : getRequestStatus(found.id) === "add" ? (
                       <Pressable
+                        {...(index === 0 ? requestTourTarget : {})}
+                        hitSlop={8}
                         style={[styles.addBtnSmall, sendRequestMutation.isPending && styles.btnDisabled]}
                         disabled={relationshipsError || sendRequestMutation.isPending}
                         onPress={(event) => {

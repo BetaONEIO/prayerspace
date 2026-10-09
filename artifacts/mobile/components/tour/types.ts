@@ -1,0 +1,21 @@
+export type TourRect = { x: number; y: number; width: number; height: number };
+export type TourPresentationProps = {
+  mode: "welcome" | "resume" | "step";
+  step: number;
+  title: string;
+  description: string;
+  target: TourRect | null;
+  viewport: { width: number; height: number };
+  insets: { top: number; bottom: number; left: number; right: number };
+  keyboardHeight: number;
+  reducedMotion: boolean;
+  syncNotice: string | null;
+  onStart: () => void;
+  onNext: () => void;
+  onBack: () => void;
+  onSkip: () => void;
+  onPause: () => void;
+  onFinish: () => void;
+  onOpenForm?: () => void;
+  formActionLabel?: string;
+};

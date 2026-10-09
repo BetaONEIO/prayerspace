@@ -94,6 +94,7 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { communityStore, StoredCommunity } from "@/lib/communityStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 import { useDiscoverCommunities, DiscoverCommunity } from "@/lib/useDiscoverCommunities";
+import { useGuidedTour, useTourTarget, TourPressable, NativeTourControls } from "@/providers/GuidedTourProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { dismissKeyboard } from "@/lib/keyboard";
@@ -272,6 +273,10 @@ const COMMUNITY_GROUPS: CommunityGroup[] = [
 type GroupSubTab = "My Groups" | "Community";
 
 export default function CommunityScreen() {
+  const { isActive: isTourActive, step: tourStep, section: tourSection } = useGuidedTour();
+  const feedScrollRef = useRef<ScrollView>(null);
+  const feedScrollOffset = useRef(0);
+  const answeredFilterTarget = useTourTarget("answered-filter");
   const themeColors = useThemeColors();
   const colors = themeColors;
   const tabBarHeight = useBottomTabBarHeight();
@@ -326,6 +331,12 @@ export default function CommunityScreen() {
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [notifVisible, setNotifVisible] = useState<boolean>(false);
   const [feedFilter, setFeedFilter] = useState<"all" | "mine">("all");
+  useEffect(() => {
+    if (!isTourActive || !tourSection) return;
+    setActiveTab(tourSection);
+    setFeedFilter(tourStep === 6 ? "mine" : "all");
+    feedScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [isTourActive, tourStep, tourSection]);
   const [lastAddedPostId, setLastAddedPostId] = useState<string | null>(null);
 
   // Fetch accepted friend IDs so the Feed tab can surface posts from friends
@@ -858,6 +869,11 @@ export default function CommunityScreen() {
 
   // Tab transition: fade + slide up on change
   useEffect(() => {
+    if (isTourActive) {
+      tabContentAnim.stopAnimation(); tabSlideAnim.stopAnimation();
+      tabContentAnim.setValue(1); tabSlideAnim.setValue(0);
+      return;
+    }
     tabContentAnim.setValue(0);
     tabSlideAnim.setValue(10);
     Animated.parallel([
@@ -992,7 +1008,8 @@ export default function CommunityScreen() {
       <View style={styles.segmentWrapper}>
         <View style={styles.segmentContainer}>
           {(["Feed", "Community", "Groups"] as Tab[]).map((tab) => (
-            <Pressable
+            <TourPressable
+              tourId={{ Feed: "feed-nav", Community: "communities-nav", Groups: "groups-nav" }[tab]}
               key={tab}
               style={[styles.segmentTab, activeTab === tab && styles.segmentTabActive]}
               onPress={() => handleTabPress(tab)}
@@ -1000,7 +1017,7 @@ export default function CommunityScreen() {
               <Text style={[styles.segmentText, activeTab === tab && styles.segmentTextActive]}>
                 {tab === "Groups" ? "Prayer Groups" : tab}
               </Text>
-            </Pressable>
+            </TourPressable>
           ))}
         </View>
       </View>
@@ -1011,6 +1028,9 @@ export default function CommunityScreen() {
         <GroupsContent joinedCommunities={joinedCommunities} activeCommunity={activeCommunity} />
       ) : (
         <AutoScrollView
+          ref={feedScrollRef}
+          onScroll={e => { feedScrollOffset.current = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 8 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1048,11 +1068,11 @@ export default function CommunityScreen() {
                 communityName={activeCommunity.name}
                 accentColor={activeCommunity.accentColor}
                 isCommunityTab={activeTab === "Community"}
-                onPress={() => setStatusModalVisible(true)}
+                onPress={() => isTourActive ? router.replace("/new-request") : setStatusModalVisible(true)}
               />
 
               {activeTab === "Feed" && (
-                <View style={styles.feedFilterRow}>
+                <View {...answeredFilterTarget} style={styles.feedFilterRow}>
                   {(["all", "mine"] as const).map((f) => (
                     <Pressable
                       key={f}
@@ -1095,6 +1115,10 @@ export default function CommunityScreen() {
                     <FeedCard
                       key={post.id}
                       post={post}
+                      tourPrayerTarget={post.id === posts.find(p => p.authorId !== currentUserId)?.id}
+                      tourAnsweredTarget={feedFilter === "mine" && post.id === posts[0]?.id}
+                      tourScrollRef={feedScrollRef}
+                      tourScrollOffset={feedScrollOffset}
                       hasPrayed={prayedPosts.has(post.id)}
                       onPray={(id) => handlePray(id, post)}
                       onComment={handleOpenComments}
@@ -1379,6 +1403,7 @@ interface ComposerPromptProps {
 }
 
 function ComposerPrompt({ communityName, accentColor, isCommunityTab, onPress }: ComposerPromptProps) {
+  const composerTarget = useTourTarget("create-prayer");
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const { profile } = useAuth();
@@ -1387,6 +1412,7 @@ function ComposerPrompt({ communityName, accentColor, isCommunityTab, onPress }:
     : ANON_AVATAR;
   return (
     <Pressable
+      {...composerTarget}
       style={[styles.prayerPrompt, { borderColor: accentColor + "40" }]}
       onPress={onPress}
     >
@@ -1790,11 +1816,12 @@ function CommunityEmptyState({ communityName }: CommunityEmptyStateProps) {
 }
 
 function FeedEmptyState() {
+  const emptyTarget = useTourTarget("feed-empty");
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const router = useRouter();
   return (
-    <View style={styles.emptyState}>
+    <View {...emptyTarget} style={styles.emptyState}>
       <View style={styles.emptyIconWrap}>
         <Users size={32} color={colors.primary} />
       </View>
@@ -3078,6 +3105,10 @@ function PostImage({ uri }: { uri: string }) {
 }
 
 interface FeedCardProps {
+  tourPrayerTarget?: boolean;
+  tourAnsweredTarget?: boolean;
+  tourScrollRef?: React.RefObject<ScrollView | null>;
+  tourScrollOffset?: React.RefObject<number>;
   post: FeedPost;
   hasPrayed: boolean;
   onPray: (id: string) => void;
@@ -3096,7 +3127,9 @@ interface FeedCardProps {
   isPinned?: boolean;
 }
 
-function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew, isFriend, isPinned }: FeedCardProps) {
+function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor, onRepost, onMorePress, onPrayingUsersPress, showOwnerActions, onAddUpdate, onMarkAnswered, isNew, isFriend, isPinned, tourPrayerTarget, tourAnsweredTarget, tourScrollRef, tourScrollOffset }: FeedCardProps) {
+  const prayerControlsTarget = useTourTarget(tourPrayerTarget ? "prayer-controls" : null, undefined, tourScrollRef, tourScrollOffset);
+  const answeredControlsTarget = useTourTarget(tourAnsweredTarget ? "answered-controls" : null, undefined, tourScrollRef, tourScrollOffset);
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const prayCount = post.prayerCount + (hasPrayed ? 1 : 0);
@@ -3320,7 +3353,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
         </View>
       )}
 
-      <View style={styles.cardActions}>
+      <View {...prayerControlsTarget} style={styles.cardActions}>
         {isAuthor ? (
           <>
             <Pressable
@@ -3369,7 +3402,7 @@ function FeedCard({ post, hasPrayed, onPray, onComment, onAvatarPress, isAuthor,
       </View>
 
       {showOwnerActions && (
-        <View style={[styles.mineActionRow, { borderTopColor: colors.border }]}>
+        <View {...answeredControlsTarget} style={[styles.mineActionRow, { borderTopColor: colors.border }]}>
           <Pressable
             style={[styles.mineActionBtn, { backgroundColor: colors.accent, borderColor: colors.primary + "30" }]}
             onPress={() => {
@@ -3488,6 +3521,7 @@ function PrayingUsersModal({ post, onClose }: PrayingUsersModalProps) {
           </ScrollView>
         </Animated.View>
       </Animated.View>
+      <NativeTourControls onDismiss={onClose} />
     </Modal>
   );
 }
@@ -3911,6 +3945,7 @@ function RepostComposerModal({ originalPost, onClose, onSubmit }: RepostComposer
             </Pressable>
           </View>
         </Animated.View>
+        <NativeTourControls onDismiss={onClose} />
       </KeyboardAvoidingView>
       <ImageViewer
         uri={viewingRepostImage}
@@ -4326,6 +4361,7 @@ function CommentsModal({ post, onClose, onAddComment }: CommentsModalProps) {
             </Pressable>
           </View>
         </Animated.View>
+        <NativeTourControls onDismiss={onClose} />
       </KeyboardAvoidingView>
     </Modal>
   );

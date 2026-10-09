@@ -6,6 +6,8 @@ import { Alert, View, Text, Pressable, ActivityIndicator, StyleSheet, Modal } fr
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
+import { GuidedTourProvider, useGuidedTour } from "@/providers/GuidedTourProvider";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PrayerProvider } from "@/providers/PrayerProvider";
 import { FavouritesProvider } from "@/providers/FavouritesProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
@@ -40,8 +42,6 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const ONBOARDING_PREVIEW_EMAILS = ["david@betaone.io"];
-
 function AuthGuard() {
   const { session, isInitialized, user, profile, isProfileLoading, profileError } = useAuth();
   const segments = useSegments();
@@ -59,7 +59,6 @@ function AuthGuard() {
       segments[0] === "password-reset-new";
 
     const inCompleteProfile = (segments[0] as string) === "complete-profile";
-    const isOnboardingPreviewUser = ONBOARDING_PREVIEW_EMAILS.includes(user?.email ?? "");
 
     if (!session && !inAuthGroup && !inCompleteProfile) {
       console.log("[AuthGuard] No session, redirecting to login");
@@ -87,8 +86,7 @@ function AuthGuard() {
         return;
       }
       if (!needsDob && inAuthGroup) {
-        const destination = isOnboardingPreviewUser ? "/onboarding" : "/";
-        router.replace(destination);
+        router.replace("/");
       }
     }
   }, [session, isInitialized, segments, user, profile, isProfileLoading, profileError]);
@@ -97,6 +95,7 @@ function AuthGuard() {
 }
 
 function GlobalRatingPrompt() {
+  const { isShowing: tourShowing } = useGuidedTour();
   const { showReview, checkAndShowPrompt, closeReview, handleReviewed } = useReviewPrompt();
 
   const handleTrigger = useCallback(
@@ -112,11 +111,12 @@ function GlobalRatingPrompt() {
   }, [handleTrigger]);
 
   return (
-    <SmartRatingModal visible={showReview} onClose={closeReview} onRated={handleReviewed} />
+    <SmartRatingModal visible={showReview && !tourShowing} onClose={closeReview} onRated={handleReviewed} />
   );
 }
 
 function RootLayoutNav() {
+  const { isActive: isTourActive } = useGuidedTour();
   const { session, isProfileLoading, profileError, retryProfile, signOut } = useAuth();
   const colors = useThemeColors();
   const segments = useSegments();
@@ -150,7 +150,7 @@ function RootLayoutNav() {
       <AuthGuard />
       {profileGate}
       <GlobalRatingPrompt />
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: isTourActive ? "none" : undefined }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -175,7 +175,7 @@ function RootLayoutNav() {
       <Stack.Screen name="prayer-stats" options={{ headerShown: false }} />
       <Stack.Screen name="top-hearts" options={{ headerShown: false }} />
       <Stack.Screen name="record-prayer" options={{ presentation: "modal", headerShown: false }} />
-      <Stack.Screen name="new-request" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="new-request" options={{ presentation: isTourActive ? "card" : "modal", headerShown: false }} />
       <Stack.Screen name="explore" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="search" options={{ headerShown: false }} />
@@ -223,7 +223,11 @@ export default Sentry.wrap(function RootLayout() {
                 <FavouritesProvider>
                   <NotificationsProvider>
                     <SelectedRecipientsProvider>
-                      <RootLayoutNav />
+                      <SafeAreaProvider>
+                        <GuidedTourProvider>
+                          <RootLayoutNav />
+                        </GuidedTourProvider>
+                      </SafeAreaProvider>
                     </SelectedRecipientsProvider>
                   </NotificationsProvider>
                 </FavouritesProvider>

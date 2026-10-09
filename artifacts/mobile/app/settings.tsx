@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from "react";
+import { useGuidedTour } from "@/providers/GuidedTourProvider";
 import {
   View,
   Text,
@@ -38,6 +39,7 @@ import ConfirmModal from "@/components/ConfirmModal";
 import { useReviewPrompt } from "@/hooks/useReviewPrompt";
 
 export default function SettingsScreen() {
+  const { replay } = useGuidedTour();
   const router = useRouter();
   const colors = useThemeColors();
   const { mode, setTheme } = useTheme();
@@ -186,6 +188,12 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>SUPPORT</Text>
           <View style={styles.card}>
+            {renderRow(
+              <HelpCircle size={18} color={colors.primary + "90"} />,
+              "Take a Tour of Prayer Space",
+              replay
+            )}
+            <View style={styles.divider} />
             {renderRow(
               <HelpCircle size={18} color={colors.primary + "90"} />,
               "Help Center",

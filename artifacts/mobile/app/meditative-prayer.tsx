@@ -13,8 +13,10 @@ import { ChevronLeft, Play, Volume2, VolumeX } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
+import { useTourTarget } from "@/providers/GuidedTourProvider";
 
 export default function MeditativePrayerScreen() {
+  const soloTour = useTourTarget("solo-tour");
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -65,7 +67,7 @@ export default function MeditativePrayerScreen() {
           </Text>
 
           <Animated.View style={{ transform: [{ scale: btnScale }], width: "100%" }}>
-            <Pressable style={styles.beginBtn} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handleBegin}>
+            <Pressable {...soloTour} style={styles.beginBtn} onPressIn={handlePressIn} onPressOut={handlePressOut} onPress={handleBegin}>
               <Play size={22} color="#fff" />
               <Text style={styles.beginBtnText}>BEGIN PRAYER</Text>
             </Pressable>

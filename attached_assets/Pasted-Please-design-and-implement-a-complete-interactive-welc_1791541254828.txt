@@ -1,0 +1,284 @@
+Please design and implement a complete interactive welcome and onboarding tutorial for the Prayer Space app.
+
+## Objective
+
+When someone joins Prayer Space for the first time, they should receive a warm, welcoming introduction that teaches them how to use the app.
+
+This should not be a traditional slideshow consisting entirely of text and images.
+
+Instead, create a guided interactive tutorial that walks users through the actual app, highlighting features and explaining how they work.
+
+The tutorial should feel welcoming, modern, intuitive and easy to understand, including for older users and those who are less confident using mobile apps.
+
+## 1. Welcome screen
+
+When a user completes registration and enters Prayer Space for the first time, display a welcome screen.
+
+Heading:
+
+**Welcome to Prayer Space**
+
+Supporting text:
+
+**A place to connect, share what's on your heart and grow together through prayer.**
+
+Include three short benefits:
+
+- Share prayer requests
+- Pray for others
+- Connect with friends and prayer communities
+
+Primary button:
+
+**Let's Get Started**
+
+Secondary action:
+
+**Skip Tutorial**
+
+Use Prayer Space's existing design system and iconography.
+
+Do not use generic emojis.
+
+## 2. Interactive guided tour
+
+After selecting Let's Get Started, guide the user through the actual application.
+
+Use a spotlight/highlight system that:
+
+- Highlights the relevant navigation item or button.
+- Subtly dims the rest of the screen.
+- Displays a short explanation next to the highlighted element.
+- Provides Next, Back and Skip options.
+- Automatically navigates to the relevant screen where appropriate.
+- Scrolls the highlighted feature into view.
+- Works on mobile devices.
+
+Avoid overwhelming the user with too much information.
+
+## 3. Tutorial steps
+
+### Step 1: Your Prayer Feed
+
+Highlight the Feed navigation.
+
+Text:
+
+**Your Prayer Feed**
+
+See prayer requests and updates shared by your friends and communities.
+
+Explain how the Feed works.
+
+### Step 2: Create a Prayer
+
+Highlight the Create Prayer button.
+
+Text:
+
+**Share What's on Your Heart**
+
+Create a prayer request and choose who can see it.
+
+Guide the user through the form without requiring them to publish a prayer.
+
+### Step 3: Pray for Others
+
+Highlight the prayer interaction controls on a real, authorised prayer request, if one exists.
+
+Text:
+
+**Pray Together**
+
+Let others know you're praying for them and encourage them through their journey.
+
+If no real prayer requests exist, explain the feature without inserting dummy data.
+
+### Step 4: Find Friends
+
+Highlight Find Friends.
+
+Text:
+
+**Connect with Friends**
+
+Find people you know, send Friend Requests and stay connected through prayer.
+
+Show how to search and send a request.
+
+Do not automatically send a request during the tutorial.
+
+### Step 5: Prayer Groups
+
+Highlight Prayer Groups.
+
+Text:
+
+**Pray in Smaller Groups**
+
+Create or join a Prayer Group to pray regularly with friends, family or others.
+
+Explain the basic Group functionality.
+
+### Step 6: Prayer Communities
+
+Highlight Prayer Communities.
+
+Text:
+
+**Bring Your Community Together**
+
+Join your church or ministry's Prayer Community, or create your own.
+
+Mention that users can create a free Prayer Community with up to 10 members.
+
+Do not force users to create a Community during onboarding.
+
+### Step 7: Answered Prayers
+
+Text:
+
+**Celebrate Answered Prayers**
+
+Update your prayer requests and share what God has done.
+
+Show the relevant functionality using the existing interface.
+
+### Step 8: You're Ready!
+
+Heading:
+
+**You're Ready to Get Started!**
+
+Text:
+
+**Your prayer journey starts here. Share a prayer, connect with friends or spend a moment praying for someone today.**
+
+Primary button:
+
+**Explore Prayer Space**
+
+## 4. Progress tracking
+
+Display a small progress indicator such as:
+
+**Step 2 of 8**
+
+Allow users to:
+
+- Go Back
+- Continue
+- Skip Tutorial
+- Finish
+
+Persist tutorial progress so the app knows whether the user has completed or skipped onboarding.
+
+Do not restart the tutorial every time they open the app.
+
+## 5. Replay the tutorial
+
+Add an option under Settings or Help:
+
+**Take a Tour of Prayer Space**
+
+This should allow users to replay the tutorial at any time.
+
+This is particularly important for users who are unfamiliar with the app.
+
+## 6. Smart handling of empty data
+
+CRITICAL: Do not create dummy data for the tutorial.
+
+If the user has no Friends, show the real Find Friends screen.
+
+If the Feed has no prayers, explain how it works using the actual empty state.
+
+If the user has no Prayer Groups or Communities, explain how to create or join one.
+
+Never create fake users, prayers, communities, messages or activity to populate tutorial screens.
+
+## 7. Mobile interaction
+
+The tutorial must work on both iOS and Android.
+
+Ensure:
+
+- Spotlight elements align correctly with actual UI elements.
+- Tooltips do not appear behind the keyboard.
+- Highlighted elements remain visible.
+- Navigation bars are not obstructed.
+- Tooltips respect safe-area insets.
+- The tutorial works on smaller mobile screens.
+- The keyboard closes appropriately when progressing between steps.
+- Users can dismiss the tutorial at any time.
+
+## 8. Design requirements
+
+Reuse Prayer Space's existing:
+
+- Colours
+- Typography
+- Icons
+- Buttons
+- Cards
+- Spacing
+- Animations
+
+Use subtle animations when highlighting features or moving between tutorial steps.
+
+Do not use generic Unicode emojis.
+
+Reuse existing app-style icons wherever possible.
+
+Keep explanations short and easy to understand.
+
+## 9. Accessibility
+
+Ensure:
+
+- Text is readable.
+- Buttons have adequate touch targets.
+- Screen readers can understand the tutorial.
+- Highlighted controls are accessible.
+- Users are not trapped in overlays.
+- Reduced-motion preferences are respected.
+- Skip is always available.
+
+## 10. Implementation approach
+
+Before building, audit the current navigation and onboarding architecture.
+
+Reuse existing screens and components wherever possible.
+
+Build the tutorial as a reusable guided-tour system rather than hard-coding a separate walkthrough into every page.
+
+Make sure the tour can handle missing or conditionally rendered UI elements without breaking.
+
+Persist completion status against the authenticated user, with appropriate local fallback.
+
+Do not change existing prayer, friendship or community functionality unnecessarily.
+
+## 11. Testing
+
+Test:
+
+- New user completing the tutorial.
+- New user skipping the tutorial.
+- User leaving halfway through.
+- User restarting the app.
+- User replaying from Settings.
+- User with no Friends.
+- User with no prayer requests.
+- User with no Communities.
+- Different mobile screen sizes.
+- iOS and Android keyboard behaviour.
+- Navigation between tutorial steps.
+- Back and Skip functionality.
+
+## Goal
+
+The first time someone opens Prayer Space, they should understand what the app is for and feel confident using its main features.
+
+The tutorial should help users learn by exploring the actual app rather than reading long instructions.
+
+The overall experience should feel warm, simple, welcoming and consistent with Prayer Space's Christian identity.

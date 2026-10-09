@@ -74,7 +74,10 @@ const PRAYER_TAGS = [
   { id: "provision", label: "Provision", emoji: "🌾" },
 ];
 
+import { useTourTarget } from "@/providers/GuidedTourProvider";
+
 export default function PrayerModeScreen() {
+  const recordTour = useTourTarget("record-tour");
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -335,7 +338,7 @@ export default function PrayerModeScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.tabContainer}>
+      <View {...recordTour} style={styles.tabContainer}>
         <View style={styles.tabTrack}>
           <Pressable
             style={[styles.tabButton, activeTab === "text" && styles.tabButtonActive]}

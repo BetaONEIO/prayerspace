@@ -14,6 +14,7 @@ import { Check, X } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { dismissKeyboard } from "@/lib/keyboard";
+import { NativeTourControls } from "@/providers/GuidedTourProvider";
 
 interface Props {
   visible: boolean;
@@ -105,6 +106,7 @@ export default function FullScreenTextEditor({
             </Text>
           )}
         </View>
+        <NativeTourControls onDismiss={finish} />
       </KeyboardAvoidingView>
     </Modal>
   );

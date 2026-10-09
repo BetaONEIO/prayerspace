@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useSyncExternalStore, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useSyncExternalStore, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -50,7 +50,12 @@ const getSourceColors = (colors: ThemeColors): Record<string, string> => ({
   app: colors.primary,
 });
 
+import { useGuidedTour, useTourTarget } from "@/providers/GuidedTourProvider";
+
 export default function SelectRecipientsScreen() {
+  const { isShowing } = useGuidedTour();
+  const tourPreview = useRef(isShowing).current;
+  const shareTour = useTourTarget("share-tour");
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -84,6 +89,12 @@ export default function SelectRecipientsScreen() {
   useEffect(() => {
     let cancelled = false;
     const loadContacts = async () => {
+      // A guided preview must not request address-book permission or replace a
+      // user's existing recipient/draft state merely by navigating here.
+      if (tourPreview) {
+        setContactsLoading(false);
+        return;
+      }
       if (Platform.OS === "web") {
         setContactsPermissionDenied(true);
         setContactsLoading(false);
@@ -153,7 +164,7 @@ export default function SelectRecipientsScreen() {
     };
     void loadContacts();
     return () => { cancelled = true; };
-  }, [setRecipients, user?.id]);
+  }, [setRecipients, user?.id, tourPreview]);
 
   const filtered = useMemo(() => {
     return recipients.filter((r) => {
@@ -394,7 +405,7 @@ export default function SelectRecipientsScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <ArrowLeft size={20} color={colors.secondaryForeground} />
         </Pressable>
-        <Text style={styles.headerTitle}>Send to</Text>
+        <View {...shareTour}><Text style={styles.headerTitle}>Send to</Text></View>
         <View style={{ width: 40 }} />
       </View>
 

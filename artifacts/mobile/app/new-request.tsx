@@ -45,8 +45,13 @@ import { useCommunityStore } from "@/lib/communityStore";
 import { formatPrayerDate } from "@/lib/prayerDateUtils";
 import { scheduleOwnPrayerReminders } from "@/lib/prayerReminders";
 import { supabase } from "@/lib/supabase";
+import { useGuidedTour, useTourTarget } from "@/providers/GuidedTourProvider";
 
 export default function NewRequestScreen() {
+  const { isPrayerPractice } = useGuidedTour();
+  const practiceMode = useRef(isPrayerPractice).current;
+  const prayerFormTarget = useTourTarget("prayer-form");
+  const prayerAudienceTarget = useTourTarget("prayer-audience");
   const router = useRouter();
   const colors = useThemeColors();
   const { user, profile } = useAuth();
@@ -77,13 +82,14 @@ export default function NewRequestScreen() {
   const dateHeightAnim = useRef(new Animated.Value(0)).current;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const { DiscardModal } = useUnsavedChangesWarning(content.trim().length > 0);
+  const { DiscardModal } = useUnsavedChangesWarning(!practiceMode && content.trim().length > 0);
 
   const DRAFT_KEY = "@prayer_space:new_request_draft";
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Restore draft on mount
   useEffect(() => {
+    if (practiceMode) return;
     AsyncStorage.getItem(DRAFT_KEY).then((raw) => {
       if (!raw) return;
       try {
@@ -104,6 +110,7 @@ export default function NewRequestScreen() {
 
   // Autosave draft with 600ms debounce
   useEffect(() => {
+    if (practiceMode) return;
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       if (!content.trim() && !selectedTags.length && !eventDate) {
@@ -132,6 +139,7 @@ export default function NewRequestScreen() {
   }, [dateExpanded, dateHeightAnim]);
 
   const handlePost = useCallback(async () => {
+    if (practiceMode) return;
     if (!content.trim()) {
       Alert.alert("Empty Request", "Please describe your prayer request.");
       return;
@@ -220,9 +228,10 @@ export default function NewRequestScreen() {
           </Pressable>
 
           <Pressable
-            style={[styles.postBtn, !canPost && styles.postBtnDisabled]}
+            style={[styles.postBtn, (!canPost || practiceMode) && styles.postBtnDisabled]}
             onPress={handlePost}
-            disabled={!canPost}
+            disabled={!canPost || practiceMode}
+            accessibilityHint={practiceMode ? "Posting is paused during this practice step" : undefined}
           >
             <Text style={styles.postBtnText}>Post</Text>
           </Pressable>
@@ -234,6 +243,7 @@ export default function NewRequestScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View {...prayerAudienceTarget}>
           <View style={styles.userRow}>
             {isAnonymous || !profile?.avatar_url ? (
               <Image source={ANON_AVATAR} style={styles.userAvatar} />
@@ -298,7 +308,9 @@ export default function NewRequestScreen() {
             </View>
           )}
 
+          </View>
           <Pressable
+            {...prayerFormTarget}
             style={styles.inputWrap}
             onPress={() => setTextEditorVisible(true)}
             accessibilityRole="button"

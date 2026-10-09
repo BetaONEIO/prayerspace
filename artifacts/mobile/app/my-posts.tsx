@@ -95,7 +95,10 @@ function formatRelativeDate(iso: string): { timeLabel: string; postedAt: string 
   return { timeLabel: d.toLocaleDateString([], { month: "short", day: "numeric" }).toUpperCase(), postedAt: d.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
 }
 
+import { useTourTarget } from "@/providers/GuidedTourProvider";
+
 export default function MyPostsScreen() {
+  const requestsTour = useTourTarget("requests-tour");
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -251,7 +254,7 @@ export default function MyPostsScreen() {
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={22} color={colors.foreground} />
         </Pressable>
-        <View style={styles.headerCenter}>
+        <View {...requestsTour} style={styles.headerCenter}>
           <Text style={styles.headerTitle}>My Requests</Text>
           <Text style={styles.headerSub}>{posts.length} prayer requests</Text>
         </View>

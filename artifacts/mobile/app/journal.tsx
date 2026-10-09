@@ -1288,7 +1288,10 @@ const createAddStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 });
 
+import { useTourTarget } from "@/providers/GuidedTourProvider";
+
 export default function JournalScreen() {
+  const journalTour = useTourTarget("journal-tour");
   const router = useRouter();
   const themeColors = useThemeColors();
   const colors = themeColors;
@@ -1564,7 +1567,7 @@ export default function JournalScreen() {
           <Pressable style={styles.iconBtn} onPress={() => router.push("/(tabs)/(home)")}>
             <ArrowLeft size={20} color={colors.secondaryForeground} />
           </Pressable>
-          <Text style={styles.headerTitle}>Prayer Journal</Text>
+          <View {...journalTour}><Text style={styles.headerTitle}>Prayer Journal</Text></View>
         </View>
         <View style={styles.headerRight}>
           <Pressable style={styles.newBtn} onPress={() => router.push("/journal-entry")}>
