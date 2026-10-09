@@ -75,77 +75,13 @@ export async function getOrCreateDMConversation(
   userId1: string,
   userId2: string
 ): Promise<string> {
-  console.log(
-    "[Chat] Getting/creating DM between",
-    userId1.slice(0, 8),
-    "and",
-    userId2.slice(0, 8)
-  );
-
-  const { data: user1Convs, error: err1 } = await supabase
-    .from("conversation_participants")
-    .select("conversation_id")
-    .eq("user_id", userId1);
-
-  if (err1) {
-    console.error("[Chat] Error fetching conversations:", err1.message);
-    throw err1;
-  }
-
-  if (user1Convs && user1Convs.length > 0) {
-    const convIds = user1Convs.map(
-      (c: { conversation_id: string }) => c.conversation_id
-    );
-
-    const { data: sharedConvs } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", userId2)
-      .in("conversation_id", convIds);
-
-    if (sharedConvs && sharedConvs.length > 0) {
-      for (const conv of sharedConvs as { conversation_id: string }[]) {
-        const { count } = await supabase
-          .from("conversation_participants")
-          .select("*", { count: "exact", head: true })
-          .eq("conversation_id", conv.conversation_id);
-
-        const { data: convData } = await supabase
-          .from("conversations")
-          .select("type")
-          .eq("id", conv.conversation_id)
-          .single();
-
-        if (count === 2 && convData?.type === "dm") {
-          console.log("[Chat] Found existing DM:", conv.conversation_id.slice(0, 8));
-          return conv.conversation_id;
-        }
-      }
-    }
-  }
-
-  console.log("[Chat] Creating new DM conversation");
-  const { data: newConv, error: convError } = await supabase
-    .from("conversations")
-    .insert({ type: "dm" })
-    .select()
-    .single();
-
-  if (convError || !newConv)
-    throw new Error("Failed to create conversation: " + convError?.message);
-
-  const { error: participantsError } = await supabase
-    .from("conversation_participants")
-    .insert([
-      { conversation_id: newConv.id, user_id: userId1 },
-      { conversation_id: newConv.id, user_id: userId2 },
-    ]);
-
-  if (participantsError)
-    throw new Error("Failed to add participants: " + participantsError.message);
-
-  console.log("[Chat] Created DM:", newConv.id.slice(0, 8));
-  return newConv.id;
+  if (!isUUID(userId1) || !isUUID(userId2)) throw new Error("Invalid chat participants");
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user.id !== userId1) throw new Error("Please sign in to start a chat");
+  const { data, error } = await supabase.rpc("get_or_create_dm", { target_user_id: userId2 });
+  if (error) throw error;
+  if (typeof data !== "string" || !isUUID(data)) throw new Error("Conversation was not created");
+  return data;
 }
 
 export async function fetchConversations(
@@ -160,7 +96,7 @@ export async function fetchConversations(
 
   if (error) {
     console.error("[Chat] Error fetching user convs:", error.message);
-    return [];
+    throw error;
   }
 
   if (!userConvs?.length) return [];
@@ -185,6 +121,8 @@ export async function fetchConversations(
 
   const allParticipants = participantsRes.data ?? [];
   const allMessages = messagesRes.data ?? [];
+  if (participantsRes.error) throw participantsRes.error;
+  if (messagesRes.error) throw messagesRes.error;
 
   const otherUserIds = [
     ...new Set(
@@ -203,6 +141,7 @@ export async function fetchConversations(
       : { data: [] };
 
   const profiles = profilesRes.data ?? [];
+  if ("error" in profilesRes && profilesRes.error) throw profilesRes.error;
 
   const lastMessages: Record<
     string,

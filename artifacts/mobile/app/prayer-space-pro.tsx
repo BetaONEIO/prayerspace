@@ -15,6 +15,7 @@ import { ArrowLeft, BookOpen, Users, Heart, Bell, Mic } from "lucide-react-nativ
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
+import { verifiedSubscriptionAccess } from "@/lib/verifiedCommunityAccess";
 import { PurchasesPackage } from "react-native-purchases";
 import { useChurchMembership } from "@/lib/churchMembershipStore";
 
@@ -63,8 +64,8 @@ export default function PrayerSpaceProScreen() {
 
   const { isChurchMember, churchName } = useChurchMembership();
 
-  const monthlyPackage: PurchasesPackage | undefined = offerings?.current?.monthly ?? undefined;
-  const annualPackage: PurchasesPackage | undefined = offerings?.current?.annual ?? undefined;
+  const monthlyPackage: PurchasesPackage | undefined = offerings?.all?.["default"]?.monthly ?? undefined;
+  const annualPackage: PurchasesPackage | undefined = offerings?.all?.["default"]?.annual ?? undefined;
 
   const discountOffering = offerings?.all?.["church_members"] ?? null;
   const monthlyDiscountPackage: PurchasesPackage | undefined =
@@ -72,14 +73,21 @@ export default function PrayerSpaceProScreen() {
   const annualDiscountPackage: PurchasesPackage | undefined =
     discountOffering?.availablePackages?.find((p) => p.identifier === "pro_yearly_discount") ?? undefined;
 
-  const activeMonthlyPackage = isChurchMember ? (monthlyDiscountPackage ?? monthlyPackage) : monthlyPackage;
-  const activeAnnualPackage = isChurchMember ? (annualDiscountPackage ?? annualPackage) : annualPackage;
+  const monthlyDiscountEligible = isChurchMember && !!monthlyDiscountPackage && !!monthlyPackage &&
+    monthlyDiscountPackage.product.currencyCode === monthlyPackage.product.currencyCode &&
+    monthlyDiscountPackage.product.price < monthlyPackage.product.price;
+  const annualDiscountEligible = isChurchMember && !!annualDiscountPackage && !!annualPackage &&
+    annualDiscountPackage.product.currencyCode === annualPackage.product.currencyCode &&
+    annualDiscountPackage.product.price < annualPackage.product.price;
+  const activeMonthlyPackage = monthlyDiscountEligible ? monthlyDiscountPackage : monthlyPackage;
+  const activeAnnualPackage = annualDiscountEligible ? annualDiscountPackage : annualPackage;
+  const hasApplicableDiscount = plan === "yearly" ? annualDiscountEligible : monthlyDiscountEligible;
   const selectedPackage = plan === "yearly" ? activeAnnualPackage : activeMonthlyPackage;
 
-  const monthlyPrice = activeMonthlyPackage?.product?.priceString ?? (isChurchMember ? "£4.49/mo" : "$5.99/mo");
-  const annualPrice = activeAnnualPackage?.product?.priceString ?? (isChurchMember ? "£34.99/yr" : "$49.99/yr");
-  const monthlyOriginalPrice = isChurchMember ? (monthlyPackage?.product?.priceString ?? "$5.99/mo") : null;
-  const annualOriginalPrice = isChurchMember ? (annualPackage?.product?.priceString ?? "$49.99/yr") : null;
+  const monthlyPrice = activeMonthlyPackage?.product?.priceString ?? "Not available";
+  const annualPrice = activeAnnualPackage?.product?.priceString ?? "Not available";
+  const monthlyOriginalPrice = monthlyDiscountEligible ? monthlyPackage?.product.priceString : null;
+  const annualOriginalPrice = annualDiscountEligible ? annualPackage?.product.priceString : null;
 
   const handleTrial = async () => {
     if (!selectedPackage) {
@@ -88,8 +96,14 @@ export default function PrayerSpaceProScreen() {
       return;
     }
     try {
-      await purchaseMutation.mutateAsync(selectedPackage);
-      Alert.alert("Welcome to Pro!", "Your 7-day free trial has begun.", [
+      const info = await purchaseMutation.mutateAsync(selectedPackage);
+      if (info.entitlements.active.premium?.isActive !== true) {
+        throw new Error("An active personal Pro subscription could not be confirmed.");
+      }
+      if (!await verifiedSubscriptionAccess("premium")) {
+        throw new Error("Your personal subscription could not be verified yet. Please retry Restore Purchases.");
+      }
+      Alert.alert("Welcome to Pro!", "Your subscription is active.", [
         { text: "Continue", onPress: () => router.back() },
       ]);
     } catch (err: unknown) {
@@ -104,8 +118,9 @@ export default function PrayerSpaceProScreen() {
   const handleRestore = async () => {
     try {
       const info = await restoreMutation.mutateAsync();
-      const hasPremium = info.entitlements.active["premium"];
+      const hasPremium = info.entitlements.active["premium"]?.isActive === true;
       if (hasPremium) {
+        if (!await verifiedSubscriptionAccess("premium")) throw new Error("Your personal subscription could not be verified yet. Please retry.");
         Alert.alert("Restored!", "Your subscription has been restored.", [
           { text: "Continue", onPress: () => router.back() },
         ]);
@@ -178,7 +193,7 @@ export default function PrayerSpaceProScreen() {
             })}
           </View>
 
-          {isChurchMember && (
+          {hasApplicableDiscount && (
             <View style={styles.discountBanner}>
               <Text style={styles.discountBannerText}>
                 {churchName
@@ -247,7 +262,7 @@ export default function PrayerSpaceProScreen() {
             {isPurchasing ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
-              <Text style={styles.trialBtnText}>Start 7-Day Free Trial</Text>
+              <Text style={styles.trialBtnText}>Subscribe to Pro</Text>
             )}
           </Pressable>
 

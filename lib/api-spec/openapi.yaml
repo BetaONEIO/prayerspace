@@ -24,7 +24,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /community-access:
+    get:
+      operationId: getCommunityAccess
+      tags: [community]
+      summary: Verify personal or community subscription access
+      security:
+        - SupabaseBearer: []
+      parameters:
+        - in: query
+          name: entitlement
+          required: false
+          schema:
+            type: string
+            enum: [premium, premium_community]
+            default: premium_community
+        - in: query
+          name: communityId
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Server-verified subscription state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                required: [active]
+        "401":
+          description: Sign-in required
+        "403":
+          description: Community membership required
+        "503":
+          description: Verification temporarily unavailable
 components:
+  securitySchemes:
+    SupabaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object

@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
+import { supabase } from "./supabase";
 
 const API_URL = (() => {
   const explicit = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/$/, "");
@@ -67,9 +68,11 @@ export async function transcribeAudio(audioUri: string): Promise<string> {
   }
 
   console.log("[transcribeAudio] Sending to API server...");
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !session) throw new Error("Please sign in before transcribing audio.");
   const response = await fetch(`${API_URL}/api/transcribe`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
     body: JSON.stringify({ audioBase64, mimeType }),
   });
 

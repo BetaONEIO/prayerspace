@@ -391,15 +391,9 @@ export default function CommunityScreen() {
   // while this screen is already mounted (e.g. navigating back from onboarding).
   useEffect(() => {
     const apply = (all: StoredCommunity[]) => {
-      const owned = all.filter((c) => c.isOwned);
-      if (owned.length === 0) return;
-      setJoinedCommunities((prev) => {
-        const fresh = owned.filter((o) => !prev.find((p) => p.id === o.id));
-        if (fresh.length === 0) return prev;
-        return [...fresh, ...prev];
-      });
-      // Auto-navigate to the user's own community
-      setActiveCommunity(owned[0] as Community);
+      setJoinedCommunities(all);
+      setActiveCommunity((prev) => all.find((c) => c.id === prev.id) ??
+        all.find((c) => c.isOwned) ?? all[0] ?? DEFAULT_COMMUNITY);
     };
     apply(communityStore.getAll());
     return communityStore.subscribe(apply);
@@ -558,14 +552,16 @@ export default function CommunityScreen() {
   }, []);
 
   const handleJoinCommunity = useCallback((community: Community) => {
-    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setJoinedCommunities((prev) => {
-      if (prev.find((c) => c.id === community.id)) return prev;
-      return [...prev, community];
-    });
-    setActiveCommunity(community);
-    setBrowseCommunitiesVisible(false);
-    console.log("[Community] Joined community:", community.name);
+    void (async () => {
+      try {
+        await communityStore.join(community.id);
+        if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setActiveCommunity(community);
+        setBrowseCommunitiesVisible(false);
+      } catch (error) {
+        Alert.alert("Couldn't join community", error instanceof Error ? error.message : "Please retry.");
+      }
+    })();
   }, []);
 
   const handleStopPraying = useCallback(() => {

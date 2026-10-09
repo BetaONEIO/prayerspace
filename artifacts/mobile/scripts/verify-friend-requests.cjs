@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const { randomBytes } = require("node:crypto");
 const { createClient } = require("@supabase/supabase-js");
+const { readFile, writeFile, unlink } = require("node:fs/promises");
 
 if (process.env.FRIEND_TEST_DEV_PROJECT_CONFIRMED !== "yes") {
   throw new Error("Set FRIEND_TEST_DEV_PROJECT_CONFIRMED=yes only for a confirmed development project.");
@@ -19,6 +20,9 @@ const client = () => createClient(url, anon, options);
 const suffix = randomBytes(10).toString("hex");
 const accounts = [];
 const postIds = [];
+const conversationIds = [];
+const communityIds = [];
+const fixturePath = "/tmp/prayer-space-repair-fixtures.json";
 const pass = (label) => console.log(`PASS ${label}`);
 function ok(result, label) {
   if (result.error) throw new Error(`${label}: ${result.error.code || "request failed"}`);
@@ -48,7 +52,7 @@ async function makeAccount(label) {
   const email = `friend-flow-${suffix}-${label.toLowerCase()}@example.invalid`;
   const password = randomBytes(24).toString("hex");
   const created = ok(await admin.auth.admin.createUser({
-    email, password, email_confirm: true, user_metadata: { full_name: `Friend Flow ${label}` },
+    email, password, email_confirm: true, user_metadata: { full_name: `Friend Flow ${label}`, date_of_birth: "1990-01-01" },
   }), "create temporary auth account");
   const account = { id: created.user.id, email, password, api: client() };
   accounts.push(account);
@@ -61,6 +65,22 @@ async function makeAccount(label) {
 async function cleanup() {
   const ids = accounts.map((account) => account.id);
   const issues = [];
+  for (const id of conversationIds) {
+    const messages = await admin.from("messages").select("id").eq("conversation_id", id);
+    if (messages.error) issues.push(`messages:${messages.error.code}`);
+    for (const message of messages.data ?? []) {
+      const result = await admin.from("message_reactions").delete().eq("message_id", message.id);
+      if (result.error) issues.push(`reactions:${result.error.code}`);
+    }
+    for (const table of ["messages", "conversation_participants", "conversations"]) {
+      const result = await admin.from(table).delete().eq(table === "conversations" ? "id" : "conversation_id", id);
+      if (result.error) issues.push(`${table}:${result.error.code}`);
+    }
+  }
+  for (const id of ids) {
+    const result = await admin.from("communities").delete().eq("owner_id", id);
+    if (result.error) issues.push(`communities:${result.error.code}`);
+  }
   for (const id of postIds) {
     const result = await admin.from("prayer_requests").delete().eq("id", id);
     if (result.error) issues.push(`post:${result.error.code}`);
@@ -84,6 +104,16 @@ async function cleanup() {
 }
 
 async function run() {
+  if (process.argv.includes("--cleanup-fixtures")) {
+    const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
+    accounts.push(...fixture.accounts);
+    postIds.push(...fixture.postIds);
+    conversationIds.push(...fixture.conversationIds);
+    await cleanup();
+    await unlink(fixturePath);
+    return;
+  }
+  let keep = false;
   try {
     const [a, b, c] = await Promise.all(["A", "B", "C"].map(makeAccount));
     pass("three real authenticated development accounts and profiles created");
@@ -198,8 +228,73 @@ async function run() {
     assert.equal((await pending(c.api, "receiver_id", c.id)).filter((row) => row.id === afterUnblock.id).length, 1);
     ok(await c.api.rpc("respond_to_friend_request", { request_id: afterUnblock.id, next_status: "declined" }), "C declines post-unblock request");
     pass("unblock restores connection eligibility");
+    if (!(await friends(a.api, a.id, b.id)).length) {
+      const request = ok(await a.api.rpc("send_friend_request", { target_user_id: b.id }), "friendship for chat");
+      ok(await b.api.rpc("respond_to_friend_request", { request_id: request.id, next_status: "accepted" }), "accept for chat");
+    }
+    const chat = ok(await a.api.rpc("get_or_create_dm", { target_user_id: b.id }), "create secured DM");
+    conversationIds.push(chat);
+    assert.equal(ok(await b.api.rpc("get_or_create_dm", { target_user_id: a.id }), "reuse secured DM"), chat);
+    denied(await c.api.rpc("get_or_create_dm", { target_user_id: a.id }), "non-friend cannot create a DM");
+    denied(await c.api.from("conversation_participants").insert({ conversation_id: chat, user_id: c.id }), "outsider cannot self-enrol");
+    assert.equal(ok(await c.api.from("conversation_participants").select("*").eq("conversation_id", chat), "outsider roster read").length, 0);
+    const message = ok(await a.api.from("messages").insert({
+      conversation_id: chat, sender_id: a.id, content: "Isolated chat verification", type: "text",
+    }).select().single(), "send persisted message");
+    const read = ok(await b.api.from("messages").select("*,message_reactions(*)").eq("id", message.id), "recipient message read");
+    assert.equal(read[0]?.content, "Isolated chat verification");
+    assert.equal(ok(await c.api.from("messages").select("id").eq("id", message.id), "outsider message read").length, 0);
+    denied(await b.api.from("messages").update({ sender_id: b.id }).eq("id", message.id), "message identity is immutable");
+    ok(await b.api.from("message_reactions").insert({ message_id: message.id, user_id: b.id, reaction_type: "amen" }), "recipient reaction");
+    ok(await a.api.rpc("block_user", { target_user_id: b.id }), "block chat");
+    denied(await b.api.from("messages").insert({ conversation_id: chat, sender_id: b.id, content: "Blocked", type: "text" }), "blocked sender denied by database");
+    ok(await a.api.rpc("unblock_user", { target_user_id: b.id }), "unblock chat");
+    // Blocking may end friendship; do not silently recreate it for the test.
+    ok(await admin.from("messages").update({ created_at: new Date(Date.now()-16*60000).toISOString() }).eq("id", message.id), "age message fixture");
+    denied(await a.api.from("messages").update({ deleted_for_everyone: true }).eq("id", message.id), "database enforces delete deadline");
+    pass("secured DM creation, persisted message read, reactions, outsider denial and block/time enforcement");
+
+    const community = ok(await a.api.rpc("create_prayer_community", {
+      community_name: `Repair test ${suffix}`, community_description: "Isolated description",
+      community_location: "Test location", community_denomination: "Test denomination",
+    }), "persist community");
+    communityIds.push(community);
+    ok(await b.api.rpc("join_prayer_community", { community }), "join public community");
+    ok(await b.api.rpc("join_prayer_community", { community }), "idempotent join");
+    const own = ok(await a.api.rpc("get_my_communities"), "owner membership reload").find((row) => row.id === community);
+    assert.equal(own?.member_count, 2);
+    assert.equal(own?.description, "Isolated description");
+    assert.equal(own?.location, "Test location");
+    assert.ok(ok(await b.api.rpc("get_my_communities"), "member membership reload").some((row) => row.id === community));
+    denied(await c.api.from("community_members").insert({ community_id: community, user_id: c.id, role: "owner" }), "ownership cannot be forged");
+    ok(await admin.from("communities").update({ is_private: true }).eq("id", community), "private fixture");
+    denied(await c.api.rpc("join_prayer_community", { community }), "private join requires invitation");
+    assert.equal(ok(await c.api.from("communities").select("id").eq("id", community), "private catalogue query").length, 0);
+    pass("community creation/details, durable owner/member reload, idempotent counts and private/ownership protection");
+
+    const received = ok(await a.api.from("prayer_requests").insert({
+      author_id: a.id, content: "Isolated received prayer verification", is_anonymous: true, audience: "everyone",
+    }).select("id").single(), "received prayer fixture");
+    postIds.push(received.id);
+    const details = ok(await b.api.rpc("get_received_prayer_details", { prayer_id: received.id }), "received details");
+    assert.equal(details?.content, "Isolated received prayer verification");
+    assert.equal(details?.senderName, "Anonymous");
+    assert.equal(details?.senderId, "");
+    pass("received prayer uses real content without returning anonymous sender identity");
+    if (process.argv.includes("--keep-ui-fixtures")) {
+      if (!(await friends(a.api, a.id, b.id)).length) {
+        const request = ok(await a.api.rpc("send_friend_request", { target_user_id: b.id }), "restore fixture friendship for browser");
+        ok(await b.api.rpc("respond_to_friend_request", { request_id: request.id, next_status: "accepted" }), "accept fixture friendship for browser");
+      }
+      await writeFile(fixturePath, JSON.stringify({
+        accounts: [a,b,c].map(({ id,email,password }) => ({ id,email,password })),
+        postIds, conversationIds, communityIds, receivedPrayerId: received.id,
+      }), { mode: 0o600 });
+      keep = true;
+      pass("isolated UI fixtures saved securely for the single browser pass");
+    }
   } finally {
-    await cleanup();
+    if (!keep) await cleanup();
   }
 }
 

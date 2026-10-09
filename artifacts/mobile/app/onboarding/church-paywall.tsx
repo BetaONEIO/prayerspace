@@ -29,6 +29,8 @@ import * as Haptics from "expo-haptics";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useOfferings, usePurchasePackage, useRestorePurchases } from "@/hooks/usePurchases";
+import { communityTier } from "@/lib/billingEntitlements";
+import { verifiedCommunityAccess } from "@/lib/verifiedCommunityAccess";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
 import { PurchasesPackage } from "react-native-purchases";
 
@@ -143,20 +145,20 @@ export default function ChurchPaywall() {
   const toggleLeft = slideAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "50%"] });
 
   const getPackage = (pkgId: string): PurchasesPackage | undefined => {
-    const churchOffering = offerings?.all?.["church"] ?? offerings?.current;
+    const churchOffering = offerings?.all?.["church"];
     return churchOffering?.availablePackages?.find((p) => p.identifier === pkgId);
   };
 
   const getPriceDisplay = (tier: ChurchTier) => {
     if (billing === "monthly") {
       const pkg = getPackage(tier.id);
-      const price = pkg?.product?.priceString ?? tier.monthlyFallback;
-      return { main: price, period: "/mo", sub: null };
+      return { main: pkg?.product.priceString ?? "Not available", period: pkg ? "/mo" : "", sub: null };
     } else {
       const pkg = getPackage(tier.yearlyId);
-      const price = pkg?.product?.priceString ?? tier.yearlyFallback;
-      const equiv = formatMonthlyEquiv(pkg, tier.yearlyMonthlyEquivFallback);
-      return { main: equiv.replace("/mo", ""), period: "/mo", sub: `${price} billed yearly` };
+      if (!pkg) return { main: "Not available", period: "", sub: null };
+      const price = pkg.product.priceString;
+      const equiv = new Intl.NumberFormat(undefined, { style: "currency", currency: pkg.product.currencyCode }).format(pkg.product.price / 12);
+      return { main: equiv, period: "/mo", sub: `${price} billed yearly` };
     }
   };
 
@@ -180,15 +182,17 @@ export default function ChurchPaywall() {
 
     const pkg = getPackage(tierId);
     if (!pkg) {
-      console.log(`[ChurchPaywall] No package for ${tierId} — proceeding without purchase.`);
-      completeOnboarding(tierId);
+      Alert.alert("Plan unavailable", "This plan cannot be purchased right now. Please retry or choose the free plan.");
       setPurchasingTier(null);
       return;
     }
 
     try {
-      await purchaseMutation.mutateAsync(pkg);
-      completeOnboarding(tierId);
+      const info = await purchaseMutation.mutateAsync(pkg);
+      const verifiedTier = communityTier(info);
+      if (!verifiedTier) throw new Error("An active community subscription could not be confirmed.");
+      if (!await verifiedCommunityAccess()) throw new Error("Your subscription is not confirmed yet. Try Restore Purchases in a moment.");
+      completeOnboarding(verifiedTier);
     } catch (err: unknown) {
       const error = err as { userCancelled?: boolean; message?: string };
       if (!error?.userCancelled) {
@@ -203,8 +207,15 @@ export default function ChurchPaywall() {
   const handleRestore = async () => {
     if (purchasingTier) return;
     try {
-      await restoreMutation.mutateAsync();
-      churchMembershipStore.setOwner(null, "restored");
+      const info = await restoreMutation.mutateAsync();
+      const tier = communityTier(info);
+      if (!tier) {
+        churchMembershipStore.downgrade();
+        Alert.alert("Nothing to restore", "No active community subscription was found for this account.");
+        return;
+      }
+      if (!await verifiedCommunityAccess()) throw new Error("Your community subscription could not be verified yet. Please retry.");
+      churchMembershipStore.setOwner(null, tier);
       router.push("/onboarding/plus-welcome" as never);
     } catch {
       Alert.alert("Nothing to restore", "No previous purchase found for this account.");
@@ -434,7 +445,7 @@ export default function ChurchPaywall() {
                         />
                       </View>
                       <Text style={[styles.trialNote, isPopular && styles.trialNotePopular]}>
-                        7-day free trial · Cancel anytime
+                        Store terms apply · Cancel anytime
                       </Text>
                     </>
                   )}

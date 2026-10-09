@@ -8,3 +8,20 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type GetCommunityAccessParams = {
+  entitlement?: GetCommunityAccessEntitlement;
+  communityId?: string;
+};
+
+export type GetCommunityAccessEntitlement =
+  (typeof GetCommunityAccessEntitlement)[keyof typeof GetCommunityAccessEntitlement];
+
+export const GetCommunityAccessEntitlement = {
+  premium: "premium",
+  premium_community: "premium_community",
+} as const;
+
+export type GetCommunityAccess200 = {
+  active: boolean;
+};

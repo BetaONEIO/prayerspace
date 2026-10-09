@@ -1,47 +1,33 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import Purchases, { PurchasesOfferings, PurchasesPackage } from "react-native-purchases";
+import Purchases, { type PurchasesOfferings, type PurchasesPackage } from "react-native-purchases";
+import { useSubscription } from "@/lib/revenuecat";
 
 export function useOfferings() {
+  const { identityReady } = useSubscription();
   return useQuery<PurchasesOfferings>({
-    queryKey: ["rc-offerings"],
-    queryFn: async () => {
-      console.log("[RevenueCat] Fetching offerings...");
-      const offerings = await Purchases.getOfferings();
-      console.log("[RevenueCat] Offerings fetched:", JSON.stringify(offerings?.current?.availablePackages?.map(p => p.identifier)));
-      return offerings;
-    },
-    staleTime: 1000 * 60 * 5,
+    queryKey: ["revenuecat", "offerings"],
+    queryFn: () => Purchases.getOfferings(),
+    staleTime: 5 * 60 * 1000,
+    enabled: identityReady,
   });
 }
 
 export function usePurchasePackage() {
-  return useMutation({
-    mutationFn: async (pkg: PurchasesPackage) => {
-      console.log("[RevenueCat] Purchasing package:", pkg.identifier);
-      const { customerInfo } = await Purchases.purchasePackage(pkg);
-      console.log("[RevenueCat] Purchase complete. Active entitlements:", Object.keys(customerInfo.entitlements.active));
-      return customerInfo;
-    },
-  });
+  const { purchase } = useSubscription();
+  return useMutation({ mutationFn: (pkg: PurchasesPackage) => purchase(pkg) });
 }
 
 export function useRestorePurchases() {
-  return useMutation({
-    mutationFn: async () => {
-      console.log("[RevenueCat] Restoring purchases...");
-      const customerInfo = await Purchases.restorePurchases();
-      console.log("[RevenueCat] Restore complete. Active entitlements:", Object.keys(customerInfo.entitlements.active));
-      return customerInfo;
-    },
-  });
+  const { restore } = useSubscription();
+  return useMutation({ mutationFn: () => restore() });
 }
 
 export function useCustomerInfo() {
+  const { identityReady, userId } = useSubscription();
   return useQuery({
-    queryKey: ["rc-customer-info"],
-    queryFn: async () => {
-      const info = await Purchases.getCustomerInfo();
-      return info;
-    },
+    queryKey: ["revenuecat", "customer-info", userId],
+    queryFn: () => Purchases.getCustomerInfo(),
+    enabled: identityReady,
+    staleTime: 60000,
   });
 }

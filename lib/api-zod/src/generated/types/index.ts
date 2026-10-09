@@ -6,4 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./getCommunityAccess200";
+export * from "./getCommunityAccessEntitlement";
+export * from "./getCommunityAccessParams";
 export * from "./healthStatus";

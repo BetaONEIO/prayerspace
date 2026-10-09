@@ -1,6 +1,11 @@
 import { useEffect } from "react";
 import { useChurchMembership, churchMembershipStore } from "@/lib/churchMembershipStore";
 import { useCustomerInfo } from "@/hooks/usePurchases";
+import { communityTier } from "@/lib/billingEntitlements";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/providers/AuthProvider";
+import { useCommunityStore } from "@/lib/communityStore";
+import { verifiedCommunityAccess } from "@/lib/verifiedCommunityAccess";
 
 export const CHURCH_TIER_LABELS: Record<string, string> = {
   church_small: "Small Community Plan",
@@ -40,6 +45,18 @@ export interface ChurchEntitlements {
 export function useChurchEntitlements(): ChurchEntitlements {
   const church = useChurchMembership();
   const { data: customerInfo } = useCustomerInfo();
+  const { user } = useAuth();
+  const communities = useCommunityStore();
+  const ownedCommunity = communities.find((c) => c.isOwned);
+  const community = ownedCommunity ?? communities[0];
+  const verifiedAccess = useQuery({
+    queryKey: ["verified-community-access", user?.id, community?.id],
+    queryFn: () => verifiedCommunityAccess(community?.id),
+    enabled: !!user && church.isChurchMember,
+    staleTime: 0,
+    refetchInterval: 60000,
+    retry: 1,
+  });
 
   const isOwner = church.role === "owner";
   const isMember = church.role === "member";
@@ -50,12 +67,7 @@ export function useChurchEntitlements(): ChurchEntitlements {
     if (!isOwner || !customerInfo) return;
     if (!church.isPremium) return; // already downgraded
 
-    const activeKeys = Object.keys(customerInfo.entitlements?.active ?? {});
-    if (activeKeys.length === 0) return; // RC returned empty — might be loading, don't downgrade
-
-    const hasChurchEntitlement = activeKeys.some(
-      (k) => k.toLowerCase().includes("church") || k.toLowerCase().includes("community")
-    );
+    const hasChurchEntitlement = communityTier(customerInfo) !== null;
 
     if (!hasChurchEntitlement) {
       console.log("[ChurchEntitlements] No active church entitlement found in RC — downgrading.");
@@ -63,7 +75,8 @@ export function useChurchEntitlements(): ChurchEntitlements {
     }
   }, [customerInfo, isOwner, church.isPremium]);
 
-  const isPremiumCommunity = church.isPremium;
+  const isPremiumCommunity = verifiedAccess.data === true && !verifiedAccess.isError &&
+    (isMember || (isOwner && communityTier(customerInfo) !== null));
   const hasPersonalPro = isOwner && isPremiumCommunity;
   const hasCommunityFeatures = church.isChurchMember && isPremiumCommunity;
 

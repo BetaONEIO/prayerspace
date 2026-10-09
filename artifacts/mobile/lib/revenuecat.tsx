@@ -1,8 +1,14 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import Purchases from "react-native-purchases";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
+import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "./supabase";
+import { churchMembershipStore } from "./churchMembershipStore";
+import { communityStore } from "./communityStore";
+
+let identityQueue: Promise<unknown> = Promise.resolve();
 
 const REVENUECAT_TEST_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY;
 const REVENUECAT_IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY;
@@ -33,36 +39,91 @@ export function initializeRevenueCat() {
 }
 
 function useSubscriptionContext() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+  const queryClient = useQueryClient();
+  const [readyUserId, setReadyUserId] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    setReadyUserId(null);
+    churchMembershipStore.clearMember();
+    communityStore.clear();
+    if (userId) {
+      void communityStore.reload(userId).then((communities) => {
+        if (!active) return;
+        const owned = communities.find((c) => c.isOwned);
+        if (owned) churchMembershipStore.setOwner(owned.name, "church_free");
+        else if (communities[0]) churchMembershipStore.setMember(communities[0].name);
+      }).catch(() => console.error("[Community] Could not restore memberships. Please retry."));
+    }
+    identityQueue = identityQueue.catch(() => undefined).then(async () => {
+      const appUserId = await Purchases.getAppUserID();
+      if (userId && appUserId !== userId) await Purchases.logIn(userId);
+      if (!userId && !appUserId.startsWith("$RCAnonymousID:")) await Purchases.logOut();
+      if (active) {
+        setReadyUserId(userId);
+      }
+    }).catch(() => {
+      if (active) setReadyUserId(null);
+      console.error("[RevenueCat] Could not connect purchases to this account.");
+    });
+    return () => { active = false; };
+  }, [userId]);
+  const identityReady = !!userId && readyUserId === userId;
+  const customerKey = ["revenuecat", "customer-info", userId];
   const customerInfoQuery = useQuery({
-    queryKey: ["revenuecat", "customer-info"],
+    queryKey: customerKey,
     queryFn: () => Purchases.getCustomerInfo(),
     staleTime: 60 * 1000,
+    enabled: identityReady,
+    refetchInterval: identityReady ? 60000 : false,
   });
 
   const offeringsQuery = useQuery({
     queryKey: ["revenuecat", "offerings"],
     queryFn: () => Purchases.getOfferings(),
     staleTime: 300 * 1000,
+    enabled: identityReady,
   });
 
+  const checkIdentity = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!identityReady || !userId || session?.user.id !== userId ||
+      await Purchases.getAppUserID() !== userId) {
+      throw new Error("Purchases are not ready for this account. Please sign in again and retry.");
+    }
+  };
   const purchaseMutation = useMutation({
     mutationFn: async (pkg: Parameters<typeof Purchases.purchasePackage>[0]) => {
+      await checkIdentity();
       const { customerInfo } = await Purchases.purchasePackage(pkg);
+      await checkIdentity();
       return customerInfo;
     },
-    onSuccess: () => { void customerInfoQuery.refetch(); },
+    onSuccess: (info) => {
+      queryClient.setQueryData(customerKey, info);
+      void queryClient.invalidateQueries({ queryKey: ["verified-community-access"] });
+    },
   });
 
   const restoreMutation = useMutation({
-    mutationFn: () => Purchases.restorePurchases(),
-    onSuccess: () => { void customerInfoQuery.refetch(); },
+    mutationFn: async () => {
+      await checkIdentity();
+      const info = await Purchases.restorePurchases();
+      await checkIdentity();
+      return info;
+    },
+    onSuccess: (info) => {
+      queryClient.setQueryData(customerKey, info);
+      void queryClient.invalidateQueries({ queryKey: ["verified-community-access"] });
+    },
   });
 
   const isSubscribed =
-    customerInfoQuery.data?.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER] !== undefined;
+    identityReady && customerInfoQuery.data?.entitlements.active?.[REVENUECAT_ENTITLEMENT_IDENTIFIER]?.isActive === true;
 
   return {
-    customerInfo: customerInfoQuery.data,
+    customerInfo: identityReady ? customerInfoQuery.data : undefined,
     offerings: offeringsQuery.data,
     isSubscribed,
     isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
@@ -70,6 +131,8 @@ function useSubscriptionContext() {
     restore: restoreMutation.mutateAsync,
     isPurchasing: purchaseMutation.isPending,
     isRestoring: restoreMutation.isPending,
+    identityReady,
+    userId,
   };
 }
 

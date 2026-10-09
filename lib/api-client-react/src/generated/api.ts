@@ -13,7 +13,11 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  GetCommunityAccess200,
+  GetCommunityAccessParams,
+  HealthStatus,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +96,103 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Verify personal or community subscription access
+ */
+export const getGetCommunityAccessUrl = (params?: GetCommunityAccessParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/community-access?${stringifiedParams}`
+    : `/api/community-access`;
+};
+
+export const getCommunityAccess = async (
+  params?: GetCommunityAccessParams,
+  options?: RequestInit,
+): Promise<GetCommunityAccess200> => {
+  return customFetch<GetCommunityAccess200>(getGetCommunityAccessUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCommunityAccessQueryKey = (
+  params?: GetCommunityAccessParams,
+) => {
+  return [`/api/community-access`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetCommunityAccessQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCommunityAccess>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetCommunityAccessParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCommunityAccess>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCommunityAccessQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCommunityAccess>>
+  > = ({ signal }) => getCommunityAccess(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCommunityAccess>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCommunityAccessQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCommunityAccess>>
+>;
+export type GetCommunityAccessQueryError = ErrorType<void>;
+
+/**
+ * @summary Verify personal or community subscription access
+ */
+
+export function useGetCommunityAccess<
+  TData = Awaited<ReturnType<typeof getCommunityAccess>>,
+  TError = ErrorType<void>,
+>(
+  params?: GetCommunityAccessParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCommunityAccess>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCommunityAccessQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

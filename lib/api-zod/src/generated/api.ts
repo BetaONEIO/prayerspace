@@ -14,3 +14,19 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary Verify personal or community subscription access
+ */
+export const getCommunityAccessQueryEntitlementDefault = `premium_community`;
+
+export const GetCommunityAccessQueryParams = zod.object({
+  entitlement: zod
+    .enum(["premium", "premium_community"])
+    .default(getCommunityAccessQueryEntitlementDefault),
+  communityId: zod.coerce.string().uuid().optional(),
+});
+
+export const GetCommunityAccessResponse = zod.object({
+  active: zod.boolean(),
+});

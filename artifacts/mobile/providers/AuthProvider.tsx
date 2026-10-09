@@ -6,6 +6,8 @@ import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
+import { communityStore } from "@/lib/communityStore";
+import { churchMembershipStore } from "@/lib/churchMembershipStore";
 import { checkRegistrationStorage, loadEmailRegistrationProfile, readOwnRegistrationProfile, writeOwnRegistrationProfile, validateDateOfBirth } from "@/lib/registrationProfile";
 import type { UserProfile } from "@/lib/registrationProfile";
 export type { UserProfile } from "@/lib/registrationProfile";
@@ -27,6 +29,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         setIsInitialized(true);
       }
       if (!s) {
+        communityStore.clear();
+        churchMembershipStore.clearMember();
         queryClient.clear();
         return;
       }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
+import { AppState } from "react-native";
 
 const COLOR_PALETTES: Array<{ accent: string; gradient: [string, string, string] }> = [
   { accent: "#C4521A", gradient: ["#9E3A0E", "#C4521A", "#D96E27"] },
@@ -76,6 +77,15 @@ export function useDiscoverCommunities(searchQuery: string) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refetch = useCallback(() => setRetryCount((n) => n + 1), []);
+  useEffect(() => {
+    const listener = AppState.addEventListener("change", (state) => {
+      if (state === "active") refetch();
+    });
+    const interval = setInterval(() => {
+      if (AppState.currentState === "active") refetch();
+    }, 60000);
+    return () => { listener.remove(); clearInterval(interval); };
+  }, [refetch]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

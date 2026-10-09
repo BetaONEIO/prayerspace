@@ -5,3 +5,4 @@
 - [DOB recovery metadata](dob-recovery-metadata.md) — cached Supabase sessions can recreate removed dates; recover missing DOBs only from the current authenticated server source.
 - [Live billing app identity](live-billing-identity.md) — confirm the actual store listing before changing RevenueCat app identifiers; a connected project may still target a legacy app.
 - [Community catalogue authority](community-catalogue-authority.md) — do not turn unverified local ownership into persisted communities, memberships or paid access.
+- [Base64 byte limits](base64-byte-limits.md) — encoded sizes round up; enforce exact decoded byte limits as well as request-size limits.

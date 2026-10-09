@@ -214,11 +214,11 @@ export default Sentry.wrap(function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SubscriptionProvider>
         <ThemeProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
             <AuthProvider>
+              <SubscriptionProvider>
               <PrayerProvider>
                 <FavouritesProvider>
                   <NotificationsProvider>
@@ -228,11 +228,11 @@ export default Sentry.wrap(function RootLayout() {
                   </NotificationsProvider>
                 </FavouritesProvider>
               </PrayerProvider>
+              </SubscriptionProvider>
             </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </ThemeProvider>
-      </SubscriptionProvider>
     </QueryClientProvider>
   );
 });

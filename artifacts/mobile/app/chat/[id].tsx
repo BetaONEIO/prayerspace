@@ -17,6 +17,7 @@ import {
   Modal,
   Animated,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -265,7 +266,10 @@ export default function ChatScreen() {
       void queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     },
-    onError: (e) => console.error("[Chat] Send error:", e),
+    onError: (e) => {
+      console.error("[Chat] Send error:", e);
+      Alert.alert("Message not sent", e instanceof Error ? e.message : "Please retry.");
+    },
   });
 
   const editMutation = useMutation({
@@ -866,6 +870,17 @@ export default function ChatScreen() {
             <Pressable onPress={() => convQuery.refetch()} style={styles.retryBtn}>
               <Text style={styles.retryBtnText}>Retry</Text>
             </Pressable>
+          </View>
+        ) : messagesQuery.isError ? (
+          <View style={[styles.loadingState, styles.flex]}>
+            <Text style={styles.errorText}>Could not load messages.</Text>
+            <Pressable onPress={() => void messagesQuery.refetch()} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : messagesQuery.isLoading ? (
+          <View style={[styles.loadingState, styles.flex]}>
+            <ActivityIndicator color={colors.primary} />
           </View>
         ) : (
           <FlatList

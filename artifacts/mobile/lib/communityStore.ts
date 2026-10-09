@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
 
 const COLOR_PALETTES: Array<{ accent: string; gradient: [string, string, string] }> = [
   { accent: "#C4521A", gradient: ["#9E3A0E", "#C4521A", "#D96E27"] },
@@ -57,37 +58,59 @@ export const communityStore = {
     return _communities.filter((c) => c.isOwned);
   },
 
-  /**
-   * Called after the owner completes purchase. Creates the community entry
-   * derived from the church name set during onboarding.
-   */
-  addOwnedCommunity(name: string | null, tier: string | null = null): StoredCommunity {
-    const safeName = name?.trim() || "My Church";
-    const hash = hashName(safeName);
-    const palette = COLOR_PALETTES[hash % COLOR_PALETTES.length];
-    const banner = CHURCH_BANNERS[hash % CHURCH_BANNERS.length];
-
-    // Deduplicate — remove any prior entry with the same name
-    _communities = _communities.filter((c) => !(c.isOwned && c.name === safeName));
-
-    const community: StoredCommunity = {
-      id: `owned-${safeName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${hash % 9999}`,
-      name: safeName,
-      memberCount: 1,
-      accentColor: palette.accent,
-      iconLetter: safeName.charAt(0).toUpperCase(),
-      gradientColors: palette.gradient,
-      bannerImage: banner,
-      isOwned: true,
-      isPremium: tier !== "church_free",
-      tier,
-      description: "Your prayer community — invite members to get started.",
-    };
-
-    _communities = [community, ..._communities];
-    console.log("[CommunityStore] Owned community added:", safeName);
+  async reload(expectedUserId?: string): Promise<StoredCommunity[]> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user.id;
+    if (!userId || (expectedUserId && expectedUserId !== userId)) throw new Error("Please sign in to load communities");
+    const { data, error } = await supabase.rpc("get_my_communities");
+    if (error) throw error;
+    const { data: { session: current } } = await supabase.auth.getSession();
+    if (current?.user.id !== userId) throw new Error("The signed-in account changed");
+    _communities = (data ?? []).map((row: {
+      id: string; name: string; description: string | null; member_count: number;
+      owner_id: string | null; is_private: boolean; is_official: boolean;
+      accent_color: string | null; icon_letter: string | null; banner_image: string | null;
+    }) => {
+      const hash = hashName(row.name);
+      const palette = COLOR_PALETTES[hash % COLOR_PALETTES.length];
+      return {
+        id: row.id, name: row.name, description: row.description ?? undefined,
+        memberCount: row.member_count, isOwned: row.owner_id === userId,
+        isPrivate: row.is_private, isOfficial: row.is_official,
+        accentColor: row.accent_color ?? palette.accent,
+        iconLetter: row.icon_letter ?? row.name.charAt(0).toUpperCase(),
+        gradientColors: palette.gradient,
+        bannerImage: row.banner_image ?? CHURCH_BANNERS[hash % CHURCH_BANNERS.length],
+        isPremium: false, tier: "church_free",
+      };
+    });
     notify();
-    return community;
+    return [..._communities];
+  },
+
+  async join(id: string): Promise<void> {
+    const { error } = await supabase.rpc("join_prayer_community", { community: id });
+    if (error) throw error;
+    await communityStore.reload();
+  },
+
+  /**
+   * Creates a real free community after onboarding. Ownership is established
+   * by the authenticated database RPC; local tier values never grant paid access.
+   */
+  async addOwnedCommunity(name: string | null, _tier: string | null = null,
+    details: { description?: string; location?: string; denomination?: string | null } = {}): Promise<StoredCommunity> {
+    const { error, data: id } = await supabase.rpc("create_prayer_community", {
+      community_name: name?.trim() || "My Church",
+      community_description: details.description?.trim() || null,
+      community_location: details.location?.trim() || null,
+      community_denomination: details.denomination ?? null,
+    });
+    if (error) throw error;
+    const rows = await communityStore.reload();
+    const saved = rows.find((row) => row.id === id);
+    if (!saved) throw new Error("Community was saved but could not be reloaded. Please retry.");
+    return saved;
   },
 
   clear() {

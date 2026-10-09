@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import {
+  Alert,
   View,
   Text,
   StyleSheet,
@@ -40,27 +41,40 @@ export default function ChurchDetails() {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [denomination, setDenomination] = useState<string | null>(null);
   const [showDenomModal, setShowDenomModal] = useState(false);
   const isFreePlan = churchMembershipStore.getState().tier === "church_free";
 
-  const canContinue = name.trim().length > 0;
+  const canContinue = name.trim().length > 0 && !saving;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (saving) return;
+    setSaving(true);
     const { tier } = churchMembershipStore.getState();
     const safeName = name.trim() || null;
-    churchMembershipStore.setOwner(safeName, tier);
-    communityStore.addOwnedCommunity(safeName, tier);
-    router.push("/onboarding/church-complete" as never);
+    try {
+      await communityStore.addOwnedCommunity(safeName, tier, { description, location, denomination });
+      churchMembershipStore.setOwner(safeName, tier);
+      router.push("/onboarding/church-complete" as never);
+    } catch (error) {
+      Alert.alert("Community not saved", error instanceof Error ? error.message : "Please try again.");
+    } finally { setSaving(false); }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    if (saving) return;
+    setSaving(true);
     const { tier } = churchMembershipStore.getState();
-    churchMembershipStore.setOwner(null, tier);
-    communityStore.addOwnedCommunity(null, tier);
-    router.push("/onboarding/church-complete" as never);
+    try {
+      await communityStore.addOwnedCommunity(null, tier);
+      churchMembershipStore.setOwner(null, tier);
+      router.push("/onboarding/church-complete" as never);
+    } catch (error) {
+      Alert.alert("Community not saved", error instanceof Error ? error.message : "Please try again.");
+    } finally { setSaving(false); }
   };
 
   return (

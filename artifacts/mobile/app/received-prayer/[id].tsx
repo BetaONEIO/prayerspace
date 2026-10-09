@@ -8,6 +8,7 @@ import {
   Animated,
   Platform,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
@@ -32,6 +33,9 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { scheduleReceivedPrayerReminders, shouldShowReminderBadge } from "@/lib/prayerReminders";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/providers/AuthProvider";
 
 type ReceivedPrayer = {
   id: string;
@@ -74,7 +78,17 @@ export default function ReceivedPrayerScreen() {
 
   // Received requests are loaded by the feed when the backend data is available.
   // Never render a local/demo request when a route is opened directly.
-  const prayer = useMemo<ReceivedPrayer | null>(() => null, [id]);
+  const { user } = useAuth();
+  const prayerQuery = useQuery<ReceivedPrayer | null>({
+    queryKey: ["received-prayer", user?.id, id],
+    enabled: !!user && !!id,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_received_prayer_details", { prayer_id: id });
+      if (error) throw error;
+      return data as ReceivedPrayer | null;
+    },
+  });
+  const prayer = prayerQuery.data ?? null;
 
   useFocusEffect(
     useCallback(() => {
@@ -235,7 +249,18 @@ export default function ReceivedPrayerScreen() {
             </Pressable>
           </View>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Prayer request not found.</Text>
+            {prayerQuery.isLoading ? <ActivityIndicator color={colors.primary} /> : (
+              <>
+                <Text style={styles.emptyText}>
+                  {prayerQuery.isError ? "We couldn't load this prayer request." : "Prayer request not found or you don't have access."}
+                </Text>
+                {prayerQuery.isError && (
+                  <Pressable onPress={() => void prayerQuery.refetch()}>
+                    <Text style={styles.emptyText}>Retry</Text>
+                  </Pressable>
+                )}
+              </>
+            )}
           </View>
         </SafeAreaView>
       </View>
