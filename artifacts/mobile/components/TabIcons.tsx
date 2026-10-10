@@ -1,6 +1,5 @@
 import React from "react";
-import Svg, { Path, Circle, G } from "react-native-svg";
-import { FontAwesome5 } from "@expo/vector-icons";
+import Svg, { Path, Circle } from "react-native-svg";
 
 interface Props {
   color: string;
@@ -34,7 +33,25 @@ export function HomeTabIcon({ color, size = 24 }: Props) {
 }
 
 export function PrayTabIcon({ color, size = 24 }: Props) {
-  return <FontAwesome5 name="praying-hands" size={size} color={color} />;
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Joined fingers, thumbs and wrists, with one shared centre seam. */}
+      <Path
+        d="M12 4C12 2.5 10.4 2.3 9.8 3.8L7.5 10V13L6.5 11.5C5.8 10.4 4.5 11 5 12.3L6.5 16C6.9 17 6.7 17.7 6 18.3L3 20.5L8 22L10.5 19.2C11.5 18.1 12 16.9 12 15.5C12 16.9 12.5 18.1 13.5 19.2L16 22L21 20.5L18 18.3C17.3 17.7 17.1 17 17.5 16L19 12.3C19.5 11 18.2 10.4 17.5 11.5L16.5 13V10L14.2 3.8C13.6 2.3 12 2.5 12 4Z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 4V15.5M7.5 13L9 15M16.5 13L15 15"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
 }
 
 /**
