@@ -2,12 +2,15 @@ import createContextHook from "@nkzw/create-context-hook";
 import { Session } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Platform } from "react-native";
+import { Alert, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { communityStore } from "@/lib/communityStore";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
+import { getLocalDataIdentity, setLocalDataIdentity } from "@/lib/accountLocalData";
+import { groupStore, groupCreatedStore } from "@/lib/groupStore";
+import { synchronizeAccountReminders } from "@/lib/accountReminderNotifications";
 import { checkRegistrationStorage, loadEmailRegistrationProfile, readOwnRegistrationProfile, writeOwnRegistrationProfile, validateDateOfBirth } from "@/lib/registrationProfile";
 import type { UserProfile } from "@/lib/registrationProfile";
 export type { UserProfile } from "@/lib/registrationProfile";
@@ -16,6 +19,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [localDataEpoch, setLocalDataEpoch] = useState(0);
 
   useEffect(() => {
     console.log("[Auth] Checking initial session...");
@@ -23,7 +27,25 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     let oauthProfileTimer: ReturnType<typeof setTimeout> | null = null;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      console.log("[Auth] State changed:", event, s?.user?.email ?? "no user");
+      console.log("[Auth] State changed:", event, s ? "signed in" : "no user");
+      const previousUserId = getLocalDataIdentity().userId;
+      const nextIdentity = setLocalDataIdentity(s?.user.id ?? null);
+      setLocalDataEpoch(nextIdentity.epoch);
+      if (previousUserId !== nextIdentity.userId) {
+        communityStore.clear();
+        churchMembershipStore.clearMember();
+        groupStore.clear();
+        groupCreatedStore.clear();
+        void queryClient.cancelQueries();
+        queryClient.clear();
+      }
+      if (event === "INITIAL_SESSION" || previousUserId !== nextIdentity.userId) {
+        void synchronizeAccountReminders().catch(() => {
+          console.warn("[Auth] Could not pause earlier account reminders.");
+          Alert.alert("Could not pause reminders",
+            "Your device could not remove earlier scheduled reminders. Please turn off Prayer Space notifications in device settings until this is resolved.");
+        });
+      }
       setSession(s);
       if (event === "INITIAL_SESSION") {
         setIsInitialized(true);
@@ -356,6 +378,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     user: session?.user ?? null,
     profile: profileQuery.data ?? null,
     isInitialized,
+    localDataEpoch,
     isProfileLoading: profileQuery.isLoading,
     profileError: profileQuery.error,
     retryProfile: profileQuery.refetch,
@@ -374,6 +397,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     profileQuery.error,
     profileQuery.refetch,
     isInitialized,
+    localDataEpoch,
     signIn,
     signUp,
     verifyRegistration,

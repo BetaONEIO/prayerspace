@@ -51,6 +51,12 @@ function getOrCreate(id: string): GroupState {
 }
 
 export const groupStore = {
+  clear() {
+    _groups.clear();
+    _listeners.forEach((listeners, id) => {
+      listeners.forEach(fn => fn(makeDefault(id)));
+    });
+  },
   get(id: string): GroupState {
     return getOrCreate(id);
   },
@@ -97,6 +103,10 @@ let _createdSnapshot: CreatedGroupPayload[] = [];
 const _createdSubscribers = new Set<CreatedListener>();
 
 export const groupCreatedStore = {
+  clear() {
+    _createdSnapshot = [];
+    _createdSubscribers.forEach(fn => fn());
+  },
   /**
    * useSyncExternalStore-compatible subscribe.
    * Returns an unsubscribe function.

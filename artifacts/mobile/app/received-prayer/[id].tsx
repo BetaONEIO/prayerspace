@@ -190,8 +190,9 @@ export default function ReceivedPrayerScreen() {
     if (id) {
       markRequestPrayed(id);
     }
-    if (prayer?.hasPrayerDate && prayer.eventDate) {
+    if (user?.id && prayer?.hasPrayerDate && prayer.eventDate) {
       void scheduleReceivedPrayerReminders({
+        userId: user.id,
         prayerRequestId: prayer.id,
         senderName: prayer.senderName,
         snippet: prayer.content,

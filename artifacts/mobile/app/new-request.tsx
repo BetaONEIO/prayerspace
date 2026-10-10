@@ -171,6 +171,7 @@ export default function NewRequestScreen() {
     }
     if (eventDate) {
       void scheduleOwnPrayerReminders({
+        userId: user.id,
         prayerRequestId: prayerRequest.id,
         snippet: content.trim(),
         eventDate,

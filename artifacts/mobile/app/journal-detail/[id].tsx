@@ -228,6 +228,7 @@ export default function JournalDetailScreen() {
       frequency: selectedFrequency,
       existingNotificationIds: existingReminder?.notificationIds,
     });
+    if (notifIds === null) return;
     setReminder({
       entryId: id,
       hour: selectedHour,

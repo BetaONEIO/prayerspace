@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import { getLocalDataIdentity } from "./accountLocalData";
+import { scheduleAccountReminder } from "./accountReminderNotifications";
 
 type Frequency = "everyday" | "weekdays" | "weekends" | "once";
 
@@ -30,7 +32,9 @@ export async function scheduleJournalReminder(params: {
   minute: number;
   frequency: Frequency;
   existingNotificationIds?: string[];
-}): Promise<string[]> {
+}): Promise<string[] | null> {
+  const owner = { ...getLocalDataIdentity() };
+  if (!owner.userId) return null;
   if (!isNotificationsAvailable()) return [];
   try {
     const Notifications = await getNotifications();
@@ -63,7 +67,7 @@ export async function scheduleJournalReminder(params: {
     const ids: string[] = [];
 
     if (params.frequency === "everyday") {
-      const id = await Notifications.scheduleNotificationAsync({
+      const id = await scheduleAccountReminder(owner, {
         content,
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -72,22 +76,24 @@ export async function scheduleJournalReminder(params: {
           repeats: true,
         },
       });
+      if (!id) return null;
       ids.push(id);
     } else if (params.frequency === "once") {
       const target = new Date();
       target.setHours(params.hour, params.minute, 0, 0);
       if (target <= new Date()) target.setDate(target.getDate() + 1);
-      const id = await Notifications.scheduleNotificationAsync({
+      const id = await scheduleAccountReminder(owner, {
         content,
         trigger: {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: target,
         },
       });
+      if (!id) return null;
       ids.push(id);
     } else if (params.frequency === "weekdays") {
       for (const weekday of [2, 3, 4, 5, 6] as const) {
-        const id = await Notifications.scheduleNotificationAsync({
+        const id = await scheduleAccountReminder(owner, {
           content,
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -97,11 +103,12 @@ export async function scheduleJournalReminder(params: {
             repeats: true,
           },
         });
+        if (!id) return null;
         ids.push(id);
       }
     } else if (params.frequency === "weekends") {
       for (const weekday of [1, 7] as const) {
-        const id = await Notifications.scheduleNotificationAsync({
+        const id = await scheduleAccountReminder(owner, {
           content,
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -111,11 +118,12 @@ export async function scheduleJournalReminder(params: {
             repeats: true,
           },
         });
+        if (!id) return null;
         ids.push(id);
       }
     }
 
-    console.log("[JournalNotifications] Scheduled", ids.length, "notification(s) for:", params.entryTitle);
+    console.log("[JournalNotifications] Scheduled", ids.length, "notification(s)");
     return ids;
   } catch (e) {
     console.log("[JournalNotifications] Scheduling failed:", e);

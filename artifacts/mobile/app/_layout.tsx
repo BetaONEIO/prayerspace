@@ -8,8 +8,8 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { AuthProvider, useAuth } from "@/providers/AuthProvider";
 import { GuidedTourProvider, useGuidedTour } from "@/providers/GuidedTourProvider";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { PrayerProvider } from "@/providers/PrayerProvider";
-import { FavouritesProvider } from "@/providers/FavouritesProvider";
+import { PrayerProvider, usePrayer } from "@/providers/PrayerProvider";
+import { FavouritesProvider, useFavourites } from "@/providers/FavouritesProvider";
 import { NotificationsProvider } from "@/providers/NotificationsProvider";
 import { SelectedRecipientsProvider } from "@/providers/SelectedRecipientsProvider";
 import { ThemeProvider, useThemeColors } from "@/providers/ThemeProvider";
@@ -120,20 +120,33 @@ function RootLayoutNav() {
   const { session, isProfileLoading, profileError, retryProfile, signOut } = useAuth();
   const colors = useThemeColors();
   const segments = useSegments();
+  const prayerData = usePrayer();
+  const favouritesData = useFavourites();
+  const localDataLoading = prayerData.isLoading || favouritesData.isLoading;
+  const localDataError = prayerData.loadError || favouritesData.loadError;
   // Verification handles its own save error. Keep the navigator mounted but
   // prevent interaction elsewhere while the required profile cannot load.
   const profileBlocked = session && segments[0] !== "verify-otp" &&
-    (isProfileLoading || profileError);
+    (isProfileLoading || profileError || localDataLoading || localDataError);
   const profileGate = (
     <Modal visible={!!profileBlocked} animationType="none" onRequestClose={() => {}}>
       <View style={[profileGateStyles.container, { backgroundColor: colors.background }]}>
-        {isProfileLoading ? <ActivityIndicator color={colors.primary} /> : (
+        {isProfileLoading || localDataLoading ? <ActivityIndicator color={colors.primary} /> : (
           <>
-            <Text style={[profileGateStyles.title, { color: colors.foreground }]}>Profile Could Not Load</Text>
-            <Text style={[profileGateStyles.message, { color: colors.mutedForeground }]}>
-              {profileError?.message ?? "Your required profile could not be loaded. Please try again."}
+            <Text style={[profileGateStyles.title, { color: colors.foreground }]}>
+              {localDataError ? "Your Data Could Not Load" : "Profile Could Not Load"}
             </Text>
-            <Pressable onPress={() => void retryProfile()} accessibilityRole="button"
+            <Text style={[profileGateStyles.message, { color: colors.mutedForeground }]}>
+              {localDataError
+                ? "Your saved records could not be read safely. Please retry. No saved records have been replaced."
+                : profileError?.message ?? "Your required profile could not be loaded. Please try again."}
+            </Text>
+            <Pressable onPress={() => {
+              if (localDataError) {
+                void prayerData.retryLocalData();
+                void favouritesData.retryLocalData();
+              } else void retryProfile();
+            }} accessibilityRole="button"
               style={[profileGateStyles.button, { backgroundColor: colors.primary }]}>
               <Text style={{ color: colors.primaryForeground }}>Retry</Text>
             </Pressable>
@@ -196,6 +209,30 @@ const profileGateStyles = StyleSheet.create({
   button: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 18 },
 });
 
+function AccountProviders() {
+  const { localDataEpoch } = useAuth();
+  // Reset private providers and screens together, not one effect after render.
+  return (
+    <React.Fragment key={localDataEpoch}>
+      <SubscriptionProvider>
+        <PrayerProvider>
+          <FavouritesProvider>
+            <NotificationsProvider>
+              <SelectedRecipientsProvider>
+                <SafeAreaProvider>
+                  <GuidedTourProvider>
+                    <RootLayoutNav />
+                  </GuidedTourProvider>
+                </SafeAreaProvider>
+              </SelectedRecipientsProvider>
+            </NotificationsProvider>
+          </FavouritesProvider>
+        </PrayerProvider>
+      </SubscriptionProvider>
+    </React.Fragment>
+  );
+}
+
 export default Sentry.wrap(function RootLayout() {
   useEffect(() => {
     try {
@@ -218,21 +255,7 @@ export default Sentry.wrap(function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
             <AuthProvider>
-              <SubscriptionProvider>
-              <PrayerProvider>
-                <FavouritesProvider>
-                  <NotificationsProvider>
-                    <SelectedRecipientsProvider>
-                      <SafeAreaProvider>
-                        <GuidedTourProvider>
-                          <RootLayoutNav />
-                        </GuidedTourProvider>
-                      </SafeAreaProvider>
-                    </SelectedRecipientsProvider>
-                  </NotificationsProvider>
-                </FavouritesProvider>
-              </PrayerProvider>
-              </SubscriptionProvider>
+              <AccountProviders />
             </AuthProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

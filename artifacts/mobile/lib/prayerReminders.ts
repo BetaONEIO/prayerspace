@@ -1,5 +1,7 @@
 import { isDatePassed, reminderDateFor, daysUntil } from "./prayerDateUtils";
 import { SchedulableTriggerInputTypes } from "expo-notifications";
+import { getLocalDataIdentity } from "./accountLocalData";
+import { scheduleAccountReminder } from "./accountReminderNotifications";
 
 export interface ScheduledReminder {
   prayerRequestId: string;
@@ -10,6 +12,7 @@ export interface ScheduledReminder {
 }
 
 export interface PrayerReminderPayload {
+  userId: string;
   prayerRequestId: string;
   senderName: string;
   snippet: string;
@@ -53,7 +56,7 @@ export function buildReminderPayload(
 }
 
 function notifIdFor(prayerRequestId: string, type: "day_before" | "day_of"): string {
-  return `prayer_reminder_${prayerRequestId}_${type}`;
+  return `prayer_reminder_${encodeURIComponent(getLocalDataIdentity().userId ?? "signed-out")}_${prayerRequestId}_${type}`;
 }
 
 function triggerAt9am(isoDate: string): Date {
@@ -65,6 +68,8 @@ function triggerAt9am(isoDate: string): Date {
 export async function scheduleReceivedPrayerReminders(
   payload: PrayerReminderPayload
 ): Promise<void> {
+  const owner = { ...getLocalDataIdentity() };
+  if (!owner.userId || owner.userId !== payload.userId) return;
   let Notifications: typeof import("expo-notifications") | null = null;
   try {
     Notifications = await import("expo-notifications");
@@ -97,7 +102,7 @@ export async function scheduleReceivedPrayerReminders(
   if (days >= 2 && dayBeforeDate) {
     const triggerDate = triggerAt9am(dayBeforeDate);
     if (triggerDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAccountReminder(owner, {
         identifier: notifIdFor(prayerRequestId, "day_before"),
         content: {
           title: `Tomorrow is the day for ${firstName}`,
@@ -112,7 +117,7 @@ export async function scheduleReceivedPrayerReminders(
   if (days === 1) {
     const triggerDate = triggerAt9am(eventDate);
     if (triggerDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAccountReminder(owner, {
         identifier: notifIdFor(prayerRequestId, "day_before"),
         content: {
           title: `Tomorrow is ${firstName}'s big day`,
@@ -127,7 +132,7 @@ export async function scheduleReceivedPrayerReminders(
   if (days >= 1) {
     const triggerDate = triggerAt9am(dayOfDate);
     if (triggerDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAccountReminder(owner, {
         identifier: notifIdFor(prayerRequestId, "day_of"),
         content: {
           title: `Today is the day for ${firstName} 🙏`,
@@ -140,7 +145,7 @@ export async function scheduleReceivedPrayerReminders(
   }
 
   if (days === 0) {
-    await Notifications.scheduleNotificationAsync({
+    await scheduleAccountReminder(owner, {
       identifier: notifIdFor(prayerRequestId, "day_of"),
       content: {
         title: `Pray for ${firstName} today 🙏`,
@@ -153,6 +158,7 @@ export async function scheduleReceivedPrayerReminders(
 }
 
 export interface OwnPrayerReminderPayload {
+  userId: string;
   prayerRequestId: string;
   snippet: string;
   eventDate: string;
@@ -161,6 +167,8 @@ export interface OwnPrayerReminderPayload {
 export async function scheduleOwnPrayerReminders(
   payload: OwnPrayerReminderPayload
 ): Promise<void> {
+  const owner = { ...getLocalDataIdentity() };
+  if (!owner.userId || owner.userId !== payload.userId) return;
   let Notifications: typeof import("expo-notifications") | null = null;
   try {
     Notifications = await import("expo-notifications");
@@ -192,7 +200,7 @@ export async function scheduleOwnPrayerReminders(
   if (days >= 2 && dayBeforeDate) {
     const triggerDate = triggerAt9am(dayBeforeDate);
     if (triggerDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAccountReminder(owner, {
         identifier: notifIdFor(prayerRequestId, "day_before"),
         content: {
           title: "Your prayer date is tomorrow 🙏",
@@ -205,7 +213,7 @@ export async function scheduleOwnPrayerReminders(
   }
 
   if (days === 1) {
-    await Notifications.scheduleNotificationAsync({
+    await scheduleAccountReminder(owner, {
       identifier: notifIdFor(prayerRequestId, "day_before"),
       content: {
         title: "Tomorrow is your prayer date",
@@ -219,7 +227,7 @@ export async function scheduleOwnPrayerReminders(
   if (days >= 1) {
     const triggerDate = triggerAt9am(eventDate);
     if (triggerDate > new Date()) {
-      await Notifications.scheduleNotificationAsync({
+      await scheduleAccountReminder(owner, {
         identifier: notifIdFor(prayerRequestId, "day_of"),
         content: {
           title: "Today is the day 🙏",
@@ -232,7 +240,7 @@ export async function scheduleOwnPrayerReminders(
   }
 
   if (days === 0) {
-    await Notifications.scheduleNotificationAsync({
+    await scheduleAccountReminder(owner, {
       identifier: notifIdFor(prayerRequestId, "day_of"),
       content: {
         title: "Today is the day — keep praying 🙏",
