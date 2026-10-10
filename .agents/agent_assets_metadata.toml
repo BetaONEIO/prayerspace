@@ -11,3 +11,18 @@ id = "8MApNXnAlu8Hw_F6ftD_g"
 uri = "file://attached_assets/generated_images/anon_avatar.png"
 type = "image"
 title = "Anonymous user avatar"
+logical_id = "7df37b64-296f-4de6-8646-fe48256495cc"
+
+[[outputs]]
+id = "-cDv2VaHcBth15bAtNMl-"
+uri = "file://docs/prayer-space-app-store-readiness.html"
+type = "html"
+title = "Prayer Space — App Store Readiness Audit"
+description = "Detailed audit with 12 priority findings, test results, source references and the required release checklist."
+logical_id = "733a2ede-19dd-4a35-848e-9807e835ae4e"
+content_hash = "sha256:4e6793b277ca2dc3a8a2b5f32826254125e4e2dd71a3958f7f75fb4e016664a3"
+size = 23448
+mtime_ms = 1791651340168
+storage_uri = "gcs://replit-rams-assets-riker/rams/assets/repl:e13ce523-bfed-4619-8eac-27ed5a9ad22f/733a2ede-19dd-4a35-848e-9807e835ae4e/31f1f6b6-8145-4de9-9248-7a303f647802"
+storage_version_token = "1791651360733093"
+content_type = "text/html"

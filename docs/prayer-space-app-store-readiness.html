@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prayer Space — App Store Readiness Audit</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1f2937;background:#f3f4f6}
+body{margin:0;padding:24px}main{max-width:1000px;margin:auto;background:white;padding:40px;border-radius:12px}
+h1{font-size:32px;margin-bottom:8px}h2{margin-top:36px;font-size:23px}h3{font-size:18px;margin-bottom:8px}
+p,li{line-height:1.6}small,.muted{color:#64748b}.verdict{border-left:5px solid #b42318;background:#fff1f0;padding:16px 20px}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:12px;text-align:left;vertical-align:top;border-bottom:1px solid #e5e7eb}th{background:#f8fafc}
+code{font-size:12px;overflow-wrap:anywhere}a{color:#1d4ed8}.finding{padding:8px 0 18px;border-bottom:1px solid #e5e7eb}
+.badge{font-size:12px;font-weight:700;background:#fee2e2;color:#991b1b;padding:4px 8px;border-radius:4px}
+.high{background:#ffedd5;color:#9a3412}.medium{background:#fef3c7;color:#92400e}
+@media(max-width:600px){body{padding:8px}main{padding:20px}h1{font-size:26px}table{font-size:12px}th,td{padding:7px}}
+@media print{body{padding:0;background:white}main{padding:0;max-width:none}.finding{break-inside:avoid}a{color:inherit}}
+</style>
+</head>
+<body><main>
+<p class="muted">Release readiness review · 10 October 2026 · Prayer Space</p>
+<h1>Not ready for App Store submission</h1>
+<div class="verdict"><strong>Decision: hold submission.</strong><p>There are confirmed functional and privacy defects, likely App Review compliance blockers, unresolved live billing configuration, and missing native release verification. Passing TypeScript and unit tests does not establish that the app is bug-free.</p></div>
+<h2>Scope and limits</h2>
+<p>This review covered mobile configuration and representative code paths for authentication, registration, journal storage, privacy settings, account deletion/export, support, content reporting, group functionality, subscriptions, transcription and diagnostics; a read-only RevenueCat configuration audit; workspace dependency/static/privacy scanners; TypeScript and existing unit tests; unauthenticated API checks; and a fresh public browser journey at 402 × 874.</p>
+<p><strong>No app functionality was changed.</strong> No user accounts were created, no messages or prayers were published, no real purchases were made, and no user records were deleted. This report is not a native binary certification, a legal opinion, a production database audit, or evidence that every screen has been exercised. Previous signed-in tests are historical evidence, not fresh certification of this release.</p>
+<h2>Checks run today</h2>
+<table><thead><tr><th>Check</th><th>Result</th><th>Meaning</th></tr></thead><tbody>
+<tr><td>Mobile TypeScript</td><td>Pass</td><td>Dedicated mobile typecheck completed successfully.</td></tr>
+<tr><td>API TypeScript</td><td>Pass</td><td>API-server typecheck passed during the workspace check.</td></tr>
+<tr><td>Whole-workspace TypeScript</td><td>Fail</td><td>Design sandbox has React ref type incompatibilities in <code>src/components/ui/calendar.tsx:132</code> and <code>spinner.tsx:7</code>. These are not demonstrated mobile runtime crashes, but the root build gate is not clean.</td></tr>
+<tr><td>Existing unit tests</td><td>19 passed; 0 failed</td><td>Covers DOB/profile recovery, entitlement separation/live receipt rules, and five-step tour compatibility. Not broad end-to-end coverage.</td></tr>
+<tr><td>Expo dependency alignment</td><td>Fail</td><td>Eleven package alignment warnings. Particularly <code>expo-clipboard@55.0.13</code> versus SDK 54's expected <code>~8.0.8</code>.</td></tr>
+<tr><td>Public browser journey</td><td>Partial pass; legal-link failure</td><td>Login, registration, forgot-password navigation, and empty registration/reset validation worked. Terms/Privacy taps did not open policies.</td></tr>
+<tr><td>Read-only RevenueCat audit</td><td>Configuration blocker</td><td>Connected iOS app identifier differs from the built app; Apple credential readiness flags are false.</td></tr>
+<tr><td>API health</td><td>200</td><td><code>GET /api/healthz</code> returned <code>{"status":"ok"}</code>.</td></tr>
+<tr><td>Retired bulk deletion</td><td>410</td><td><code>POST /api/admin/delete-users</code> remains unavailable.</td></tr>
+<tr><td>Anonymous transcription/access</td><td>401 / 401</td><td>Unauthenticated calls to <code>/api/transcribe</code> and <code>/api/community-access</code> are rejected.</td></tr>
+<tr><td>Security scanners</td><td>All three completed</td><td>Dependency: 12 critical, 68 high, 45 moderate, 7 low. Static: 2 high, 4 medium. Privacy dataflow scanner: 0 findings. Scanner results require human triage.</td></tr>
+</tbody></table>
+<h2>Priority findings</h2>
+<section class="finding"><h3>1. Private journal data is not isolated by account <span class="badge">Blocker</span></h3>
+<p><strong>Code-confirmed.</strong> Journal, prayers, people, reminders, settings and archives use fixed device-wide AsyncStorage keys and mostly account-independent query keys. Signing out clears query caches but not these stored records or all provider state. A second account on the same installation can load the prior account's private journal and associated data.</p>
+<p><strong>Evidence:</strong> <code>artifacts/mobile/providers/PrayerProvider.tsx:82–89, 122–168, 240–247</code>; <code>providers/AuthProvider.tsx:25–35</code>.</p>
+<p><strong>Required:</strong> Scope storage and caches to the authenticated account, reset provider state on identity changes, and deliberately handle existing unscoped data without assigning it to an arbitrary user. Verify with two accounts and account deletion.</p></section>
+<section class="finding"><h3>2. Abuse reporting does not reach a moderation system <span class="badge">Blocker</span></h3>
+<p><strong>Code-confirmed.</strong> Community reports only log/close the modal; direct-chat reporting displays acknowledgements; group reports show an alert. These paths do not persist or deliver reports. A user is told a report has been received without an actual moderation submission.</p>
+<p><strong>Evidence:</strong> <code>app/(tabs)/community.tsx:808–812, 4046–4051</code>; <code>app/chat/[id].tsx:546–555, 1091</code>; <code>app/group/[id].tsx:493</code>.</p>
+<p><strong>Required:</strong> An authorized persistent reporting endpoint and review queue, failure/retry states, a timely response process, filtering of objectionable content, and verified blocking. Apple guideline 1.2 applies to user-generated content.</p></section>
+<section class="finding"><h3>3. Account deletion stops at a flag <span class="badge">Blocker pending fulfilment evidence</span></h3>
+<p><strong>Code-confirmed implementation gap.</strong> Delete Account updates <code>deletion_requested_at</code> and signs out. No production deletion worker or fulfilment mechanism was found in the reviewed repository. The UI promises deletion of the account and associated data within 30 days.</p>
+<p><strong>Evidence:</strong> <code>providers/AuthProvider.tsx:339–352</code>; <code>app/data-backup.tsx:36–46, 116–117</code>.</p>
+<p><strong>Required:</strong> Verify any external deletion process, or implement a secure, auditable process that removes the auth identity, applicable database/storage records and device data, subject to lawful retention. Apple's requirement is actual deletion, not just account deactivation. A time-bounded processing workflow can be valid, but it must exist and work.</p></section>
+<section class="finding"><h3>4. Registration policies cannot be opened <span class="badge">Blocker</span></h3>
+<p><strong>Browser-confirmed and code-confirmed.</strong> Terms of Service and Privacy Policy are styled text within a Pressable that toggles agreement. Tapping either toggles the checkbox instead of opening legal content. No privacy-policy screen/link was found among the reviewed app routes/settings; Settings links to privacy controls and Terms, not an actual policy. The auth guard also needs to permit public legal pages if internal routes are added.</p>
+<p><strong>Evidence:</strong> <code>app/register.tsx:340–353</code>; <code>app/settings.tsx:153–154, 203–206</code>; <code>app/_layout.tsx:53–65</code>. Browser evidence: <code>1jwu5y</code>.</p>
+<p><strong>Required:</strong> Working pre-login Terms/Privacy links and an easily accessible, complete privacy policy in the app and App Store metadata, including actual data use, processors, retention and deletion.</p></section>
+<section class="finding"><h3>5. Google login has no equivalent privacy-preserving login option <span class="badge">Likely review blocker</span></h3>
+<p><strong>Code-confirmed UI gap; policy applicability requires confirmation.</strong> Login and registration expose Google sign-in, but no Apple sign-in implementation/UI was found. Guideline 4.8 normally requires an equivalent login option meeting Apple's privacy criteria when third-party login establishes the primary app account. Sign in with Apple is the usual solution; email/password alone does not provide the guideline's email-hiding feature.</p>
+<p><strong>Evidence:</strong> <code>app/login.tsx:224–226</code>; <code>app/register.tsx:375–377</code>; <code>providers/AuthProvider.tsx</code>; <code>app.json</code>.</p>
+<p><strong>Required:</strong> Add the compliant equivalent option and validate its native sign-in/DOB/account lifecycle, or document a genuine guideline exception. Do not assume an exception applies to this public social prayer app.</p></section>
+<section class="finding"><h3>6. Live Apple billing targets a different app <span class="badge">Blocker for paid launch</span></h3>
+<p><strong>Fresh read-only integration-confirmed.</strong> Expo's bundle identifier is <code>app.prayerspace.com</code>. The connected RevenueCat iOS app is named Prayer Journal and uses <code>app.rork.wazimsrnizefzclhxniiw</code>. Its App Store Connect API key and subscription key readiness flags are both false.</p>
+<p><strong>Evidence:</strong> <code>artifacts/mobile/app.json</code>; today's <code>scripts/src/checkRevenueCatReadiness.ts</code> audit. The current backend deliberately fails closed for active production access without a verified RevenueCat app allowlist: <code>api-server/src/routes/communityAccess.ts:56–78</code>.</p>
+<p><strong>Required:</strong> Confirm the actual immutable App Store listing identity, configure its RevenueCat mapping and store products/credentials securely, and validate prices, purchases, restore, expiry/refunds and account switching in TestFlight. Do not automatically change the bundle identifier to match the legacy listing. Test Store success is not proof of App Store billing readiness.</p></section>
+<section class="finding"><h3>7. Privacy controls are not enforced <span class="badge high">High</span></h3>
+<p><strong>Code-confirmed.</strong> Public Profile, Show Prayer Count and Private Journal toggles only update local settings; no other consumers of those settings were found. Who can invite/pray selections are component state and reset on remount. These controls do not enforce the access restrictions they describe.</p>
+<p><strong>Evidence:</strong> <code>app/privacy-settings.tsx:29–38, 77–114, 125–147</code>; <code>providers/PrayerProvider.tsx:464–468</code>; project-wide searches for the setting names.</p>
+<p><strong>Required:</strong> Persist user-specific settings and enforce visibility/interaction rules in trusted server/database authorization, or remove unsupported claims and controls.</p></section>
+<section class="finding"><h3>8. Support and data-export requests report false success <span class="badge high">High</span></h3>
+<p><strong>Code-confirmed.</strong> Contact Support waits 1.2 seconds and sets “Message sent”, without a request. Request My Data only sets local <code>requestSent</code> state, although the UI says the team received the request and will email an export within 30 days.</p>
+<p><strong>Evidence:</strong> <code>app/contact-support.tsx:37–55</code>; <code>app/data-backup.tsx:138–153</code>.</p>
+<p><strong>Required:</strong> Real support/export request delivery and tracking with explicit failure states. Do not acknowledge success before a real operation succeeds.</p></section>
+<section class="finding"><h3>9. Automatic-backup claims do not match journal storage <span class="badge high">High</span></h3>
+<p><strong>Code-confirmed.</strong> Data &amp; Backup always says backup is active and up to date, and that data is backed up on the service's systems. Journal persistence in the reviewed provider is local AsyncStorage only, with no corresponding cloud journal backup. Device loss/reinstall can therefore lose journal data; device OS backups are not equivalent to the claimed application service backup.</p>
+<p><strong>Evidence:</strong> <code>app/data-backup.tsx:80–87</code>; <code>providers/PrayerProvider.tsx:130–135, 240–247</code>.</p>
+<p><strong>Required:</strong> Implement and verify backup/restore, or accurately disclose device-local storage and provide export. Surface storage failures instead of showing success optimistically.</p></section>
+<section class="finding"><h3>10. AI processing and diagnostics need privacy remediation <span class="badge high">High</span></h3>
+<p><strong>Code-confirmed risks; actual production data capture not measured.</strong> Voice transcript review starts transcription automatically when a recording URI exists. No explicit third-party AI disclosure/permission gate was found in the reviewed recording/transcription paths. The client logs the first 100 characters of transcription. Sentry is initialized with default PII, logs, and session/error replay enabled. Data &amp; Backup nevertheless says personal data is not shared with any third parties.</p>
+<p><strong>Evidence:</strong> <code>app/voice-transcript-review.tsx:62–72</code>; <code>lib/transcribe.ts:90</code>; <code>app/_layout.tsx:22–35</code>; <code>app/data-backup.tsx:68</code>.</p>
+<p><strong>Required:</strong> Clearly disclose third-party AI processing and obtain explicit permission before sharing personal data; remove prayer-content logging; review replay masking, PII collection and SDK behavior; align the policy and App Privacy disclosures with actual processors and lawful consent requirements. Scanner “0 findings” does not resolve these manual findings.</p></section>
+<section class="finding"><h3>11. Group features remain incomplete <span class="badge high">High</span></h3>
+<p><strong>Code-confirmed.</strong> New groups and group edits use in-memory stores without server persistence in those paths. The group chat screen explicitly returns “Group chat unavailable” on send/reactions; its messages start as an empty local array. Send-to-group nevertheless transitions to a sent state via a timer without a delivery request.</p>
+<p><strong>Evidence:</strong> <code>lib/groupStore.ts:43–63, 96–121</code>; <code>app/create-group.tsx:147–156</code>; <code>app/group/manage.tsx:173</code>; <code>app/group/[id].tsx:163, 212–218, 240–246</code>; <code>app/send-to-group.tsx:140–168</code>.</p>
+<p><strong>Required:</strong> Connect durable, authorized groups/chat and real delivery, or remove these features from the release/UI/marketing until supported. Do not present a timer as proof of delivery. This does not negate the existing real direct-message functionality.</p></section>
+<section class="finding"><h3>12. Security and Expo package alignment need a release pass <span class="badge high">High; scanner criticals</span></h3>
+<p><strong>Fresh automated findings.</strong> The workspace dependency scan found 132 advisory/package-version findings: 12 critical, 68 high, 45 moderate and 7 low. Eleven critical findings concern <code>orval@8.5.3</code> code generation; one concerns <code>proxy-addr@2.0.7</code>. The scanner suggests patched <code>orval@8.21.0</code> and <code>proxy-addr@2.0.8</code>. High findings include packages such as <code>undici</code>, <code>ws</code>, <code>tar</code> and <code>node-forge</code>.</p>
+<p><strong>Important qualification:</strong> These are workspace-wide results, including development/build tooling, transitive dependencies, duplicate advisory instances and non-native artifacts. They are not 132 demonstrated exploitable iPhone bugs. Code-generation attacks require untrusted input; the proxy advisory needs relevant trust configuration. Reachability and shipped/runtime scope must be triaged before assigning operational impact.</p>
+<p>Static scanning flagged two high file-path warnings in <code>artifacts/mobile/server/serve.js:59,102</code> and four medium credential-like literals in configuration. Manual review found that manifest platforms are allowlisted and static serving has a path guard, so no path-traversal exploit was demonstrated. Public Supabase anon/RevenueCat SDK keys must not be confused with privileged credentials. No actual secret values are included here.</p>
+<p><strong>Required:</strong> Upgrade compatible affected dependencies/direct parents, regenerate and test where appropriate, review static findings, repair the root typecheck gate, and align SDK 54 packages using the supported Expo process. Do not broadly upgrade/downgrade the SDK or swap packages without considering native compatibility.</p></section>
+<h2>Additional release risks</h2>
+<ul>
+<li><strong>Ratings:</strong> <code>components/SmartRatingModal.tsx:65–83,127–136</code> asks whether users enjoy the app and only the positive path reaches the store review prompt. Review this custom solicitation against current Apple review rules; use neutral native review requests rather than sentiment gating.</li>
+<li><strong>OAuth age gate:</strong> <code>app/_layout.tsx:73–78</code> requires a non-null OAuth profile before applying the missing-DOB gate. Profile creation/loading failures and existing Google users need explicit testing. A guard in the UI is not server-side age enforcement.</li>
+<li><strong>Transcription spending:</strong> Limits are per process, so restarts/multiple instances do not constitute a durable service-wide budget. This remains an operational release risk.</li>
+<li><strong>Native API routing:</strong> Subscription verification and transcription use <code>EXPO_PUBLIC_API_URL</code> or the app domain fallback. Verify the release app resolves the published API, not a development or frontend-only host.</li>
+<li><strong>Historical chat access:</strong> New participant policies do not prove every pre-existing conversation membership was originally authorized. A separate data review is needed before making that assurance.</li>
+<li><strong>Startup:</strong> Fresh browser logs reached INITIAL_SESSION and login routing; direct login rendered. Earlier short white captures are not proof of permanent failure. The browser tool's 45-second ceiling limited the requested 60-second observation. Native cold-start performance/offline behavior remains unmeasured.</li>
+</ul>
+<h2>What is working or improved</h2>
+<ul>
+<li>Current mobile/API TypeScript checks pass independently.</li>
+<li>All 19 existing logic tests pass.</li>
+<li>The public browser renders login, registration and password recovery; empty-field validation is functional.</li>
+<li>Unauthenticated transcription/subscription checks fail closed; the retired bulk-delete endpoint is unavailable.</li>
+<li>Current billing code separates personal/community entitlements, associates purchases with authenticated identities, and checks trusted server-side subscription state. Historical billing defects in older notes must not be reported as still present without checking current code.</li>
+<li>The five-step tour and progress migration logic are tested, but today's audit did not freshly exercise the signed-in tutorial.</li>
+</ul>
+<h2>Release order</h2>
+<ol>
+<li><strong>Protect private data:</strong> account-scoped storage/state, real privacy rules, sensitive-log/replay controls and accurate backup disclosure.</li>
+<li><strong>Complete trust/compliance flows:</strong> real report/support/export processing, fulfilled account deletion, accessible policies and compliant login.</li>
+<li><strong>Resolve product functionality:</strong> durable groups and genuine sending, or explicitly narrow the release scope.</li>
+<li><strong>Resolve store setup:</strong> verified immutable listing identity, RevenueCat/App Store products and credentials, production API and migration reconciliation.</li>
+<li><strong>Stabilize dependencies:</strong> triage/patch advisories, align Expo packages, fix build gates and produce a real release binary.</li>
+<li><strong>Verify in TestFlight:</strong> complete the native matrix below, then prepare accurate App Store metadata and review access.</li>
+</ol>
+<h2>Required native and store verification</h2>
+<ul>
+<li>Release build/toolchain accepted by current Apple upload requirements; signing, generated privacy manifests, App Privacy questionnaire, age rating, screenshots, support/privacy URLs and reviewer account/instructions checked.</li>
+<li>Cold launch, offline/slow networking, login/logout/account switching, email OTP delivery, password reset, Google and equivalent login, DOB validation and deletion fulfilled end to end.</li>
+<li>Two-account journal isolation, interrupted saves, reinstall/new-device backup recovery, image/audio persistence and export.</li>
+<li>Friends, blocks, reports, private requests, anonymity, community permissions, group messaging and reactions with authorized/unauthorized accounts.</li>
+<li>Microphone/photo/contact/location permission acceptance and denial; actual recording/playback interruption; reminders/notifications across backgrounding, restarts and relevant time-zone changes.</li>
+<li>Small/large iPhones, keyboard-open forms/tab bar, dark mode, text scaling, VoiceOver and navigation/back gestures.</li>
+<li>Sandbox/TestFlight purchases/restores for every offered plan, cancellation/refund/expiry, localized pricing, verified trials, offline receipt checks and account switching; no paid access from simulated transactions.</li>
+<li>Production schema and backend/mobile release compatibility confirmed against the actual app database. Development migrations must not be assumed deployed to production.</li>
+</ul>
+<h2>Sources</h2>
+<ul>
+<li><a href="https://developer.apple.com/app-store/review/guidelines/">Apple App Review Guidelines</a> — particularly 1.2, 4.8, 5.1.1 and 5.1.2; consulted for this audit.</li>
+<li><a href="https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion">Apple: Offering account deletion in your app</a>.</li>
+<li><a href="https://docs.replit.com/build/mobile-app">Replit: Build and launch a mobile app</a> and <a href="https://docs.replit.com/build/mobile-testflight">TestFlight testing</a> — publishing includes a real build/upload; Expo Go/browser verification does not replace device testing.</li>
+</ul>
+<p class="muted">All mobile source references are relative to artifacts/mobile unless otherwise stated. Findings describe the inspected development code/configuration, not an independently inspected App Store binary. App Review approval is Apple's decision; no audit can promise “no bugs.”</p>
+</main></body></html>
