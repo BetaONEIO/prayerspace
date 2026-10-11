@@ -45,7 +45,7 @@ export default function GroupInviteSheet({ groupId, userId, visible, onClose, on
           <Pressable onPress={() => void query.refetch()}><Text style={{ color: colors.destructive }}>Couldn't load friends. Tap to retry.</Text></Pressable>
         ) : (
           <ScrollView keyboardShouldPersistTaps="handled">
-            {!query.data?.length && <Text style={{ color: colors.mutedForeground }}>No eligible friends to invite. They may already be members or have a pending invitation.</Text>}
+            {!query.data?.length && <Text style={{ color: colors.mutedForeground }}>No eligible friends to invite. They may already be members, have a pending invitation, or have turned off invitations.</Text>}
             {query.data?.map(friend => (
               <View key={friend.id} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderColor: colors.border }}>
                 <Text style={{ color: colors.foreground, flex: 1 }}>{friend.name}</Text>

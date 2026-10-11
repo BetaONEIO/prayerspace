@@ -8,7 +8,6 @@ import {
   User,
   Eye,
   Clock,
-  Users,
   HandHeart,
   ChevronRight,
 } from "lucide-react-native";
@@ -17,8 +16,8 @@ import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { usePrayer } from "@/providers/PrayerProvider";
 import ThemedSwitch from "@/components/ThemedSwitch";
+import GroupInvitationPrivacySetting from "@/components/GroupInvitationPrivacySetting";
 
-const INVITE_OPTIONS = ["Everyone", "Friends", "No one"] as const;
 const PRAY_OPTIONS = ["Everyone", "Friends", "No one"] as const;
 
 export default function PrivacySettingsScreen() {
@@ -26,7 +25,6 @@ export default function PrivacySettingsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { settings, updateSetting } = usePrayer();
-  const [whoCanInvite, setWhoCanInvite] = useState<string>("Friends");
   const [whoCanPray, setWhoCanPray] = useState<string>("Everyone");
 
   const toggleSetting = useCallback((key: "publicProfile" | "showPrayerCount" | "privateJournal") => {
@@ -120,19 +118,7 @@ export default function PrivacySettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>INTERACTIONS</Text>
           <View style={styles.card}>
-            <Pressable
-              style={styles.row}
-              onPress={() => showOptionPicker("Who can invite you to groups?", INVITE_OPTIONS, whoCanInvite, setWhoCanInvite)}
-            >
-              <View style={styles.rowLeft}>
-                <Users size={18} color={colors.primary + "90"} />
-                <Text style={styles.rowTitle}>Who can invite you to groups</Text>
-              </View>
-              <View style={styles.trailingRow}>
-                <Text style={styles.trailingText}>{whoCanInvite}</Text>
-                <ChevronRight size={16} color={colors.mutedForeground} />
-              </View>
-            </Pressable>
+            <GroupInvitationPrivacySetting />
             <View style={styles.divider} />
             <Pressable
               style={styles.row}
