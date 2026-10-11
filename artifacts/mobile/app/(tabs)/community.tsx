@@ -2548,7 +2548,7 @@ function MyGroupsContent() {
             style={styles.joinGroupBtn}
             onPress={() => {
               if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setJoinModalVisible(true);
+              router.push("/manage-invites");
             }}
           >
             <View style={styles.createGroupInner}>
@@ -2635,7 +2635,7 @@ function MyGroupsContent() {
               <View style={styles.groupsEmpty}>
                 <Text style={[styles.groupsEmptyTitle, { color: colors.foreground }]}>No prayer groups yet</Text>
                 <Text style={[styles.groupsEmptyDesc, { color: colors.mutedForeground }]}>
-                  Create a prayer group or join one with an invite code.
+                  Create a prayer group or accept a friend's group invitation.
                 </Text>
               </View>
             )}

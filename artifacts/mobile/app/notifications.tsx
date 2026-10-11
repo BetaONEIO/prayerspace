@@ -9,6 +9,7 @@ import { Bell, Heart, Users, Trophy, Flame, ChevronLeft, AlertTriangle, HandHear
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useNotifications, type AppNotification } from "@/providers/NotificationsProvider";
+import { useGroupInvitations } from "@/hooks/useGroupInvitations";
 
 type Notification = AppNotification;
 
@@ -60,6 +61,8 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { notifications, removeNotification, markNotificationRead, markAllRead, joinGroup } = useNotifications();
+  const invitations=useGroupInvitations();
+  const pendingInvitations=invitations.data?.filter(i=>i.recipientId===invitations.user?.id && i.status==="pending").length ?? 0;
   const [declineDialogVisible, setDeclineDialogVisible] = useState(false);
   const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
@@ -128,6 +131,11 @@ export default function NotificationsScreen() {
       </View>
 
       <AutoScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Group invitations" onPress={()=>router.push("/manage-invites")}
+          style={{padding:18,marginBottom:16,borderRadius:16,backgroundColor:colors.secondary}}>
+          <Text style={{color:colors.foreground,fontWeight:"700"}}>Group invitations{pendingInvitations ? ` (${pendingInvitations})` : ""}</Text>
+          <Text style={{color:colors.mutedForeground,marginTop:6}}>{invitations.isError?"Open to retry loading invitations":"Accept, decline, or manage your private chat invitations"}</Text>
+        </Pressable>
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}><Bell size={40} color={colors.mutedForeground + "66"} /></View>

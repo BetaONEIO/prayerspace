@@ -822,8 +822,8 @@ export default function GroupDetailScreen() {
                     <Settings size={18} color={colors.primary} />
                   </View>
                   <View style={styles.groupMenuItemBody}>
-                    <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Add members</Text>
-                    <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Add accepted friends to this chat</Text>
+                    <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Invite friends</Text>
+                    <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Friends choose whether to join this chat</Text>
                   </View>
                 </Pressable>
               )}
@@ -833,7 +833,7 @@ export default function GroupDetailScreen() {
                 onPress={() => {
                   closeGroupMenu();
                   if (IS_CURRENT_USER_ADMIN) setInviteVisible(true);
-                  else setActionError("Ask a group admin to add an accepted friend. Share-link invitations aren't connected yet.");
+                  else setActionError("Ask a group admin to invite an accepted friend. Invitations are addressed to a specific friend, not shared links.");
                 }}
               >
                 <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.accent }]}>
@@ -841,7 +841,7 @@ export default function GroupDetailScreen() {
                 </View>
                 <View style={styles.groupMenuItemBody}>
                   <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Invite Members</Text>
-                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Admins can add accepted friends</Text>
+                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Admins can invite accepted friends</Text>
                 </View>
               </Pressable>
 

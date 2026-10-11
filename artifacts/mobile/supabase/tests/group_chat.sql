@@ -30,6 +30,11 @@ select public.create_prayer_chat_group('a1100000-0000-4000-8000-000000000001','a
 select public.create_prayer_chat_group('a1100000-0000-4000-8000-000000000001','a1200000-0000-4000-8000-000000000001','Fixture group','{}');
 select pg_temp.check(jsonb_array_length(public.list_prayer_chat_groups('a1100000-0000-4000-8000-000000000001'))=1,'idempotent group creation');
 select public.change_group_chat_member('a1200000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000002','add');
+select set_config('request.jwt.claim.sub','a1100000-0000-4000-8000-000000000002',true);
+select public.respond_group_chat_invitation(
+  (select id from public.group_chat_invitations where group_id='a1200000-0000-4000-8000-000000000001' and recipient_id=auth.uid()),
+  'a1100000-0000-4000-8000-000000000002','accept');
+select set_config('request.jwt.claim.sub','a1100000-0000-4000-8000-000000000001',true);
 select pg_temp.denied($q$select public.change_group_chat_member('a1200000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000003','add')$q$,'stranger cannot be added','Only accepted');
 select pg_temp.denied($q$select public.change_group_chat_member('a1200000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000001','leave')$q$,'last admin cannot abandon members','Assign another admin');
 select public.send_group_chat_message('a1200000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000001','a1300000-0000-4000-8000-000000000001','Persistent message');

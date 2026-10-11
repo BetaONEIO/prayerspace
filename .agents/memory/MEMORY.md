@@ -14,3 +14,4 @@
 - [Private group media](private-group-media.md) — chat downloads must respect membership revocation; own-account exports are a separate, narrowly authorized capability.
 - [Authenticated SQL fixtures](authenticated-sql-fixtures.md) — set JWT role claims as well as user identity and SQL role, or auth.role() guards may be skipped in tests.
 - [Browser microphone testing](browser-microphone-testing.md) — permission alone does not provide a headless input device; emulation must supply fresh streams without bypassing recording.
+- [Group invitation consent](group-invitation-consent.md) — private chat membership requires addressed recipient acceptance; legacy add operations must not bypass consent.
