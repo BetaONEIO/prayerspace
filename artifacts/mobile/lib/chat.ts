@@ -101,9 +101,14 @@ export async function fetchConversations(
 
   if (!userConvs?.length) return [];
 
-  const convIds = userConvs.map(
+  const candidateIds = userConvs.map(
     (c: { conversation_id: string }) => c.conversation_id
   );
+  const { data: dmConversations, error: dmError } = await supabase.from("conversations")
+    .select("id").eq("type", "dm").in("id", candidateIds);
+  if (dmError) throw dmError;
+  const convIds = (dmConversations ?? []).map((conversation: { id: string }) => conversation.id);
+  if (!convIds.length) return [];
 
   const [participantsRes, messagesRes] = await Promise.all([
     supabase

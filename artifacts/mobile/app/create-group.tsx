@@ -36,7 +36,11 @@ import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import PhotoUploadModal from "@/components/PhotoUploadModal";
-import { groupCreatedStore, groupStore } from "@/lib/groupStore";
+import { useAuth } from "@/providers/AuthProvider";
+import { supabase } from "@/lib/supabase";
+import { groupIdResult, groupRpc, newGroupClientId } from "@/lib/groupChat";
+import { useQueryClient } from "@tanstack/react-query";
+import { useScopedGroupState } from "@/hooks/useGroupChat";
 
 type Step = 1 | 2;
 type FocusCategory = "Prayer" | "Bible Study" | "Support" | "Testimony";
@@ -60,17 +64,23 @@ export default function CreateGroupScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors, insets.bottom), [colors, insets.bottom]);
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const owner = useMemo(() => ({ id: user?.id }), [user?.id]);
+  const currentOwner = useRef(owner);
+  currentOwner.current = owner;
   const scrollRef = useRef<ScrollView>(null);
-  const [step, setStep] = useState<Step>(1);
-  const [groupName, setGroupName] = useState<string>("");
-  const [selectedFocus, setSelectedFocus] = useState<FocusCategory | null>(null);
-  const [safeSpaceEnabled, setSafeSpaceEnabled] = useState<boolean>(true);
-  const [selectedPrivacy, setSelectedPrivacy] = useState<PrivacyType>("Private");
-  const [groupPhotoUri, setGroupPhotoUri] = useState<string | null>(null);
+  const [step, setStep] = useScopedGroupState<Step>(owner, 1);
+  const [groupName, setGroupName] = useScopedGroupState<string>(owner, "");
+  const [selectedFocus, setSelectedFocus] = useScopedGroupState<FocusCategory | null>(owner, null);
+  const [safeSpaceEnabled, setSafeSpaceEnabled] = useScopedGroupState<boolean>(owner, true);
+  const [selectedPrivacy, setSelectedPrivacy] = useScopedGroupState<PrivacyType>(owner, "Private");
+  const [groupPhotoUri, setGroupPhotoUri] = useScopedGroupState<string | null>(owner, null);
+  const creationId = useMemo(() => newGroupClientId(), [owner, groupName.trim(), selectedFocus, selectedPrivacy, safeSpaceEnabled]);
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
-  const [showCreatedModal, setShowCreatedModal] = useState<boolean>(false);
+  const [showCreatedModal, setShowCreatedModal] = useScopedGroupState<boolean>(owner, false);
   const [showNameAlert, setShowNameAlert] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useScopedGroupState<boolean>(owner, false);
   const nameAlertFade = useRef(new Animated.Value(0)).current;
   const nameAlertScale = useRef(new Animated.Value(0.92)).current;
   const createdModalFade = useRef(new Animated.Value(0)).current;
@@ -123,7 +133,7 @@ export default function CreateGroupScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [createdModalFade, createdModalScale]);
+  }, [createdModalFade, createdModalScale, setShowCreatedModal]);
 
   const handleGoToGroup = useCallback(() => {
     setShowCreatedModal(false);
@@ -144,33 +154,22 @@ export default function CreateGroupScreen() {
       setIsSubmitting(true);
       try {
         if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        const newId = `g_${Date.now()}`;
-        groupCreatedStore.emit({
-          id: newId,
-          name: groupName,
-          avatar: groupPhotoUri,
-          focus: selectedFocus,
-          privacy: selectedPrivacy,
-          safeSpace: safeSpaceEnabled,
-        });
-        groupStore.update(newId, {
-          name: groupName,
-          photoUri: groupPhotoUri,
-          privacy: selectedPrivacy,
-          safeSpace: safeSpaceEnabled,
-          focus: selectedFocus ?? "Prayer",
-          description: "",
-          members: [],
-        });
+        if (!user) throw new Error("Sign in to create a group.");
+        await groupRpc(supabase, user.id, "create_prayer_chat_group", {
+          p_client_id: creationId, p_name: groupName.trim(),
+          p_settings: { focus: selectedFocus ?? "Prayer", private: selectedPrivacy === "Private", safeSpace: safeSpaceEnabled },
+        }, groupIdResult);
+        if (currentOwner.current !== owner) return;
+        await queryClient.invalidateQueries({ queryKey: ["prayer-chat-groups", user.id] });
         openCreatedModal();
       } catch (err) {
         console.error("[CreateGroup] Failed to create group:", err);
-        Alert.alert("Error", "Something went wrong creating your group. Please try again.");
+        if (currentOwner.current === owner) Alert.alert("Could not create group", err instanceof Error ? err.message : "Please try again.");
       } finally {
         setIsSubmitting(false);
       }
     }
-  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, groupPhotoUri, openCreatedModal, isSubmitting]);
+  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, openCreatedModal, isSubmitting, user?.id, owner, queryClient, creationId]);
 
   const handleBack = useCallback(() => {
     if (step === 2) {
@@ -243,7 +242,7 @@ export default function CreateGroupScreen() {
                 </Text>
               </View>
 
-              <Pressable style={styles.imagePickerWrap} onPress={() => setShowPhotoModal(true)} testID="group-photo-btn">
+              <Pressable style={styles.imagePickerWrap} onPress={() => Alert.alert("Group photos", "Connected prayer groups currently support text chat and reactions. Group photos are not connected yet.")} testID="group-photo-btn">
                 {groupPhotoUri ? (
                   <Image source={{ uri: groupPhotoUri }} style={styles.imagePickerPhoto} />
                 ) : (
@@ -357,7 +356,7 @@ export default function CreateGroupScreen() {
                       styles.privacyCard,
                       selectedPrivacy === "Public" && styles.privacyCardSelected,
                     ]}
-                    onPress={() => handlePrivacySelect("Public")}
+                    onPress={() => Alert.alert("Public groups", "Public discovery and joining are not connected yet. Current chats are invitation-only; choose Private Group.")}
                   >
                     <View
                       style={[

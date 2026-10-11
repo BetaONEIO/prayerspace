@@ -17,6 +17,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,6 +33,10 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { ThemeColors } from "@/constants/colors";
+import { usePrayerChatGroups } from "@/hooks/usePrayerChatGroups";
+import { groupIdResult, groupRpc, newGroupClientId } from "@/lib/groupChat";
+import { supabase } from "@/lib/supabase";
+import { useScopedGroupState } from "@/hooks/useGroupChat";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { groupCreatedStore } from "@/lib/groupStore";
 
@@ -54,6 +59,11 @@ const getUpdateTagLabels = (colors: ThemeColors): Record<string, { label: string
 type ViewState = "select" | "compose" | "sent";
 
 export default function SendToGroupScreen() {
+  const savedGroups = usePrayerChatGroups();
+  const owner = useMemo(() => ({ id: savedGroups.user?.id }), [savedGroups.user?.id]);
+  const currentOwner = useRef(owner);
+  currentOwner.current = owner;
+  const attemptRef = useRef<{ key: string; id: string; owner: object } | null>(null);
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const UPDATE_TAG_LABELS = useMemo(() => getUpdateTagLabels(colors), [colors]);
@@ -67,10 +77,10 @@ export default function SendToGroupScreen() {
   }>();
 
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewState, setViewState] = useState<ViewState>("select");
-  const [selectedGroup, setSelectedGroup] = useState<MyGroup | null>(null);
-  const [additionalMessage, setAdditionalMessage] = useState<string>("");
-  const [isSending, setIsSending] = useState<boolean>(false);
+  const [viewState, setViewState] = useScopedGroupState<ViewState>(owner, "select");
+  const [selectedGroup, setSelectedGroup] = useScopedGroupState<MyGroup | null>(owner, null);
+  const [additionalMessage, setAdditionalMessage] = useScopedGroupState<string>(owner, "");
+  const [isSending, setIsSending] = useScopedGroupState<boolean>(owner, false);
 
   const composeSlide = useRef(new Animated.Value(400)).current;
   const successScale = useRef(new Animated.Value(0)).current;
@@ -78,22 +88,16 @@ export default function SendToGroupScreen() {
   const listFade = useRef(new Animated.Value(1)).current;
 
   // Live list of prayer groups created this session
-  const createdPayloads = useSyncExternalStore(
-    groupCreatedStore.subscribe,
-    groupCreatedStore.getSnapshot,
-    groupCreatedStore.getSnapshot,
-  );
-
   const liveGroups = useMemo<MyGroup[]>(() =>
-    createdPayloads.map((g) => ({
+    (savedGroups.isError ? [] : savedGroups.data ?? []).map((g) => ({
       id: g.id,
       name: g.name,
-      memberCount: 1,
-      lastActivity: "Just now",
-      avatar: g.avatar ?? "",
+      memberCount: g.memberCount,
+      lastActivity: new Date(g.updatedAt).toLocaleDateString(),
+      avatar: "",
       activeRequests: 0,
     })),
-    [createdPayloads],
+    [savedGroups.data, savedGroups.isError],
   );
 
   useEffect(() => {
@@ -137,14 +141,21 @@ export default function SendToGroupScreen() {
     });
   }, [composeSlide, listFade]);
 
-  const handleSend = useCallback(() => {
-    if (!selectedGroup) return;
+  const handleSend = useCallback(async () => {
+    if (!selectedGroup || isSending || !savedGroups.user) return;
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSending(true);
     console.log("[SendToGroup] Sending prayer update to group:", selectedGroup.name, "postId:", params.postId ?? "none");
 
-    setTimeout(() => {
-      setIsSending(false);
+    try {
+      const key = `${selectedGroup.id}:${params.postId}:${additionalMessage.trim()}`;
+      const attempt = attemptRef.current?.key === key && attemptRef.current.owner === owner
+        ? attemptRef.current : { key, id: newGroupClientId(), owner };
+      attemptRef.current = attempt;
+      await groupRpc(supabase, savedGroups.user.id, "send_group_chat_message", {
+        p_group_id: selectedGroup.id, p_client_id: attempt.id, p_content: additionalMessage.trim(), p_prayer_id: params.postId,
+      }, groupIdResult);
+      if (currentOwner.current !== owner) return;
       setViewState("sent");
       if (Platform.OS !== "web")
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -162,20 +173,20 @@ export default function SendToGroupScreen() {
         }),
       ]).start();
       setTimeout(() => {
+        if (currentOwner.current !== owner) return;
         router.replace({
           pathname: "/group/[id]",
           params: {
             id: selectedGroup.id,
-            pendingSharedMessage: additionalMessage.trim(),
-            sharedAuthorName: params.authorName ?? "",
-            sharedAuthorAvatar: params.authorAvatar ?? "",
-            sharedPostContent: params.postContent ?? "",
-            sharedUpdateTag: params.updateTag ?? "",
           },
         });
       }, 1400);
-    }, 900);
-  }, [selectedGroup, params, additionalMessage, successScale, successOpacity, router]);
+    } catch (error) {
+      if (currentOwner.current === owner) Alert.alert("Prayer not shared", error instanceof Error ? error.message : "Please retry.");
+    } finally {
+      if (currentOwner.current === owner) setIsSending(false);
+    }
+  }, [selectedGroup, params, additionalMessage, successScale, successOpacity, router, savedGroups.user?.id, owner, isSending, setIsSending]);
 
   const postContent = (params.postContent ?? "").replace(/^"|"$/g, "");
   const authorName = params.authorName ?? "";
@@ -200,6 +211,8 @@ export default function SendToGroupScreen() {
           </View>
 
           <View style={styles.searchRow}>
+            {savedGroups.isLoading && <ActivityIndicator color={colors.primary} />}
+            {savedGroups.isError && <Pressable onPress={() => void savedGroups.refetch()} accessibilityLabel="Retry loading groups"><Text style={{ color: colors.destructive }}>Couldn't load groups. Retry</Text></Pressable>}
             <Search size={15} color={colors.mutedForeground} />
             <TextInput
               style={styles.searchInput}

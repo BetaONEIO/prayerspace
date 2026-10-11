@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo, useSyncExternalStore } from "react";
 import { feedStore } from "@/lib/feedStore";
 import { groupCreatedStore } from "@/lib/groupStore";
+import { usePrayerChatGroups } from "@/hooks/usePrayerChatGroups";
 import { recordCommunityEngagement } from "@/hooks/useReviewPrompt";
 import { ratingStore } from "@/lib/ratingStore";
 import { useAuth } from "@/providers/AuthProvider";
@@ -2465,27 +2466,7 @@ function MyGroupsContent() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const router = useRouter();
-  // useSyncExternalStore gives us the live snapshot from groupCreatedStore.
-  // It works regardless of when this component mounts relative to emit() — React
-  // will re-render whenever emit() replaces the snapshot array.
-  const createdPayloads = useSyncExternalStore(
-    groupCreatedStore.subscribe,
-    groupCreatedStore.getSnapshot,
-    groupCreatedStore.getSnapshot,
-  );
-
-  const createdGroups = useMemo<MyGroup[]>(() =>
-    createdPayloads.map((c) => ({
-      id: c.id,
-      name: c.name,
-      memberCount: 1,
-      lastActivity: "Just now",
-      avatar: c.avatar ?? "",
-      activeRequests: 0,
-      isAdmin: true,
-    })),
-    [createdPayloads],
-  );
+  const saved = usePrayerChatGroups();
 
   const [joinModalVisible, setJoinModalVisible] = useState<boolean>(false);
   const [groupsFilter, setGroupsFilter] = useState<"all" | "leading">("all");
@@ -2505,14 +2486,10 @@ function MyGroupsContent() {
   }, [joinedGroupIds]);
 
   // Merge created + joined, deduplicated by id, created groups first
-  const myGroups = useMemo<MyGroup[]>(() => {
-    const seen = new Set<string>();
-    return [...createdGroups, ...joinedGroups].filter((g) => {
-      if (seen.has(g.id)) return false;
-      seen.add(g.id);
-      return true;
-    });
-  }, [createdGroups, joinedGroups]);
+  const myGroups = useMemo<MyGroup[]>(() => saved.isError ? [] : (saved.data ?? []).map(group => ({
+    id: group.id, name: group.name, memberCount: group.memberCount, isAdmin: group.isAdmin,
+    lastActivity: new Date(group.updatedAt).toLocaleDateString(), avatar: "", activeRequests: 0,
+  })), [saved.data, saved.isError]);
 
   const handleGroupPress = useCallback((groupId: string) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
@@ -2548,6 +2525,8 @@ function MyGroupsContent() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {saved.isLoading && <ActivityIndicator color={colors.primary} />}
+        {saved.isError && <Pressable onPress={() => void saved.refetch()}><Text style={{ color: colors.destructive }}>Couldn't load your groups. Tap to retry.</Text></Pressable>}
         <View style={[styles.groupsContextCard, { backgroundColor: colors.primary + "0C", borderColor: colors.primary + "22" }]}>
           <Text style={[styles.groupsContextText, { color: colors.mutedForeground }]}>
             Pray together in trusted groups with friends, family and your church community.

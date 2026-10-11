@@ -10,3 +10,4 @@
 - [Local account ownership](account-data-ownership.md) — preserve unassigned legacy records; never auto-import them into the next login, and invalidate callbacks across account transitions.
 - [Privacy consent boundaries](privacy-consent-boundaries.md) — historical deletion flags are not executable jobs; journal cloud uploads require opt-in and staff roles need explicit authorization.
 - [Expo test execution](expo-test-execution.md) — separate project typechecking from compiled Node tests; native ESM stripping cannot resolve Metro's extensionless imports.
+- [Chat retry semantics](chat-retry-semantics.md) — reuse operation IDs for unchanged drafts and write desired reaction states; ambiguous network failures must not duplicate or undo saved actions.

@@ -18,6 +18,7 @@ import {
   Modal,
   TouchableOpacity,
   PanResponder,
+  ActivityIndicator,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -61,8 +62,12 @@ import { Audio } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { useAbuseReport, privacyNotice } from "@/hooks/useAbuseReport";
-import { useGroupState, groupStore, GroupMember as StoreGroupMember } from "@/lib/groupStore";
-import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
+import { GroupMember as StoreGroupMember } from "@/lib/groupStore";
+import { useGroupChat, useScopedGroupState } from "@/hooks/useGroupChat";
+import { emptyGroupResult, groupIdResult, groupMessages, groupRpc, newGroupClientId } from "@/lib/groupChat";
+import { getOrCreateDMConversation, isUUID } from "@/lib/chat";
+import { supabase } from "@/lib/supabase";
+import GroupInviteSheet from "@/components/GroupInviteSheet";
 
 type GroupTab = "Chat" | "Members" | "Media";
 
@@ -83,6 +88,7 @@ interface MessageReaction {
   type: "pray" | "emoji";
   emoji?: string;
   createdAt: string;
+  isMine?: boolean;
 }
 
 interface MessageRead {
@@ -107,6 +113,7 @@ interface ChatMessage {
   senderAvatar: string;
   text: string;
   time: string;
+  createdAt?: string;
   isOwn: boolean;
   isVoice?: boolean;
   audioUri?: string;
@@ -118,7 +125,7 @@ interface ChatMessage {
   replyTo?: ReplyTo;
 }
 
-const EMOJI_REACTIONS = ["❤️", "😂", "😮", "😢", "😡", "🤗", "🙏"];
+const EMOJI_REACTIONS = ["❤️", "🕊️", "🙏"];
 
 interface Member {
   id: string;
@@ -130,7 +137,6 @@ interface Member {
 }
 
 // Group members and messages are populated only from connected group data.
-const IS_CURRENT_USER_ADMIN = false;
 
 function getUpdateTagLabels(colors: ThemeColors): Record<string, { label: string; bg: string; color: string }> {
   return {
@@ -156,27 +162,48 @@ export default function GroupDetailScreen() {
   const { id } = params;
   const groupId = id ?? "";
   const abuseReport = useAbuseReport();
-  const groupState = useGroupState(groupId);
+  const live = useGroupChat(groupId);
+  const { user, scope, currentScope, chat, query, refresh } = live;
+  const groupState = useMemo(() => ({
+    name: chat?.name ?? "", photoUri: null as string | null, description: "",
+    privacy: chat?.settings.private === false ? "Public" as const : "Private" as const,
+    safeSpace: chat?.settings.safeSpace ?? true, focus: chat?.settings.focus ?? "Prayer",
+    members: chat?.members.map(member => ({
+      id: member.id, name: member.name, avatar: member.avatar,
+      role: member.role === "admin" ? "Admin" as const : member.role === "leader" ? "Leader" as const : "Member" as const,
+      isOnline: false, joinedDate: new Date(member.joinedAt).toLocaleDateString(),
+    })) ?? [],
+  }), [chat]);
   const insets = useSafeAreaInsets();
-  const { isPremiumCommunity, isOwner } = useChurchEntitlements();
+  // Standalone prayer groups do not confer paid community ownership.
+  const isPremiumCommunity = false;
+  const isOwner = false;
+  const IS_CURRENT_USER_ADMIN = chat?.members.some(member => member.id === user?.id && member.role === "admin") ?? false;
   const [activeTab, setActiveTab] = useState<GroupTab>("Chat");
 
-  const [chatInput, setChatInput] = useState<string>("");
-  const [chatMessages] = useState<ChatMessage[]>([]);
-  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
-  const [memberActionsTarget, setMemberActionsTarget] = useState<Member | null>(null);
-  const [viewingMediaItem, setViewingMediaItem] = useState<MediaItem | null>(null);
-  const [memberSearch, setMemberSearch] = useState<string>("");
-  const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
-  const [viewingGroupImage, setViewingGroupImage] = useState<string | null>(null);
-  const [contextMsg, setContextMsg] = useState<ChatMessage | null>(null);
-  const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
-  const [replyingTo, setReplyingTo] = useState<ReplyTo | null>(null);
-  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [chatInput, setChatInput] = useScopedGroupState<string>(scope, "");
+  const chatMessages: ChatMessage[] = useMemo(() => chat && user ? groupMessages({ ...chat, messages: live.messages }, user.id) : [], [chat, live.messages, user?.id]);
+  const [sending, setSending] = useScopedGroupState<boolean>(scope, false);
+  const [inviteVisible, setInviteVisible] = useScopedGroupState<boolean>(scope, false);
+  const [actionError, setActionError] = useScopedGroupState<string | null>(scope, null);
+  const sendRef = useRef<{ scope: object; id: string; content: string; replyId: string | null } | null>(null);
+  const actionRef = useRef<object | null>(null);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useScopedGroupState<boolean>(scope, false);
+  const [memberActionsTarget, setMemberActionsTarget] = useScopedGroupState<Member | null>(scope, null);
+  const [viewingMediaItem, setViewingMediaItem] = useScopedGroupState<MediaItem | null>(scope, null);
+  const [memberSearch, setMemberSearch] = useScopedGroupState<string>(scope, "");
+  const [groupImageUri, setGroupImageUri] = useScopedGroupState<string | null>(scope, null);
+  const [viewingGroupImage, setViewingGroupImage] = useScopedGroupState<string | null>(scope, null);
+  const [contextMsg, setContextMsg] = useScopedGroupState<ChatMessage | null>(scope, null);
+  const [infoMsg, setInfoMsg] = useScopedGroupState<ChatMessage | null>(scope, null);
+  const [replyingTo, setReplyingTo] = useScopedGroupState<ReplyTo | null>(scope, null);
+  const [showGroupMenu, setShowGroupMenu] = useScopedGroupState<boolean>(scope, false);
   const groupMenuAnim = useRef(new Animated.Value(260)).current;
   const groupMenuBackdrop = useRef(new Animated.Value(0)).current;
   const msgPositionsRef = useRef<Map<string, number>>(new Map());
   const chatScrollRef = useRef<ScrollView>(null);
+  const atBottom = useRef(true);
+  useEffect(() => { atBottom.current = true; msgPositionsRef.current.clear(); }, [scope]);
 
   const openGroupMenu = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -185,24 +212,24 @@ export default function GroupDetailScreen() {
       Animated.timing(groupMenuBackdrop, { toValue: 1, duration: 220, useNativeDriver: true }),
       Animated.spring(groupMenuAnim, { toValue: 0, tension: 65, friction: 11, useNativeDriver: true }),
     ]).start();
-  }, [groupMenuAnim, groupMenuBackdrop]);
+  }, [groupMenuAnim, groupMenuBackdrop, setShowGroupMenu]);
 
   const closeGroupMenu = useCallback(() => {
     Animated.parallel([
       Animated.timing(groupMenuBackdrop, { toValue: 0, duration: 180, useNativeDriver: true }),
       Animated.timing(groupMenuAnim, { toValue: 260, duration: 180, useNativeDriver: true }),
     ]).start(() => setShowGroupMenu(false));
-  }, [groupMenuAnim, groupMenuBackdrop]);
+  }, [groupMenuAnim, groupMenuBackdrop, setShowGroupMenu]);
 
   const handleLongPress = useCallback((msg: ChatMessage) => {
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setContextMsg(msg);
-  }, []);
+  }, [setContextMsg]);
 
   const handleReply = useCallback((msg: ChatMessage) => {
     setReplyingTo({ id: msg.id, senderName: msg.isOwn ? "You" : msg.senderName, text: msg.text, imageUrl: msg.imageUrl });
     setContextMsg(null);
-  }, []);
+  }, [setReplyingTo, setContextMsg]);
 
   const handleScrollToMessage = useCallback((msgId: string) => {
     const y = msgPositionsRef.current.get(msgId);
@@ -211,15 +238,32 @@ export default function GroupDetailScreen() {
     }
   }, []);
 
-  const handleAddPrayReaction = useCallback((_msgId: string) => {
-    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
-    setContextMsg(null);
-  }, []);
+  const performAction = useCallback(async (name: string, args: Record<string, unknown>) => {
+    if (!user || actionRef.current === scope) return;
+    actionRef.current = scope;
+    setActionError(null);
+    try {
+      await groupRpc(supabase, user.id, name, { p_group_id: groupId, ...args }, emptyGroupResult);
+      if (currentScope.current !== scope) return;
+      setContextMsg(null);
+      setMemberActionsTarget(null);
+      await refresh();
+    } catch (error) {
+      if (currentScope.current === scope) setActionError(error instanceof Error ? error.message : "Couldn't save. Please retry.");
+    } finally {
+      if (actionRef.current === scope) actionRef.current = null;
+    }
+  }, [user?.id, scope, groupId, refresh, setActionError, setContextMsg, setMemberActionsTarget]);
 
-  const handleAddEmojiReaction = useCallback((_msgId: string, _emoji: string) => {
-    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
-    setContextMsg(null);
-  }, []);
+  const handleAddPrayReaction = useCallback((messageId: string) => {
+    const active = !chatMessages.find(message => message.id === messageId)?.reactions?.some(reaction => reaction.isMine && reaction.type === "pray");
+    void performAction("react_to_group_message", { p_message_id: messageId, p_reaction: "pray", p_active: active });
+  }, [performAction, chatMessages]);
+  const handleAddEmojiReaction = useCallback((messageId: string, emoji: string) => {
+    const reaction = emoji === "🙏" ? "pray" : emoji === "🕊️" ? "amen" : emoji === "❤️" ? "support" : null;
+    const active = !chatMessages.find(message => message.id === messageId)?.reactions?.some(r => r.isMine && (r.emoji === emoji || (emoji === "🙏" && r.type === "pray")));
+    if (reaction) void performAction("react_to_group_message", { p_message_id: messageId, p_reaction: reaction, p_active: active });
+  }, [performAction, chatMessages]);
 
   const handleDeleteMessage = useCallback((msgId: string) => {
     Alert.alert("Delete message", "Remove this message for everyone?", [
@@ -228,27 +272,51 @@ export default function GroupDetailScreen() {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          setContextMsg(null);
+          void performAction("delete_group_chat_message", { p_message_id: msgId });
         },
       },
     ]);
-  }, []);
+  }, [performAction]);
 
   const handleTabPress = useCallback((tab: GroupTab) => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
     setActiveTab(tab);
   }, []);
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
     const trimmed = chatInput.trim();
-    if (!trimmed && !groupImageUri) return;
-    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
-  }, [chatInput, groupImageUri]);
+    if (!trimmed || !user || !chat?.canSend || sending) return;
+    if (groupImageUri) { setActionError("Group attachments aren't supported yet. Remove the attachment to send text."); return; }
+    const replyId = replyingTo?.id ?? null;
+    const previous = sendRef.current;
+    const attempt = previous?.scope === scope && previous.content === trimmed && previous.replyId === replyId
+      ? previous : { scope, id: newGroupClientId(), content: trimmed, replyId };
+    if (actionRef.current === scope) return;
+    actionRef.current = scope;
+    sendRef.current = attempt;
+    setSending(true);
+    setActionError(null);
+    try {
+      await groupRpc(supabase, user.id, "send_group_chat_message", {
+        p_group_id: groupId, p_client_id: attempt.id, p_content: trimmed, p_reply_id: replyId,
+      }, groupIdResult);
+      if (currentScope.current !== scope) return;
+      setChatInput(current => current.trim() === trimmed ? "" : current);
+      setReplyingTo(current => current?.id === replyId ? null : current);
+      sendRef.current = null;
+      await refresh();
+    } catch (error) {
+      if (currentScope.current === scope) setActionError(error instanceof Error ? error.message : "Message not sent. Your draft is retained.");
+    } finally {
+      if (currentScope.current === scope) setSending(false);
+      if (actionRef.current === scope) actionRef.current = null;
+    }
+  }, [chatInput, groupImageUri, replyingTo, user?.id, chat?.canSend, sending, scope, groupId, refresh, setChatInput, setReplyingTo, setSending, setActionError]);
 
   const handleSendVoiceMessage = useCallback((_uri: string, _durationMs: number) => {
     setShowVoiceRecorder(false);
-    Alert.alert("Group chat unavailable", "This group does not have a connected conversation yet.");
-  }, []);
+    Alert.alert("Voice notes unavailable", "Voice notes are not connected to saved group chat yet.");
+  }, [setShowVoiceRecorder]);
 
   const filteredMembers = groupState.members.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
@@ -271,8 +339,25 @@ export default function GroupDetailScreen() {
 
   const isChatTab = activeTab === "Chat";
 
+  if (!user || !isUUID(groupId) || query.isLoading || query.isError || !chat) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
+        <Pressable onPress={() => router.back()} accessibilityLabel="Back"><ChevronLeft color={colors.foreground} /></Pressable>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 16 }}>
+          {query.isLoading && user && isUUID(groupId) ? <ActivityIndicator color={colors.primary} /> : (
+            <Text style={{ color: colors.foreground, textAlign: "center" }}>
+              {!user ? "Sign in to open this group." : !isUUID(groupId) ? "This local group isn't connected to a saved conversation. Create a new prayer group to start a connected chat." : query.error?.message ?? "Group unavailable or you are no longer a member."}
+            </Text>
+          )}
+          {query.isError && <Pressable onPress={() => void query.refetch()}><Text style={{ color: colors.primary }}>Retry</Text></Pressable>}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <GroupInviteSheet key={`${user.id}:${groupId}`} groupId={groupId} userId={user.id} visible={inviteVisible} onClose={() => setInviteVisible(false)} onChanged={refresh} />
       {!isChatTab && (
         <View style={[styles.banner, { paddingTop: insets.top + 12 }]}>
           <Image
@@ -353,33 +438,48 @@ export default function GroupDetailScreen() {
         ))}
       </View>
 
+      {actionError && <Text accessibilityRole="alert" style={{ color: colors.destructive, paddingHorizontal: 20, paddingVertical: 8 }}>{actionError}</Text>}
       {activeTab === "Chat" && (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={0}
         >
+          <View style={{ paddingHorizontal: 20, paddingVertical: 8 }}>
+            <Text style={{ color: colors.mutedForeground }}>{live.connection === "live" ? "Live updates connected" : "Refreshing every few seconds"}</Text>
+            {!chat.canSend && <Text style={{ color: colors.destructive }}>Messaging is unavailable while a group member is blocked.</Text>}
+          </View>
           <ScrollView
             ref={chatScrollRef}
             contentContainerStyle={styles.chatScroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            onScroll={event => {
+              const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+              atBottom.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+            }}
+            scrollEventThrottle={100}
+            onContentSizeChange={() => { if (atBottom.current) chatScrollRef.current?.scrollToEnd({ animated: false }); }}
           >
+            {query.hasNextPage && <Pressable disabled={query.isFetchingNextPage} onPress={() => void query.fetchNextPage()}>
+              <Text style={{ color: colors.primary, textAlign: "center", padding: 12 }}>{query.isFetchingNextPage ? "Loading…" : "Load earlier messages"}</Text>
+            </Pressable>}
             {chatMessages.length === 0 ? (
               <View style={styles.emptyGroupChatState}>
                 <Text style={styles.emptyGroupChatTitle}>No group messages yet</Text>
-                <Text style={styles.emptyGroupChatText}>Messages will appear here when this group is connected.</Text>
+                <Text style={styles.emptyGroupChatText}>Start the conversation with a prayer or message.</Text>
               </View>
             ) : (
               <>
-                <View style={styles.dateDivider}>
-                  <Text style={styles.dateDividerText}>Today</Text>
-                </View>
                 {chatMessages.map((msg, index) => {
               const prevMsg = chatMessages[index - 1];
               const isFirstInGroup = !prevMsg || prevMsg.senderId !== msg.senderId;
-              return msg.isOwn ? (
+              const dateLabel = msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : "";
+              const previousDate = prevMsg?.createdAt ? new Date(prevMsg.createdAt).toLocaleDateString() : "";
+              return <React.Fragment key={msg.id}>
+                {dateLabel !== previousDate && <View style={styles.dateDivider}><Text style={styles.dateDividerText}>{dateLabel}</Text></View>}
+                {msg.isOwn ? (
                 <OwnMessage
                   key={msg.id}
                   message={msg}
@@ -401,7 +501,8 @@ export default function GroupDetailScreen() {
                   onScrollToMessage={handleScrollToMessage}
                   onLayout={(y) => msgPositionsRef.current.set(msg.id, y)}
                 />
-              );
+              )}
+              </React.Fragment>;
                 })}
               </>
             )}
@@ -431,11 +532,9 @@ export default function GroupDetailScreen() {
               </View>
             )}
             <View style={[styles.chatInputBar, { paddingBottom: insets.bottom + 8 }]}>
-            <ImageAttachment
-              imageUri={null}
-              onImageSelected={(uri) => setGroupImageUri(uri)}
-              onRemove={() => {}}
-            />
+            <Pressable accessibilityLabel="Group attachment information" onPress={() => setActionError("Group photos and voice notes aren't connected yet. Text messages and reactions are available.")}>
+              <ImageIcon size={22} color={colors.mutedForeground} />
+            </Pressable>
             <View style={styles.chatInputWrap}>
               <TextInput
                 style={styles.chatInput}
@@ -443,23 +542,19 @@ export default function GroupDetailScreen() {
                 placeholderTextColor={colors.mutedForeground}
                 value={chatInput}
                 onChangeText={setChatInput}
+                editable={chat.canSend}
+                maxLength={20000}
                 multiline
               />
-              <Pressable style={styles.emojiBtn}>
-                <Text style={{ fontSize: 20 }}>🙂</Text>
-              </Pressable>
             </View>
             <Pressable
               style={[styles.chatSendBtn, (chatInput.trim().length > 0 || !!groupImageUri) && styles.chatSendBtnActive]}
-              onPress={chatInput.trim().length > 0 || !!groupImageUri ? handleSendMessage : () => {
-                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowVoiceRecorder(true);
-              }}
+              accessibilityLabel="Send message"
+              disabled={sending || !chat.canSend || !chatInput.trim()}
+              onPress={() => void handleSendMessage()}
             >
-              {(chatInput.trim().length > 0 || !!groupImageUri) ? (
+              {sending ? <ActivityIndicator color={colors.primaryForeground} /> : (
                 <Send size={18} color={colors.primaryForeground} />
-              ) : (
-                <Mic size={20} color={colors.primaryForeground} />
               )}
             </Pressable>
           </View>
@@ -514,26 +609,22 @@ export default function GroupDetailScreen() {
         member={memberActionsTarget}
         visible={!!memberActionsTarget}
         onClose={() => setMemberActionsTarget(null)}
+        isAdmin={IS_CURRENT_USER_ADMIN}
         onViewProfile={() => memberActionsTarget && router.push(`/user/${memberActionsTarget.id}` as never)}
-        onMessage={() => memberActionsTarget && Alert.alert("Message", `Opening DM with ${memberActionsTarget.name}`)}
+        onMessage={() => {
+          if (!memberActionsTarget || !user) return;
+          void getOrCreateDMConversation(user.id, memberActionsTarget.id)
+            .then(id => { if (currentScope.current === scope) router.push(`/chat/${id}`); })
+            .catch(error => { if (currentScope.current === scope) setActionError(error.message); });
+        }}
         onToggleAdmin={(m) => {
-          const updated = groupState.members.map((mem) =>
-            mem.id === m.id
-              ? { ...mem, role: (mem.role === "Admin" ? "Member" : "Admin") as Member["role"] }
-              : mem
-          );
-          groupStore.update(groupId, { members: updated });
+          void performAction("change_group_chat_member", { p_user_id: m.id, p_action: m.role === "Admin" ? "member" : "admin" });
         }}
         onToggleLeader={(m) => {
-          const updated = groupState.members.map((mem) =>
-            mem.id === m.id
-              ? { ...mem, role: (mem.role === "Leader" ? "Member" : "Leader") as Member["role"] }
-              : mem
-          );
-          groupStore.update(groupId, { members: updated });
+          void performAction("change_group_chat_member", { p_user_id: m.id, p_action: m.role === "Leader" ? "member" : "leader" });
         }}
         onRemove={(m) => {
-          groupStore.update(groupId, { members: groupState.members.filter((mem) => mem.id !== m.id) });
+          void performAction("change_group_chat_member", { p_user_id: m.id, p_action: "remove" });
         }}
       />
 
@@ -574,7 +665,7 @@ export default function GroupDetailScreen() {
             <View style={styles.memberStatDivider} />
             <View style={styles.memberStatItem}>
               <Text style={styles.memberStatNum}>
-                {groupState.members.filter((m) => m.isOnline).length}
+                —
               </Text>
               <Text style={styles.memberStatLabel}>Online</Text>
             </View>
@@ -671,15 +762,15 @@ export default function GroupDetailScreen() {
                   style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     closeGroupMenu();
-                    setTimeout(() => router.push(`/group/manage?id=${id}` as never), 250);
+                    setInviteVisible(true);
                   }}
                 >
                   <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.primary + "15" }]}>
                     <Settings size={18} color={colors.primary} />
                   </View>
                   <View style={styles.groupMenuItemBody}>
-                    <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Manage Group</Text>
-                    <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Edit details, manage members, privacy</Text>
+                    <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Add members</Text>
+                    <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Add accepted friends to this chat</Text>
                   </View>
                 </Pressable>
               )}
@@ -688,9 +779,8 @@ export default function GroupDetailScreen() {
                 style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
                 onPress={() => {
                   closeGroupMenu();
-                  void Share.share({
-                    message: `Join ${groupState.name} on Prayer Space — a private space to pray and stay connected.\n\nhttps://prayerspace.app/join`,
-                  });
+                  if (IS_CURRENT_USER_ADMIN) setInviteVisible(true);
+                  else setActionError("Ask a group admin to add an accepted friend. Share-link invitations aren't connected yet.");
                 }}
               >
                 <View style={[styles.groupMenuIconWrap, { backgroundColor: colors.accent }]}>
@@ -698,7 +788,7 @@ export default function GroupDetailScreen() {
                 </View>
                 <View style={styles.groupMenuItemBody}>
                   <Text style={[styles.groupMenuItemTitle, { color: colors.foreground }]}>Invite Members</Text>
-                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Share a link to join this group</Text>
+                  <Text style={[styles.groupMenuItemDesc, { color: colors.mutedForeground }]}>Admins can add accepted friends</Text>
                 </View>
               </Pressable>
 
@@ -709,13 +799,23 @@ export default function GroupDetailScreen() {
                   setTimeout(() => {
                     Alert.alert(
                       "Leave Group",
-                      `Are you sure you want to leave ${groupState.name}?`,
+                      groupState.members.length === 1 ? "Leaving will leave this group with no members. Its chat will no longer be accessible." : `Are you sure you want to leave ${groupState.name}?`,
                       [
                         { text: "Cancel", style: "cancel" },
                         {
                           text: "Leave",
                           style: "destructive",
-                          onPress: () => router.replace("/(tabs)/community" as never),
+                          onPress: () => {
+                            void groupRpc(supabase, user.id, "change_group_chat_member", {
+                              p_group_id: groupId, p_user_id: user.id, p_action: "leave",
+                            }, emptyGroupResult).then(async () => {
+                              if (currentScope.current !== scope) return;
+                              await refresh();
+                              if (currentScope.current === scope) router.replace("/(tabs)/community" as never);
+                            }).catch(error => {
+                              if (currentScope.current === scope) setActionError(error.message);
+                            });
+                          },
                         },
                       ]
                     );
@@ -1208,7 +1308,7 @@ function EmojiReactions({ reactions, onPress }: { reactions?: MessageReaction[];
     const e = r.emoji!;
     if (!counts[e]) counts[e] = { count: 0, isMine: false };
     counts[e].count++;
-    if (r.userId === "me") counts[e].isMine = true;
+    if (r.isMine) counts[e].isMine = true;
   }
 
   return (
@@ -1466,16 +1566,13 @@ function MessageContextMenu({
     { icon: <Reply size={20} color={colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
     { icon: <SmilePlus size={20} color={colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
-    { icon: <Forward size={20} color={colors.foreground} />, label: "Forward", onPress: onClose },
     { icon: <Copy size={20} color={colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
-    { icon: <Info size={20} color={colors.foreground} />, label: "Info", onPress: () => onInfo(message) },
     { icon: <Trash2 size={20} color="#E55" />, label: "Delete", labelStyle: { color: "#E55" }, onPress: () => onDelete(message.id) },
   ];
   const otherActions = [
     { icon: <Reply size={20} color={colors.foreground} />, label: "Reply", onPress: () => { onReply(message); onClose(); } },
     { icon: <SmilePlus size={20} color={colors.foreground} />, label: "React", onPress: () => setShowEmojiPicker((v) => !v) },
     { icon: <Text style={styles.menuEmoji}>🙏</Text>, label: "Pray", onPress: () => onPray(message.id) },
-    { icon: <Forward size={20} color={colors.foreground} />, label: "Forward", onPress: onClose },
     { icon: <Copy size={20} color={colors.foreground} />, label: "Copy", onPress: () => onCopy(message.text) },
     { icon: <Flag size={20} color="#E55" />, label: "Report", labelStyle: { color: "#E55" }, onPress: onReport },
   ];
@@ -1490,7 +1587,7 @@ function MessageContextMenu({
           {/* Quick emoji reaction bar */}
           <View style={styles.quickEmojiBar}>
             {EMOJI_REACTIONS.map((emoji) => {
-              const alreadyReacted = (message.reactions ?? []).some((r) => r.userId === "me" && r.type === "emoji" && r.emoji === emoji);
+              const alreadyReacted = (message.reactions ?? []).some((r) => r.isMine && (r.emoji === emoji || (emoji === "🙏" && r.type === "pray")));
               return (
                 <TouchableOpacity
                   key={emoji}
@@ -1685,6 +1782,7 @@ function MemberActionsSheet({
   onToggleAdmin,
   onToggleLeader,
   onRemove,
+  isAdmin: canManage,
 }: {
   member: Member | null;
   visible: boolean;
@@ -1694,6 +1792,7 @@ function MemberActionsSheet({
   onToggleAdmin: (m: Member) => void;
   onToggleLeader: (m: Member) => void;
   onRemove: (m: Member) => void;
+  isAdmin: boolean;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -1722,7 +1821,7 @@ function MemberActionsSheet({
     },
   ];
 
-  if (IS_CURRENT_USER_ADMIN) {
+  if (canManage) {
     actions.push({
       icon: isAdmin
         ? <ShieldOff size={20} color={colors.foreground} />
