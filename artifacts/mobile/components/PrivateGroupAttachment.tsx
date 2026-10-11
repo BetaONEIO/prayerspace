@@ -26,6 +26,21 @@ export default function PrivateGroupAttachment({media,context,onLongPress}:{
       asset.current?.dispose();asset.current=null;
     };
   },[context.scope,media.id]);
+  useEffect(()=>{
+    if(!playing)return;
+    const token=lifetime.current;
+    const timer=setInterval(()=>{
+      const player=sound.current;
+      if(!player || busy.current)return;
+      void player.getStatusAsync().then(status=>{
+        if(lifetime.current!==token || busy.current || sound.current!==player)return;
+        if(!status.isLoaded || status.didJustFinish ||
+          (status.durationMillis && status.positionMillis>=status.durationMillis) ||
+          (!status.isPlaying && !status.shouldPlay))setPlaying(false);
+      }).catch(()=>{if(lifetime.current===token)setPlaying(false);});
+    },250);
+    return()=>clearInterval(timer);
+  },[playing,context.scope,media.id]);
   const open=async()=>{
     if(busy.current)return;
     busy.current=true;
@@ -44,7 +59,7 @@ export default function PrivateGroupAttachment({media,context,onLongPress}:{
         await Audio.setAudioModeAsync({playsInSilentModeIOS:true,allowsRecordingIOS:false});
         if(!active())return;
         const loaded=await Audio.Sound.createAsync({uri:file.uri},{shouldPlay:false},status=>{
-          if(active() && status.isLoaded)setPlaying(status.isPlaying && !status.didJustFinish);
+          if(active() && !busy.current && status.isLoaded)setPlaying(status.isPlaying && !status.didJustFinish);
         });
         player=loaded.sound;
         if(!active()){await player.unloadAsync().catch(()=>{});return;}
@@ -53,17 +68,24 @@ export default function PrivateGroupAttachment({media,context,onLongPress}:{
       const status=await player.getStatusAsync();
       if(!active())return;
       if(!status.isLoaded){sound.current=null;throw new Error("Audio isn't loaded. Tap to retry.");}
-      if(status.isPlaying)await player.pauseAsync();
+      if(playing){
+        await player.pauseAsync();
+        if(active())setPlaying(false);
+      }
       else {
         if(status.durationMillis && status.positionMillis>=status.durationMillis)await player.setPositionAsync(0);
-        if(active())await player.playAsync();
+        if(active()){
+          await player.playAsync();
+          if(active())setPlaying(true);
+        }
       }
     }catch(e){
       if(active()){setPlaying(false);setError(e instanceof Error?e.message:"Couldn't load this file. Tap to retry.");}
     }finally{if(active()){busy.current=false;setLoading(false);}}
   };
   return <View style={{maxWidth:240,gap:6}}>
-    <Pressable accessibilityLabel={media.kind==="voice"?"Play voice message":"Open private group photo"}
+    <Pressable accessibilityRole="button" disabled={loading}
+      accessibilityLabel={media.kind==="voice"?(playing?"Pause voice message":"Play voice message"):"Open private group photo"}
       onPress={()=>void open()} onLongPress={onLongPress} delayLongPress={300}
       style={{padding:12,borderRadius:14,backgroundColor:colors.card,borderWidth:1,borderColor:colors.border,gap:8}}>
       {loading?<ActivityIndicator color={colors.primary}/>:media.kind==="voice"?

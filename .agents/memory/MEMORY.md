@@ -13,3 +13,4 @@
 - [Chat retry semantics](chat-retry-semantics.md) — reuse operation IDs for unchanged drafts and write desired reaction states; ambiguous network failures must not duplicate or undo saved actions.
 - [Private group media](private-group-media.md) — chat downloads must respect membership revocation; own-account exports are a separate, narrowly authorized capability.
 - [Authenticated SQL fixtures](authenticated-sql-fixtures.md) — set JWT role claims as well as user identity and SQL role, or auth.role() guards may be skipped in tests.
+- [Browser microphone testing](browser-microphone-testing.md) — permission alone does not provide a headless input device; emulation must supply fresh streams without bypassing recording.
