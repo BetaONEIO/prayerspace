@@ -44,6 +44,10 @@ export interface LocalStorageAdapter {
 // Serialize by adapter and fully scoped key. Reads after a pending write see
 // that write, including after returning to the same account in a new session.
 const queues = new WeakMap<LocalStorageAdapter, Map<string, Promise<void>>>();
+export async function drainAccountStorage(adapter: LocalStorageAdapter, userId: string) {
+  const prefix = accountStorageKey(userId, "");
+  await Promise.all([...(queues.get(adapter) ?? [])].filter(([key]) => key.startsWith(prefix)).map(([, work]) => work));
+}
 
 export function createAccountLocalStorage(adapter: LocalStorageAdapter, owner: LocalDataIdentity) {
   const snapshot = { ...owner };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
@@ -7,6 +7,9 @@ import { useAuth } from "@/providers/AuthProvider";
 import { createAccountLocalStorage, getLocalDataIdentity } from "@/lib/accountLocalData";
 import { Alert } from "react-native";
 import { currentAccountReminderIds } from "@/lib/accountReminderNotifications";
+import { useJournalBackup } from "@/hooks/useJournalBackup";
+import { saveJournalEdits, loadJournal, type JournalEntry } from "@/lib/journalSync";
+export type { JournalEntry } from "@/lib/journalSync";
 
 export interface PrayerEntry {
   id: string;
@@ -15,21 +18,6 @@ export interface PrayerEntry {
   message: string;
   timestamp: number;
   type: "sent" | "received";
-}
-
-export interface JournalEntry {
-  id: string;
-  title: string;
-  body: string;
-  tag: "gratitude" | "petition" | "reflection" | "praying_for";
-  timestamp: number;
-  isFavorite: boolean;
-  isAnswered: boolean;
-  contactName?: string;
-  contactAvatar?: string;
-  prayerRequest?: string;
-  eventDate?: string | null;
-  imageUrl?: string | null;
 }
 
 interface AppSettings {
@@ -133,6 +121,12 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
   const [archivedPosts, setArchivedPosts] = useState<ArchivedPost[]>([]);
   const [yourPeople, setYourPeople] = useState<YourPerson[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const journalEditVersion = useRef(0);
+  const backup = useJournalBackup(storage, entries => {
+    storage.assertActive();
+    setJournal(entries);
+    queryClient.setQueryData(["journal", userId], entries);
+  }, () => journalEditVersion.current);
 
   const prayersQuery = useQuery({
     queryKey: ["prayers", userId],
@@ -147,8 +141,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     queryKey: ["journal", userId],
     enabled,
     queryFn: async () => {
-      const stored = await storage.getItem(STORAGE_KEYS.JOURNAL);
-      return stored ? (JSON.parse(stored) as JournalEntry[]) : [];
+      return loadJournal(storage);
     },
   });
 
@@ -293,15 +286,22 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
   });
 
   const saveJournalMutation = useMutation({
-    mutationFn: async (updated: JournalEntry[]) => {
-      await storage.setItem(STORAGE_KEYS.JOURNAL, JSON.stringify(updated));
-      return updated;
+    mutationFn: async (edit: { before: JournalEntry[]; after: JournalEntry[]; version: number }) => {
+      return saveJournalEdits(storage, edit.before, edit.after);
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["journal", userId] });
+    onSuccess: (entries, edit) => {
+      if (!storage.isActive()) return;
+      if (edit.version === journalEditVersion.current) {
+        setJournal(entries);
+        queryClient.setQueryData(["journal", userId], entries);
+      }
+      backup.onSaved();
     },
     onError: onSaveError,
   });
+  const persistJournal = (updated: JournalEntry[]) => {
+    saveJournalMutation.mutate({ before: journal, after: updated, version: ++journalEditVersion.current });
+  };
 
   const saveSettingsMutation = useMutation({
     mutationFn: async (updated: AppSettings) => {
@@ -488,7 +488,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     entry: Omit<JournalEntry, "id" | "timestamp" | "isFavorite" | "isAnswered">
   ): string => {
     assertCanEdit();
-    const entryId = `journal-${Date.now()}`;
+    const entryId = `journal-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const newEntry: JournalEntry = {
       ...entry,
       id: entryId,
@@ -498,7 +498,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     };
     const updated = [newEntry, ...journal];
     setJournal(updated);
-    saveJournalMutation.mutate(updated);
+    persistJournal(updated);
     return entryId;
   }, [journal, saveJournalMutation, isHydrated, storage]);
 
@@ -508,7 +508,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
       e.id === id ? { ...e, isFavorite: !e.isFavorite } : e
     );
     setJournal(updated);
-    saveJournalMutation.mutate(updated);
+    persistJournal(updated);
   }, [journal, saveJournalMutation, isHydrated, storage]);
 
   const markJournalAnswered = useCallback((id: string) => {
@@ -517,14 +517,14 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
       e.id === id ? { ...e, isAnswered: true } : e
     );
     setJournal(updated);
-    saveJournalMutation.mutate(updated);
+    persistJournal(updated);
   }, [journal, saveJournalMutation, isHydrated, storage]);
 
   const deleteJournalEntry = useCallback((id: string) => {
     assertCanEdit();
     const updated = journal.filter((e) => e.id !== id);
     setJournal(updated);
-    saveJournalMutation.mutate(updated);
+    persistJournal(updated);
     console.log("[PrayerProvider] Journal entry deleted:", id);
   }, [journal, saveJournalMutation, isHydrated, storage]);
 
@@ -532,7 +532,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     assertCanEdit();
     const updated = journal.map((e) => e.id === id ? { ...e, ...patch } : e);
     setJournal(updated);
-    saveJournalMutation.mutate(updated);
+    persistJournal(updated);
     console.log("[PrayerProvider] Journal entry updated:", id);
   }, [journal, saveJournalMutation, isHydrated, storage]);
 
@@ -560,6 +560,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     reminders,
     archivedPosts,
     yourPeople,
+    journalBackup: backup,
     isLoading,
     loadError,
     retryLocalData,
@@ -578,7 +579,7 @@ export const [PrayerProvider, usePrayer] = createContextHook(() => {
     setReminder,
     removeReminder,
     getReminderForEntry,
-  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, isLoading, loadError, retryLocalData, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, deleteJournalEntry, updateJournalEntry, updateSetting, setReminder, removeReminder, getReminderForEntry]);
+  }), [prayers, journal, settings, stats, reminders, archivedPosts, yourPeople, backup, isLoading, loadError, retryLocalData, addPrayer, addJournalEntry, addArchivedPost, addYourPerson, addManyYourPeople, removeYourPerson, markPersonPrayed, toggleJournalFavorite, markJournalAnswered, deleteJournalEntry, updateJournalEntry, updateSetting, setReminder, removeReminder, getReminderForEntry]);
 });
 
 export function useFilteredJournal(filter: string) {

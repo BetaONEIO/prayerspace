@@ -6,7 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./accountDeletionInput";
+export * from "./accountDeletionInputConfirmation";
+export * from "./accountExport";
+export * from "./accountExportData";
+export * from "./exportAccountDataParams";
 export * from "./getCommunityAccess200";
 export * from "./getCommunityAccessEntitlement";
 export * from "./getCommunityAccessParams";
 export * from "./healthStatus";
+export * from "./requestAccountDeletion202";
+export * from "./requestAccountDeletion202Status";

@@ -44,6 +44,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAbuseReport } from "@/hooks/useAbuseReport";
 import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { fetchConversations, type ConversationListItem } from "@/lib/chat";
 import { supabase } from "@/lib/supabase";
@@ -325,6 +326,7 @@ export default function MessagesScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
+  const abuseReport = useAbuseReport();
   const queryClient = useQueryClient();
   const { unreadCount: notifUnreadCount } = useNotifications();
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -522,15 +524,10 @@ export default function MessagesScreen() {
   }, [closeActionSheet]);
 
   const handleReport = useCallback(() => {
+    const targetId = selectedConv?.other_user_id;
     closeActionSheet();
-    setTimeout(() => {
-      Alert.alert(
-        "Report User",
-        "Thank you for helping keep Prayer Space safe. Our team will review this report.",
-        [{ text: "OK" }]
-      );
-    }, 300);
-  }, [closeActionSheet]);
+    if (targetId) setTimeout(() => abuseReport.prompt("user", targetId), 300);
+  }, [closeActionSheet, selectedConv, abuseReport.prompt]);
 
   const handleSwipeOpen = useCallback((ref: Swipeable | null) => {
     if (openSwipeRef.current && openSwipeRef.current !== ref) {

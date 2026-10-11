@@ -7,6 +7,22 @@
  */
 import * as zod from "zod";
 
+export const ExportAccountDataQueryParams = zod.object({
+  expectedUserId: zod.coerce.string().uuid(),
+});
+
+export const ExportAccountDataResponse = zod.object({
+  version: zod.number(),
+  userId: zod.string(),
+  exportedAt: zod.string(),
+  data: zod.record(zod.string(), zod.unknown()),
+});
+
+export const RequestAccountDeletionBody = zod.object({
+  expectedUserId: zod.string().uuid(),
+  confirmation: zod.enum(["DELETE"]),
+});
+
 /**
  * Returns server health status
  * @summary Health check

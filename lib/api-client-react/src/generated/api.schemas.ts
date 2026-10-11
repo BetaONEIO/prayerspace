@@ -5,9 +5,45 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AccountDeletionInputConfirmation =
+  (typeof AccountDeletionInputConfirmation)[keyof typeof AccountDeletionInputConfirmation];
+
+export const AccountDeletionInputConfirmation = {
+  DELETE: "DELETE",
+} as const;
+
+export interface AccountDeletionInput {
+  expectedUserId: string;
+  confirmation: AccountDeletionInputConfirmation;
+}
+
+export type AccountExportData = { [key: string]: unknown };
+
+export interface AccountExport {
+  version: number;
+  userId: string;
+  exportedAt: string;
+  data: AccountExportData;
+}
+
 export interface HealthStatus {
   status: string;
 }
+
+export type ExportAccountDataParams = {
+  expectedUserId: string;
+};
+
+export type RequestAccountDeletion202Status =
+  (typeof RequestAccountDeletion202Status)[keyof typeof RequestAccountDeletion202Status];
+
+export const RequestAccountDeletion202Status = {
+  requested: "requested",
+} as const;
+
+export type RequestAccountDeletion202 = {
+  status: RequestAccountDeletion202Status;
+};
 
 export type GetCommunityAccessParams = {
   entitlement?: GetCommunityAccessEntitlement;

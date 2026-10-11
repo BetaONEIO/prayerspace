@@ -4,6 +4,7 @@ import { groupCreatedStore } from "@/lib/groupStore";
 import { recordCommunityEngagement } from "@/hooks/useReviewPrompt";
 import { ratingStore } from "@/lib/ratingStore";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAbuseReport } from "@/hooks/useAbuseReport";
 import {
   View,
   Text,
@@ -4043,12 +4044,20 @@ function PostActionsModal({ post, isAuthor, isAdmin, isPinned, onClose, onArchiv
     "Other",
   ];
 
-  const handleReportReason = useCallback((reason: string) => {
-    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setReportSubmitted(true);
-    onReport(post);
-    console.log("[Community] Report submitted for post:", post.id, "reason:", reason);
-  }, [post, onReport]);
+  const abuseReport = useAbuseReport();
+  const [reportPending, setReportPending] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const handleReportReason = useCallback(async (reason: string) => {
+    if (reportPending) return;
+    setReportPending(true); setReportError(null);
+    try {
+      await abuseReport.submit("post", post.id, reason);
+      if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setReportSubmitted(true);
+      onReport(post);
+    } catch (error) { setReportError(error instanceof Error ? error.message : "Your report was not saved. Please retry."); }
+    finally { setReportPending(false); }
+  }, [post, onReport, abuseReport.submit, reportPending]);
 
   return (
     <Modal visible transparent animationType="none" onRequestClose={handleClose} statusBarTranslucent>
@@ -4089,11 +4098,14 @@ function PostActionsModal({ post, isAuthor, isAdmin, isPinned, onClose, onArchiv
                     <Text style={styles.actionSub}>Why are you reporting this?</Text>
                   </View>
                 </View>
+                {reportError && <Text accessibilityRole="alert" style={{ color: colors.destructive, padding: 16 }}>{reportError}</Text>}
+                {reportPending && <Text style={{ color: colors.mutedForeground, padding: 16 }}>Submitting report…</Text>}
                 {REPORT_REASONS.map((reason, i) => (
                   <Pressable
                     key={reason}
                     style={[styles.actionItem, i === REPORT_REASONS.length - 1 && { borderBottomWidth: 0 }]}
-                    onPress={() => handleReportReason(reason)}
+                    disabled={reportPending}
+                    onPress={() => void handleReportReason(reason)}
                   >
                     <View style={styles.actionTextWrap}>
                       <Text style={styles.actionLabel}>{reason}</Text>

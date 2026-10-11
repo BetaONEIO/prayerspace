@@ -18,6 +18,11 @@ import { useReviewPrompt, recordAppOpen } from "@/hooks/useReviewPrompt";
 import { ratingStore, type RatingTriggerEvent } from "@/lib/ratingStore";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 import * as Sentry from '@sentry/react-native';
+import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import { supabase } from "@/lib/supabase";
+
+if (process.env.EXPO_PUBLIC_DOMAIN) setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+setAuthTokenGetter(async () => (await supabase.auth.getSession()).data.session?.access_token ?? null);
 
 Sentry.init({
   dsn: 'https://99dfa309c3f8908682618eb0362142fe@o4511344663986176.ingest.de.sentry.io/4511344668639312',
@@ -124,24 +129,27 @@ function RootLayoutNav() {
   const favouritesData = useFavourites();
   const localDataLoading = prayerData.isLoading || favouritesData.isLoading;
   const localDataError = prayerData.loadError || favouritesData.loadError;
+  const { profile } = useAuth();
+  const deletionPending = !!profile?.deletion_requested_at;
   // Verification handles its own save error. Keep the navigator mounted but
   // prevent interaction elsewhere while the required profile cannot load.
   const profileBlocked = session && segments[0] !== "verify-otp" &&
-    (isProfileLoading || profileError || localDataLoading || localDataError);
+    (isProfileLoading || profileError || localDataLoading || localDataError || deletionPending);
   const profileGate = (
     <Modal visible={!!profileBlocked} animationType="none" onRequestClose={() => {}}>
       <View style={[profileGateStyles.container, { backgroundColor: colors.background }]}>
         {isProfileLoading || localDataLoading ? <ActivityIndicator color={colors.primary} /> : (
           <>
             <Text style={[profileGateStyles.title, { color: colors.foreground }]}>
-              {localDataError ? "Your Data Could Not Load" : "Profile Could Not Load"}
+              {deletionPending ? "Account Deletion Requested" : localDataError ? "Your Data Could Not Load" : "Profile Could Not Load"}
             </Text>
             <Text style={[profileGateStyles.message, { color: colors.mutedForeground }]}>
-              {localDataError
+              {deletionPending ? "This account is awaiting deletion and cannot be used. Please sign out."
+                : localDataError
                 ? "Your saved records could not be read safely. Please retry. No saved records have been replaced."
                 : profileError?.message ?? "Your required profile could not be loaded. Please try again."}
             </Text>
-            <Pressable onPress={() => {
+            {!deletionPending && <Pressable onPress={() => {
               if (localDataError) {
                 void prayerData.retryLocalData();
                 void favouritesData.retryLocalData();
@@ -149,7 +157,7 @@ function RootLayoutNav() {
             }} accessibilityRole="button"
               style={[profileGateStyles.button, { backgroundColor: colors.primary }]}>
               <Text style={{ color: colors.primaryForeground }}>Retry</Text>
-            </Pressable>
+            </Pressable>}
             <Pressable onPress={() => void signOut()} accessibilityRole="button" style={profileGateStyles.button}>
               <Text style={{ color: colors.foreground }}>Sign Out</Text>
             </Pressable>

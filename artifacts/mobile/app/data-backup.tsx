@@ -1,13 +1,16 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
-import { View, Text, StyleSheet, Pressable, Modal, Platform, ActivityIndicator, Animated } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { View, Text, StyleSheet, Pressable, Modal, Platform, ActivityIndicator, Alert } from "react-native";
 import { AutoScrollView } from "@/components/AutoScrollView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack, useRouter } from "expo-router";
-import { ChevronLeft, Shield, Cloud, Download, Trash2, AlertTriangle, CheckCircle2, UserX } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { ChevronLeft, Shield, Cloud, Download, Trash2, AlertTriangle } from "lucide-react-native";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { ThemeColors } from "@/constants/colors";
 import { useAuth } from "@/providers/AuthProvider";
+import { usePrayer } from "@/providers/PrayerProvider";
+import { downloadAccountExport } from "@/lib/accountPrivacy";
+import { getLocalDataIdentity } from "@/lib/accountLocalData";
+import { privacyNotice } from "@/hooks/useAbuseReport";
 
 const GREEN = "#34C759";
 
@@ -15,35 +18,46 @@ export default function DataBackupScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { markAccountForDeletion } = useAuth();
+  const { markAccountForDeletion, user, localDataEpoch } = useAuth();
+  const owner = useMemo(() => ({ ...getLocalDataIdentity() }), [user?.id, localDataEpoch]);
+  const { journalBackup: backup } = usePrayer();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDeletedModal, setShowDeletedModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestSent, setRequestSent] = useState(false);
+  const [exported, setExported] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-
-  const showDeletedConfirmation = useCallback(() => {
-    setShowDeletedModal(true);
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, tension: 65, friction: 8, useNativeDriver: true }),
-    ]).start();
-  }, [fadeAnim, scaleAnim]);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const unavailable = busy || backup.status === "syncing" || backup.status === "loading" || isDeleting;
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true); setFeedback(null);
+    try { await action(); }
+    catch (error) { setFeedback(error instanceof Error ? error.message : "This operation failed. Please retry."); }
+    finally { setBusy(false); }
+  };
+  const confirmBackup = () => {
+    const text = "Upload this account's journal to your private Supabase backup? It is access-controlled, not end-to-end encrypted. Older unassigned device records will not be uploaded.";
+    const enable = () => void run(() => backup.setEnabled(true));
+    if (Platform.OS === "web") { if (window.confirm(text)) enable(); }
+    else Alert.alert("Enable journal backup", text, [{ text: "Cancel", style: "cancel" }, { text: "Enable & restore", onPress: enable }]);
+  };
+  const statusText = backup.status === "upToDate" ? "Last sync completed — device changes backed up" :
+    backup.status === "off" ? "Automatic cloud backup is off" :
+    backup.status === "conflict" ? `${backup.conflicts.length} change(s) need your decision` :
+    backup.status === "error" ? "Cloud sync unavailable — device edits retained" :
+    backup.status === "syncing" ? "Syncing journal…" : backup.status === "loading" ? "Loading backup settings…" :
+    backup.enabled ? "Device changes are waiting to sync" : "Automatic backup is off; device changes have not been uploaded";
 
   const handleConfirmDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
-      await markAccountForDeletion();
-      setShowDeleteModal(false);
-      showDeletedConfirmation();
+      await markAccountForDeletion("DELETE");
+      if (!getLocalDataIdentity().userId) privacyNotice("Deletion requested",
+        "Your confirmed request was saved. The server will remove your account, owned files and account records, with automatic retries if cleanup fails. Your signed-in device records have been removed. Shared communities and copies independently saved by other people may remain. Cancel subscriptions separately in your app store.");
     } catch (error) {
-      console.error("[DataBackup] Failed to delete account:", error);
+      setFeedback(error instanceof Error ? error.message : "Deletion was not confirmed. Please retry.");
       setIsDeleting(false);
     }
-  }, [markAccountForDeletion, showDeletedConfirmation]);
+  }, [markAccountForDeletion]);
 
   return (
     <>
@@ -65,7 +79,7 @@ export default function DataBackupScreen() {
                 <View style={styles.iconWrap}><Shield size={20} color={colors.primary} /></View>
                 <View style={styles.infoText}>
                   <Text style={styles.infoTitle}>Data Protection</Text>
-                  <Text style={styles.infoDesc}>Your prayer data is securely stored and protected. We do not sell or share your personal data with any third parties.</Text>
+                  <Text style={styles.infoDesc}>Your device records are separated by account. Cloud journal backup is optional and account-protected, not end-to-end encrypted. Older records without verified ownership stay unassigned and are not uploaded.</Text>
                 </View>
               </View>
             </View>
@@ -77,15 +91,44 @@ export default function DataBackupScreen() {
               <View style={styles.infoRow}>
                 <View style={styles.iconWrap}><Cloud size={20} color={GREEN} /></View>
                 <View style={styles.infoText}>
-                  <Text style={styles.infoTitle}>Automatic Backup</Text>
-                  <Text style={styles.infoDesc}>Your data is automatically backed up securely on our systems. No action is needed from you.</Text>
+                  <Text style={styles.infoTitle}>Private Journal Backup</Text>
+                  <Text style={styles.infoDesc}>When enabled, journal changes sync while the app is open. On a new device, enable backup or use Restore / Sync to recover cloud records. Different versions are kept for your decision; edits are never silently overwritten. Cloud storage is limited to 5 MB and 5,000 records, including deletion history.</Text>
                 </View>
               </View>
               <View style={styles.divider} />
               <View style={styles.statusRow}>
-                <View style={styles.statusDot} />
-                <Text style={styles.statusText}>Backup is active and up to date</Text>
+                <View style={[styles.statusDot, { backgroundColor: backup.status === "upToDate" ? GREEN : colors.mutedForeground }]} />
+                <Text style={[styles.statusText, { color: colors.foreground, flex: 1 }]}>{statusText}</Text>
               </View>
+              {backup.lastSyncedAt && <Text style={[styles.infoDesc, { paddingHorizontal: 18 }]}>Last successful sync: {new Date(backup.lastSyncedAt).toLocaleString()}</Text>}
+              {backup.error && <Text style={[styles.infoDesc, { padding: 18, color: colors.destructive }]}>{backup.error}</Text>}
+              <Pressable style={styles.actionBtn} disabled={unavailable} onPress={() => backup.enabled
+                ? void run(() => backup.setEnabled(false)) : confirmBackup()} testID="toggle-journal-backup">
+                <Text style={styles.actionBtnText}>{backup.enabled ? "Turn off automatic backup" : "Enable & restore journal backup"}</Text>
+              </Pressable>
+              <Pressable style={styles.actionBtn} disabled={unavailable} onPress={() => void run(() => backup.syncNow())} testID="sync-journal-btn">
+                <Text style={styles.actionBtnText}>Restore / Sync now</Text>
+              </Pressable>
+              {backup.conflicts.map(conflict => (
+                <View key={conflict.id} style={{ padding: 18, gap: 10 }}>
+                  <Text style={styles.infoTitle}>{conflict.local?.title ?? conflict.cloud?.title ?? "Deleted entry"} — conflicting change</Text>
+                  <Text style={styles.infoDesc}>Device: {conflict.local?.body.slice(0, 300) ?? "Deleted on this device"}</Text>
+                  <Text style={styles.infoDesc}>Cloud: {conflict.cloud?.body.slice(0, 300) ?? "Deleted in the cloud"}</Text>
+                  <Pressable disabled={unavailable} onPress={() => void run(() => backup.resolve(conflict, "cloud"))}>
+                    <Text style={styles.actionBtnText}>Use cloud version on this device</Text>
+                  </Pressable>
+                  {conflict.local && <Pressable disabled={unavailable} onPress={() => void run(() => backup.resolve(conflict, "both"))}>
+                    <Text style={styles.actionBtnText}>Keep both versions</Text>
+                  </Pressable>}
+                  {!conflict.local && backup.enabled && <Pressable disabled={unavailable} onPress={() => {
+                    const remove = () => void run(() => backup.resolve(conflict, "device"));
+                    if (Platform.OS === "web") { if (window.confirm("Delete this changed cloud entry permanently?")) remove(); }
+                    else Alert.alert("Keep device deletion", "Delete this changed cloud entry permanently?", [
+                      { text: "Cancel", style: "cancel" }, { text: "Delete cloud copy", style: "destructive", onPress: remove },
+                    ]);
+                  }}><Text style={styles.dangerBtnText}>Confirm deletion of cloud version</Text></Pressable>}
+                </View>
+              ))}
             </View>
           </View>
 
@@ -95,14 +138,14 @@ export default function DataBackupScreen() {
               <View style={styles.infoRow}>
                 <View style={styles.iconWrap}><Download size={20} color={colors.primary} /></View>
                 <View style={styles.infoText}>
-                  <Text style={styles.infoTitle}>Request My Data</Text>
-                  <Text style={styles.infoDesc}>You have the right to receive a copy of your personal data. We will send it to your registered email address.</Text>
+                  <Text style={styles.infoTitle}>Download My Data</Text>
+                  <Text style={styles.infoDesc}>Download your account records and this account's device journal as JSON. Owned uploaded files have private download links that expire after one hour.</Text>
                 </View>
               </View>
               <View style={styles.divider} />
-              <Pressable style={styles.actionBtn} onPress={() => setShowRequestModal(true)} testID="request-data-btn">
+              <Pressable style={styles.actionBtn} disabled={unavailable} onPress={() => { setExported(false); setFeedback(null); setShowRequestModal(true); }} testID="request-data-btn">
                 <Download size={16} color={colors.primary} />
-                <Text style={styles.actionBtnText}>Request My Data</Text>
+                <Text style={styles.actionBtnText}>Download My Data</Text>
               </Pressable>
             </View>
           </View>
@@ -114,45 +157,45 @@ export default function DataBackupScreen() {
                 <View style={[styles.iconWrap, styles.dangerIconWrap]}><Trash2 size={20} color={colors.destructive} /></View>
                 <View style={styles.infoText}>
                   <Text style={styles.infoTitle}>Delete My Account</Text>
-                  <Text style={styles.infoDesc}>Permanently delete your account and all associated data. This is irreversible and will be processed within 30 days.</Text>
+                  <Text style={styles.infoDesc}>Submit a confirmed, irreversible deletion of your account, owned files and account records. Sign in again if your last sign-in was more than 15 minutes ago. Store subscriptions must be cancelled separately.</Text>
                 </View>
               </View>
               <View style={styles.divider} />
-              <Pressable style={styles.dangerBtn} onPress={() => setShowDeleteModal(true)} testID="delete-account-btn">
+              <Pressable style={styles.dangerBtn} disabled={unavailable} onPress={() => { setFeedback(null); setShowDeleteModal(true); }} testID="delete-account-btn">
                 <Trash2 size={16} color={colors.destructive} />
                 <Text style={styles.dangerBtnText}>Delete My Account</Text>
               </Pressable>
             </View>
           </View>
 
-          <View style={styles.gdprNote}>
-            <Text style={styles.gdprText}>Prayer Space is designed in line with GDPR principles. For full details, see our Privacy Policy and Terms of Service.</Text>
-          </View>
+          {feedback && <Text accessibilityRole="alert" style={[styles.infoDesc, { color: colors.destructive }]}>{feedback}</Text>}
           <View style={{ height: 40 }} />
         </AutoScrollView>
 
         {/* Request Data Modal */}
-        <Modal visible={showRequestModal} transparent animationType="fade" onRequestClose={() => { if (!requestSent) setShowRequestModal(false); }}>
+        <Modal visible={showRequestModal} transparent animationType="fade" onRequestClose={() => { if (!busy) setShowRequestModal(false); }}>
           <View style={styles.overlay}>
             <View style={styles.modalCard}>
-              {requestSent ? (
+              {exported ? (
                 <>
-                  <View style={styles.modalIconCircle}><CheckCircle2 size={32} color={GREEN} /></View>
-                  <Text style={styles.modalTitle}>Request Sent</Text>
-                  <Text style={styles.modalDesc}>We have received your data request. You will receive a copy within 30 days.</Text>
-                  <Pressable style={styles.modalPrimaryBtn} onPress={() => { setShowRequestModal(false); setRequestSent(false); }}>
+                  <Text style={styles.modalTitle}>Export Prepared</Text>
+                  <Text style={styles.modalDesc}>The download or save/share sheet opened with your JSON export. Keep it private and save any uploaded files before their links expire.</Text>
+                  <Pressable style={styles.modalPrimaryBtn} onPress={() => setShowRequestModal(false)}>
                     <Text style={styles.modalPrimaryBtnText}>Done</Text>
                   </Pressable>
                 </>
               ) : (
                 <>
                   <View style={styles.modalIconCircle}><Download size={28} color={colors.primary} /></View>
-                  <Text style={styles.modalTitle}>Request Your Data</Text>
-                  <Text style={styles.modalDesc}>We will compile and send a copy of your personal data to your registered email address within 30 days.</Text>
-                  <Pressable style={styles.modalPrimaryBtn} onPress={() => setRequestSent(true)} testID="confirm-request-btn">
-                    <Text style={styles.modalPrimaryBtnText}>Send Request</Text>
+                  <Text style={styles.modalTitle}>Download Your Data</Text>
+                  <Text style={styles.modalDesc}>This export contains private journal and account information. Download it or save it using your device's share sheet. Older unassigned records are excluded.</Text>
+                  {feedback && <Text accessibilityRole="alert" style={[styles.modalDesc, { color: colors.destructive }]}>{feedback}</Text>}
+                  <Pressable style={styles.modalPrimaryBtn} disabled={busy} onPress={() => void run(async () => {
+                    await downloadAccountExport(owner); setExported(true);
+                  })} testID="confirm-request-btn">
+                    {busy ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={styles.modalPrimaryBtnText}>Download JSON</Text>}
                   </Pressable>
-                  <Pressable style={styles.modalSecondaryBtn} onPress={() => setShowRequestModal(false)}>
+                  <Pressable style={styles.modalSecondaryBtn} disabled={busy} onPress={() => setShowRequestModal(false)}>
                     <Text style={styles.modalSecondaryBtnText}>Cancel</Text>
                   </Pressable>
                 </>
@@ -167,8 +210,9 @@ export default function DataBackupScreen() {
             <View style={styles.modalCard}>
               <View style={[styles.modalIconCircle, styles.dangerIconCircle]}><AlertTriangle size={28} color={colors.destructive} /></View>
               <Text style={styles.modalTitle}>Delete Account</Text>
-              <Text style={styles.modalDesc}>This will permanently delete your account, prayer history, journal entries, and all personal data.</Text>
-              <View style={styles.modalWarningBox}><Text style={styles.modalWarningText}>Your data will be permanently deleted within 30 days in line with GDPR regulations.</Text></View>
+              <Text style={styles.modalDesc}>This permanently removes your account, authored prayers and messages, private cloud journals, owned files and this account's device records. This cannot be undone.</Text>
+              <View style={styles.modalWarningBox}><Text style={styles.modalWarningText}>Shared communities remain without your ownership. Copies saved independently by others may remain. Cancel store subscriptions separately. Download your data first if you need a copy.</Text></View>
+              {feedback && <Text accessibilityRole="alert" style={[styles.modalDesc, { color: colors.destructive }]}>{feedback}</Text>}
               <Pressable style={[styles.modalDangerBtn, isDeleting && styles.modalBtnDisabled]} onPress={handleConfirmDelete} disabled={isDeleting} testID="confirm-delete-btn">
                 {isDeleting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.modalDangerBtnText}>Yes, Delete My Account</Text>}
               </Pressable>
@@ -179,19 +223,6 @@ export default function DataBackupScreen() {
           </View>
         </Modal>
 
-        {/* Deleted Confirmation Modal */}
-        <Modal visible={showDeletedModal} transparent animationType="none" onRequestClose={() => {}}>
-          <View style={styles.overlay}>
-            <Animated.View style={[styles.modalCard, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-              <View style={styles.deletedIconCircle}><UserX size={30} color={colors.foreground} /></View>
-              <Text style={styles.modalTitle}>Account Deleted</Text>
-              <Text style={styles.modalDesc}>Your account has been removed from Prayer Space. Your data will be permanently deleted within 30 days.</Text>
-              <Pressable style={styles.modalPrimaryBtn} onPress={() => setShowDeletedModal(false)} testID="deleted-ok-btn">
-                <Text style={styles.modalPrimaryBtnText}>OK</Text>
-              </Pressable>
-            </Animated.View>
-          </View>
-        </Modal>
       </SafeAreaView>
     </>
   );

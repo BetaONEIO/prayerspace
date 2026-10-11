@@ -1,6 +1,6 @@
 import createContextHook from "@nkzw/create-context-hook";
 import { Session } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
@@ -8,7 +8,9 @@ import * as Linking from "expo-linking";
 import { supabase } from "@/lib/supabase";
 import { communityStore } from "@/lib/communityStore";
 import { churchMembershipStore } from "@/lib/churchMembershipStore";
-import { getLocalDataIdentity, setLocalDataIdentity } from "@/lib/accountLocalData";
+import { getLocalDataIdentity, setLocalDataIdentity, assertLocalDataIdentity } from "@/lib/accountLocalData";
+import { removeDeletedAccountLocalData } from "@/lib/accountPrivacy";
+import { requestAccountDeletion } from "@workspace/api-client-react";
 import { groupStore, groupCreatedStore } from "@/lib/groupStore";
 import { synchronizeAccountReminders } from "@/lib/accountReminderNotifications";
 import { checkRegistrationStorage, loadEmailRegistrationProfile, readOwnRegistrationProfile, writeOwnRegistrationProfile, validateDateOfBirth } from "@/lib/registrationProfile";
@@ -20,6 +22,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [session, setSession] = useState<Session | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [localDataEpoch, setLocalDataEpoch] = useState(0);
+  const requestedDeletionAccounts = useRef(new Set<string>());
+  const accountIdentity = useMemo(() => ({ ...getLocalDataIdentity() }), [session?.user.id, localDataEpoch]);
 
   useEffect(() => {
     console.log("[Auth] Checking initial session...");
@@ -27,6 +31,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     let oauthProfileTimer: ReturnType<typeof setTimeout> | null = null;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (s && requestedDeletionAccounts.current.has(s.user.id)) s = null;
       console.log("[Auth] State changed:", event, s ? "signed in" : "no user");
       const previousUserId = getLocalDataIdentity().userId;
       const nextIdentity = setLocalDataIdentity(s?.user.id ?? null);
@@ -358,20 +363,33 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     if (error) console.error("[Auth] Sign out error:", error.message);
   }, []);
 
-  const markAccountForDeletion = useCallback(async () => {
-    if (!session?.user?.id) throw new Error("No user session");
-    console.log("[Auth] Marking account for deletion:", session.user.id);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ deletion_requested_at: new Date().toISOString() })
-      .eq("id", session.user.id);
-    if (error) {
-      console.error("[Auth] Failed to mark account for deletion:", error.message);
-      throw error;
+  const markAccountForDeletion = useCallback(async (confirmation: "DELETE") => {
+    assertLocalDataIdentity(accountIdentity);
+    if (!process.env.EXPO_PUBLIC_DOMAIN) throw new Error("Account deletion service URL is not configured");
+    const result = await requestAccountDeletion({ expectedUserId: accountIdentity.userId!, confirmation }, { signal: AbortSignal.timeout(45000) });
+    if (result.status !== "requested") throw new Error("Deletion was not confirmed");
+    requestedDeletionAccounts.current.add(accountIdentity.userId!);
+    // Even if another account became active while awaiting the receipt, clean
+    // only the account named in the accepted request; never sign out the new one.
+    const active = getLocalDataIdentity();
+    if (active.userId === accountIdentity.userId && active.epoch === accountIdentity.epoch) {
+      const next = setLocalDataIdentity(null);
+      setLocalDataEpoch(next.epoch);
+      setSession(null);
+      void queryClient.cancelQueries();
+      queryClient.clear();
+      communityStore.clear(); churchMembershipStore.clearMember();
+      groupStore.clear(); groupCreatedStore.clear();
+      void synchronizeAccountReminders().catch(() => Alert.alert("Could not pause reminders",
+        "Turn off Prayer Space notifications in device settings until earlier reminders can be removed."));
+      await supabase.auth.signOut({ scope: "local" });
     }
-    console.log("[Auth] Account marked for deletion, signing out...");
-    await supabase.auth.signOut();
-  }, [session?.user?.id]);
+    try { await removeDeletedAccountLocalData(accountIdentity.userId!); }
+    catch {
+      throw new Error("Deletion was requested, but device cleanup failed. Clear Prayer Space app data on this device.");
+    }
+    return result;
+  }, [accountIdentity, queryClient]);
 
   return useMemo(() => ({
     session,

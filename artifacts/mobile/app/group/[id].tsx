@@ -60,6 +60,7 @@ import * as Haptics from "expo-haptics";
 import { Audio } from "expo-av";
 import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
+import { useAbuseReport, privacyNotice } from "@/hooks/useAbuseReport";
 import { useGroupState, groupStore, GroupMember as StoreGroupMember } from "@/lib/groupStore";
 import { useChurchEntitlements } from "@/hooks/useChurchEntitlements";
 
@@ -154,6 +155,7 @@ export default function GroupDetailScreen() {
   }>();
   const { id } = params;
   const groupId = id ?? "";
+  const abuseReport = useAbuseReport();
   const groupState = useGroupState(groupId);
   const insets = useSafeAreaInsets();
   const { isPremiumCommunity, isOwner } = useChurchEntitlements();
@@ -490,7 +492,14 @@ export default function GroupDetailScreen() {
         }}
         onDelete={(id) => handleDeleteMessage(id)}
         onInfo={(msg) => { setInfoMsg(msg); setContextMsg(null); }}
-        onReport={() => { Alert.alert("Reported", "This message has been reported."); setContextMsg(null); }}
+        onReport={() => {
+          const targetId = contextMsg?.id;
+          setContextMsg(null);
+          if (!targetId) return;
+          void abuseReport.submit("message", targetId, "Abusive or inappropriate message")
+            .then(() => privacyNotice("Report submitted", "Your report was saved to the moderation queue."))
+            .catch(error => privacyNotice("Could not report", error instanceof Error ? error.message : "Please retry."));
+        }}
       />
 
       <MessageInfoSheet

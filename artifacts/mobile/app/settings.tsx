@@ -166,6 +166,12 @@ export default function SettingsScreen() {
               "Data & Backup",
               () => router.push("/data-backup")
             )}
+            <View style={styles.divider} />
+            {renderRow(
+              <Cloud size={18} color={colors.primary + "90"} />,
+              "Moderation (staff only)",
+              () => router.push("/moderation")
+            )}
           </View>
         </View>
 

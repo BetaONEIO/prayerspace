@@ -47,6 +47,7 @@ import { ThemeColors } from "@/constants/colors";
 import { useThemeColors } from "@/providers/ThemeProvider";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useAbuseReport } from "@/hooks/useAbuseReport";
 import {
   isUUID,
   getOrCreateDMConversation,
@@ -83,6 +84,7 @@ export default function ChatScreen() {
     autoMessage?: string;
   }>();
   const { user } = useAuth();
+  const abuseReport = useAbuseReport();
   const queryClient = useQueryClient();
   const flatListRef = useRef<FlatList>(null);
 
@@ -545,14 +547,8 @@ export default function ChatScreen() {
 
   const handleReport = useCallback(() => {
     closeHeaderMenu();
-    setTimeout(() => {
-      Alert.alert(
-        "Report User",
-        "Thank you for helping keep Prayer Space safe. Our team will review this report.",
-        [{ text: "OK" }]
-      );
-    }, 300);
-  }, [closeHeaderMenu]);
+    if (id) setTimeout(() => abuseReport.prompt("user", id), 300);
+  }, [closeHeaderMenu, abuseReport.prompt, id]);
 
   const handleMuteToggle = useCallback(() => {
     if (Platform.OS !== "web") void Haptics.selectionAsync();

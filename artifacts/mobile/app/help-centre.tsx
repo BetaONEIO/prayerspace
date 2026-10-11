@@ -35,10 +35,10 @@ const HELP_SECTIONS: HelpSection[] = [
     { question: "How do I encourage someone?", answer: "On any prayer card in your feed, tap the 'Encourage' button to send a word of support." },
   ]},
   { id: "privacy", title: "Privacy & Security", icon: Shield, color: "#5B8FD4", faqs: [
-    { question: "Is Prayer Pal GDPR compliant?", answer: "Yes. Prayer Pal is fully GDPR compliant. You have the right to access, correct, or delete your personal data at any time." },
+    { question: "How can I access or delete my data?", answer: "Open Settings → Data & Backup to download your account records or confirm account deletion. You need a recent sign-in before deletion. Store subscriptions must be cancelled separately." },
     { question: "How are my contacts used?", answer: "If you grant contact access, we use it solely to help you find friends already on Prayer Pal and to send invitations on your behalf." },
     { question: "How is my data kept secure?", answer: "All data is encrypted in transit and at rest. We use industry-standard security practices." },
-    { question: "Can I delete my account?", answer: "Yes. You can request full account deletion from the Privacy settings screen." },
+    { question: "Can I delete my account?", answer: "Yes. Confirm account deletion in Settings → Data & Backup. Authored content, private journals and owned files are removed. Shared communities remain without your ownership; copies independently saved by others may remain." },
   ]},
   { id: "payments", title: "Payments & Subscriptions", icon: CreditCard, color: "#4CAF7D", faqs: [
     { question: "Is Prayer Pal free to use?", answer: "Prayer Pal is free for individuals. Premium plans are available for churches and organisations." },

@@ -11,6 +11,66 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /account/export:
+    get:
+      operationId: exportAccountData
+      tags: [account]
+      security:
+        - SupabaseBearer: []
+      parameters:
+        - in: query
+          name: expectedUserId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Private account records with temporary download links for owned files
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountExport"
+        "401":
+          description: Sign-in required
+        "409":
+          description: Account changed
+        "503":
+          description: Export unavailable
+  /account/deletion:
+    post:
+      operationId: requestAccountDeletion
+      tags: [account]
+      security:
+        - SupabaseBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeletionInput"
+      responses:
+        "202":
+          description: Confirmed self-deletion is queued durably
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [requested]
+        "400":
+          description: Confirmation missing
+        "401":
+          description: Sign-in required
+        "403":
+          description: Recent sign-in required
+        "409":
+          description: Account changed
+        "503":
+          description: Deletion service unavailable
   /healthz:
     get:
       operationId: healthCheck
@@ -69,6 +129,29 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    AccountDeletionInput:
+      type: object
+      required: [expectedUserId, confirmation]
+      properties:
+        expectedUserId:
+          type: string
+          format: uuid
+        confirmation:
+          type: string
+          enum: [DELETE]
+    AccountExport:
+      type: object
+      required: [version, userId, exportedAt, data]
+      properties:
+        version:
+          type: integer
+        userId:
+          type: string
+        exportedAt:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
     HealthStatus:
       type: object
       properties:

@@ -5,28 +5,208 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
 import type {
+  AccountDeletionInput,
+  AccountExport,
+  ExportAccountDataParams,
   GetCommunityAccess200,
   GetCommunityAccessParams,
   HealthStatus,
+  RequestAccountDeletion202,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getExportAccountDataUrl = (params: ExportAccountDataParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/account/export?${stringifiedParams}`
+    : `/api/account/export`;
+};
+
+export const exportAccountData = async (
+  params: ExportAccountDataParams,
+  options?: RequestInit,
+): Promise<AccountExport> => {
+  return customFetch<AccountExport>(getExportAccountDataUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportAccountDataQueryKey = (
+  params?: ExportAccountDataParams,
+) => {
+  return [`/api/account/export`, ...(params ? [params] : [])] as const;
+};
+
+export const getExportAccountDataQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportAccountData>>,
+  TError = ErrorType<void>,
+>(
+  params: ExportAccountDataParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAccountData>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getExportAccountDataQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof exportAccountData>>
+  > = ({ signal }) => exportAccountData(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportAccountData>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportAccountDataQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportAccountData>>
+>;
+export type ExportAccountDataQueryError = ErrorType<void>;
+
+export function useExportAccountData<
+  TData = Awaited<ReturnType<typeof exportAccountData>>,
+  TError = ErrorType<void>,
+>(
+  params: ExportAccountDataParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof exportAccountData>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportAccountDataQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getRequestAccountDeletionUrl = () => {
+  return `/api/account/deletion`;
+};
+
+export const requestAccountDeletion = async (
+  accountDeletionInput: AccountDeletionInput,
+  options?: RequestInit,
+): Promise<RequestAccountDeletion202> => {
+  return customFetch<RequestAccountDeletion202>(
+    getRequestAccountDeletionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(accountDeletionInput),
+    },
+  );
+};
+
+export const getRequestAccountDeletionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestAccountDeletion>>,
+    TError,
+    { data: BodyType<AccountDeletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestAccountDeletion>>,
+  TError,
+  { data: BodyType<AccountDeletionInput> },
+  TContext
+> => {
+  const mutationKey = ["requestAccountDeletion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestAccountDeletion>>,
+    { data: BodyType<AccountDeletionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestAccountDeletion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestAccountDeletionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestAccountDeletion>>
+>;
+export type RequestAccountDeletionMutationBody = BodyType<AccountDeletionInput>;
+export type RequestAccountDeletionMutationError = ErrorType<void>;
+
+export const useRequestAccountDeletion = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestAccountDeletion>>,
+    TError,
+    { data: BodyType<AccountDeletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestAccountDeletion>>,
+  TError,
+  { data: BodyType<AccountDeletionInput> },
+  TContext
+> => {
+  return useMutation(getRequestAccountDeletionMutationOptions(options));
+};
 
 /**
  * Returns server health status
