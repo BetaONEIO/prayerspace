@@ -54,6 +54,7 @@ import { useTabSwipe } from "@/hooks/useTabSwipe";
 import { supabase } from "@/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 import { ThemeColors } from "@/constants/colors";
+import { loadReceivedPrayers } from "@/lib/receivedPrayers";
 
 type ReceivedPrayerRequest = {
   id: string;
@@ -98,6 +99,14 @@ export default function HomeScreen() {
   const { user, profile } = useAuth();
   const { stats } = usePrayer();
   const { hasBeenPrayed } = useNotifications();
+  const receivedQuery = useQuery({
+    queryKey: ["received-prayers", user?.id],
+    enabled: !!user?.id,
+    queryFn: () => loadReceivedPrayers(supabase, user!.id),
+    staleTime: 0,
+    refetchInterval: 30000,
+    retry: 1,
+  });
   const { data: friendRequestCount } = useQuery<number>({
     queryKey: ["friend_requests_incoming_count", user?.id],
     queryFn: async () => {
@@ -329,7 +338,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-            <Text style={styles.pendingTime}>{item.sentAt}</Text>
+            <Text style={styles.pendingTime}>{new Date(item.sentAt).toLocaleString()}</Text>
           </View>
         </View>
         <ChevronRight size={16} color={colors.mutedForeground} />
@@ -675,9 +684,22 @@ export default function HomeScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Prayer Requests</Text>
-          <View style={styles.emptyRequests}>
-            <Text style={styles.emptyRequestsText}>No prayer requests yet.</Text>
-          </View>
+          {receivedQuery.isLoading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : receivedQuery.isError ? (
+            <View style={styles.emptyRequests}>
+              <Text style={styles.emptyRequestsText}>We couldn't load prayer requests.</Text>
+              <Pressable onPress={() => void receivedQuery.refetch()} accessibilityRole="button">
+                <Text style={styles.seeAll}>Retry</Text>
+              </Pressable>
+            </View>
+          ) : receivedQuery.data?.length ? (
+            receivedQuery.data.map((item) => renderPrayerRequest({ item }))
+          ) : (
+            <View style={styles.emptyRequests}>
+              <Text style={styles.emptyRequestsText}>No prayer requests from your friends yet.</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>

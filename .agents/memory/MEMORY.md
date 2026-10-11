@@ -9,3 +9,4 @@
 - [Tour product scope](tour-product-scope.md) — onboarding uses authorized real screens and empty states; no dummy activity or required publishing.
 - [Local account ownership](account-data-ownership.md) — preserve unassigned legacy records; never auto-import them into the next login, and invalidate callbacks across account transitions.
 - [Privacy consent boundaries](privacy-consent-boundaries.md) — historical deletion flags are not executable jobs; journal cloud uploads require opt-in and staff roles need explicit authorization.
+- [Expo test execution](expo-test-execution.md) — separate project typechecking from compiled Node tests; native ESM stripping cannot resolve Metro's extensionless imports.

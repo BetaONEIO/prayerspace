@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { AutoScrollView } from '@/components/AutoScrollView';
 import { Image } from "expo-image";
@@ -18,9 +19,6 @@ import {
   ChevronLeft,
   Clock,
   Quote,
-  Play,
-  Pause,
-  FileText,
   MessageCircle,
   BookmarkPlus,
   X,
@@ -33,36 +31,21 @@ import { useNotifications } from "@/providers/NotificationsProvider";
 import { usePrayer } from "@/providers/PrayerProvider";
 import { formatPrayerDateFeed, daysUntil } from "@/lib/prayerDateUtils";
 import { scheduleReceivedPrayerReminders, shouldShowReminderBadge } from "@/lib/prayerReminders";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
-
-type ReceivedPrayer = {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar: string;
-  type: "text" | "voice";
-  content: string;
-  voiceDuration?: string;
-  sentAt: string;
-  prayerCount: number;
-  prayedByAvatars: string[];
-  eventDate?: string | null;
-  eventTime?: string | null;
-  hasPrayerDate?: boolean;
-};
+import { loadReceivedPrayer, prayerIdSchema, prayerAcknowledgementSchema } from "@/lib/receivedPrayers";
 
 export default function ReceivedPrayerScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id = typeof params.id === "string" ? params.id : "";
   const { addJournalEntry } = usePrayer();
   const { markRequestPrayed } = useNotifications();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playProgress, setPlayProgress] = useState(0);
-  const [hasPrayed, setHasPrayed] = useState(false);
+  const [didPray, setHasPrayed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isJournaled, setIsJournaled] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showPrayModal, setShowPrayModal] = useState(false);
@@ -70,8 +53,6 @@ export default function ReceivedPrayerScreen() {
   const modalScaleAnim = useRef(new Animated.Value(0.88)).current;
   const modalFadeAnim = useRef(new Animated.Value(0)).current;
   const modalSlideAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tooltipFadeAnim = useRef(new Animated.Value(0)).current;
   const tooltipSlideAnim = useRef(new Animated.Value(8)).current;
   const dotsAnim = useRef(new Animated.Value(0)).current;
@@ -79,24 +60,37 @@ export default function ReceivedPrayerScreen() {
   // Received requests are loaded by the feed when the backend data is available.
   // Never render a local/demo request when a route is opened directly.
   const { user } = useAuth();
-  const prayerQuery = useQuery<ReceivedPrayer | null>({
+  const queryClient = useQueryClient();
+  const owner = useMemo(() => ({ userId: user?.id, id }), [user?.id, id]);
+  const ownerRef = useRef(owner);
+  ownerRef.current = owner;
+  const focusedRef = useRef(false);
+  const savingRef = useRef<typeof owner | null>(null);
+  const validId = prayerIdSchema.safeParse(id).success;
+  const prayerQuery = useQuery({
     queryKey: ["received-prayer", user?.id, id],
-    enabled: !!user && !!id,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_received_prayer_details", { prayer_id: id });
-      if (error) throw error;
-      return data as ReceivedPrayer | null;
-    },
+    enabled: !!user && validId,
+    queryFn: () => loadReceivedPrayer(supabase, id, user!.id),
+    staleTime: 0,
+    refetchInterval: 30000,
+    retry: 1,
   });
   const prayer = prayerQuery.data ?? null;
+  const hasPrayed = didPray || prayer?.hasPrayed === true;
 
   useFocusEffect(
     useCallback(() => {
-      if (id) {
-        setHasPrayed(false);
-        setIsJournaled(false);
-      }
-    }, [id])
+      ownerRef.current = owner;
+      focusedRef.current = true;
+      setHasPrayed(false);
+      setIsJournaled(false);
+      setIsSaving(false);
+      setShowTooltip(false);
+      setShowPrayModal(false);
+      savingRef.current = null;
+      if (user?.id && validId) void prayerQuery.refetch();
+      return () => { focusedRef.current = false; };
+    }, [owner])
   );
 
   useEffect(() => {
@@ -112,12 +106,6 @@ export default function ReceivedPrayerScreen() {
       dotsAnim.stopAnimation();
     };
   }, [hasPrayed, dotsAnim]);
-
-  useEffect(() => {
-    return () => {
-      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-    };
-  }, []);
 
   const openTooltip = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -140,6 +128,7 @@ export default function ReceivedPrayerScreen() {
   }, [tooltipFadeAnim, tooltipSlideAnim]);
 
   const handleAddToJournalFromTooltip = useCallback(() => {
+    if (!prayer || !user || prayerQuery.isError) return;
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -158,32 +147,28 @@ export default function ReceivedPrayerScreen() {
       pathname: "/journal-added-success",
       params: { senderName: prayer?.senderName ?? "Someone" },
     });
-  }, [id, prayer, addJournalEntry, closeTooltip, router]);
+  }, [prayer, user, prayerQuery.isError, addJournalEntry, closeTooltip, router]);
 
-  const handlePlayPause = useCallback(() => {
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    if (isPlaying) {
-      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-      setIsPlaying(false);
-    } else {
-      setIsPlaying(true);
-      playIntervalRef.current = setInterval(() => {
-        setPlayProgress((prev) => {
-          const next = prev + 1 / 42;
-          if (next >= 1) {
-            if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-            setIsPlaying(false);
-            return 1;
-          }
-          return next;
-        });
-      }, 1000);
-    }
-  }, [isPlaying]);
-
-  const handlePray = useCallback(() => {
+  const handlePray = useCallback(async () => {
+    if (!user || !prayer || hasPrayed || prayerQuery.isError || !focusedRef.current || savingRef.current === owner) return;
+    savingRef.current = owner;
+    setIsSaving(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user.id !== user.id || ownerRef.current !== owner || !focusedRef.current) return;
+      const { data, error } = await supabase.rpc("pray_for_received_request", {
+        prayer_id: prayer.id, p_expected_user_id: user.id,
+      });
+      if (error) throw error;
+      const acknowledgement = prayerAcknowledgementSchema.parse(data);
+      const { data: current } = await supabase.auth.getSession();
+      if (current.session?.user.id !== user.id || ownerRef.current !== owner || !focusedRef.current) return;
+      queryClient.setQueryData(["received-prayer", user.id, id], {
+        ...prayer, ...acknowledgement,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["received-prayers", user.id] });
+      void queryClient.invalidateQueries({ queryKey: ["received-prayer", user.id, id] });
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts", user.id] });
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
@@ -211,7 +196,6 @@ export default function ReceivedPrayerScreen() {
       eventDate: prayer?.eventDate ?? null,
     });
     setNewJournalEntryId(entryId);
-    console.log("[ReceivedPrayer] Created journal entry:", entryId);
     modalScaleAnim.setValue(0.88);
     modalFadeAnim.setValue(0);
     setShowPrayModal(true);
@@ -219,7 +203,13 @@ export default function ReceivedPrayerScreen() {
       Animated.spring(modalScaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }),
       Animated.timing(modalFadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
     ]).start();
-  }, [id, prayer, addJournalEntry, modalScaleAnim, modalFadeAnim]);
+    } catch {
+      if (ownerRef.current === owner) Alert.alert("Couldn't save your prayer", "Please try again. Your journal has not been changed.");
+    } finally {
+      if (ownerRef.current === owner) setIsSaving(false);
+      if (savingRef.current === owner) savingRef.current = null;
+    }
+  }, [user, prayer, hasPrayed, prayerQuery.isError, owner, id, queryClient, markRequestPrayed, addJournalEntry, modalScaleAnim, modalFadeAnim]);
 
   const closePrayModal = useCallback(() => {
     Animated.parallel([
@@ -240,7 +230,7 @@ export default function ReceivedPrayerScreen() {
     });
   }, [modalSlideAnim, modalFadeAnim]);
 
-  if (!prayer) {
+  if (!prayer || prayerQuery.isError || !user || !validId) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -250,10 +240,10 @@ export default function ReceivedPrayerScreen() {
             </Pressable>
           </View>
           <View style={styles.emptyState}>
-            {prayerQuery.isLoading ? <ActivityIndicator color={colors.primary} /> : (
+            {prayerQuery.isLoading && user && validId ? <ActivityIndicator color={colors.primary} /> : (
               <>
                 <Text style={styles.emptyText}>
-                  {prayerQuery.isError ? "We couldn't load this prayer request." : "Prayer request not found or you don't have access."}
+                  {!user ? "Sign in to view this prayer request." : !validId ? "This prayer request link is invalid." : prayerQuery.isError ? "We couldn't load this prayer request." : "Prayer request not found or you don't have access."}
                 </Text>
                 {prayerQuery.isError && (
                   <Pressable onPress={() => void prayerQuery.refetch()}>
@@ -268,7 +258,6 @@ export default function ReceivedPrayerScreen() {
     );
   }
 
-  const isVoice = prayer.type === "voice";
   const othersCount = Math.max(0, prayer.prayerCount - prayer.prayedByAvatars.length);
 
   const dotsOpacity1 = dotsAnim.interpolate({ inputRange: [0, 0.33, 1], outputRange: [0.3, 1, 0.3] });
@@ -297,7 +286,7 @@ export default function ReceivedPrayerScreen() {
             </View>
             <Text style={styles.modalTitle}>Praying for {prayer?.senderName.split(" ")[0]}</Text>
             <Text style={styles.modalBody}>
-              We've let <Text style={styles.modalBold}>{prayer?.senderName.split(" ")[0]}</Text> know you're praying for them and this has been added to your prayer journal.
+              Your prayer has been saved and this request has been added to your prayer journal.
             </Text>
             <View style={styles.modalBtnRow}>
               <Pressable
@@ -337,62 +326,40 @@ export default function ReceivedPrayerScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.senderSection}>
-            <Pressable style={styles.avatarWrap} onPress={() => router.push(`/user/${prayer.senderId ?? prayer.id}` as never)}>
-              <Image source={{ uri: prayer.senderAvatar }} style={styles.avatar} />
+            <Pressable style={styles.avatarWrap} disabled={!prayer.senderId} onPress={() => router.push(`/user/${prayer.senderId}` as never)}>
+              {prayer.senderAvatar ? <Image source={{ uri: prayer.senderAvatar }} style={styles.avatar} /> : (
+                <View style={[styles.avatar, { alignItems: "center", justifyContent: "center", backgroundColor: colors.muted }]}>
+                  <Text style={styles.senderName}>{prayer.senderName.slice(0, 1)}</Text>
+                </View>
+              )}
               <View style={styles.avatarBadge}>
-                {isVoice ? (
-                  <Text style={styles.avatarBadgeEmoji}>🎙</Text>
-                ) : (
-                  <Text style={styles.avatarBadgeEmoji}>🤍</Text>
-                )}
+                <Text style={styles.avatarBadgeEmoji}>🤍</Text>
               </View>
             </Pressable>
             <Text style={styles.senderName}>{prayer.senderName}</Text>
             <View style={styles.timeRow}>
               <Clock size={13} color={colors.primary} />
-              <Text style={styles.timeText}>Sent {prayer.sentAt}</Text>
+              <Text style={styles.timeText}>Sent {new Date(prayer.sentAt).toLocaleString()}</Text>
             </View>
           </View>
 
-          {isVoice ? (
-            <View style={styles.card}>
-              <View style={styles.playerRow}>
-                <Pressable style={styles.playBtn} onPress={handlePlayPause}>
-                  {isPlaying ? (
-                    <Pause size={22} color={colors.primary} />
-                  ) : (
-                    <Play size={22} color={colors.primary} />
-                  )}
-                </Pressable>
-                <View style={styles.progressWrap}>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${playProgress * 100}%` },
-                      ]}
-                    />
-                  </View>
-                </View>
-                <Text style={styles.durationText}>{prayer.voiceDuration ?? "0:00"}</Text>
-              </View>
-
-              <View style={styles.transcriptSection}>
-                <View style={styles.transcriptLabelRow}>
-                  <FileText size={13} color={colors.primary} />
-                  <Text style={styles.transcriptLabel}>TRANSCRIPT</Text>
-                </View>
-                <Text style={styles.transcriptText}>"{prayer.content}"</Text>
-              </View>
+          <View style={styles.card}>
+            <View style={styles.quoteIconWrap}>
+              <Quote size={32} color={colors.primary + "18"} />
             </View>
-          ) : (
-            <View style={styles.card}>
-              <View style={styles.quoteIconWrap}>
-                <Quote size={32} color={colors.primary + "18"} />
-              </View>
-              <Text style={styles.requestText}>"{prayer.content}"</Text>
+            <Text style={styles.requestText}>"{prayer.content}"</Text>
+            <Text style={styles.timeText}>
+              {prayer.status === "answered" ? "Answered" : prayer.status === "still_need_prayer" ? "Still needs prayer" : prayer.status === "archived" ? "Archived" : "Ongoing"}
+            </Text>
+            {prayer.imageUrl && <Image source={{ uri: prayer.imageUrl }} style={{ width: "100%", height: 220, borderRadius: 12, marginTop: 16 }} contentFit="contain" />}
+          </View>
+          {prayer.updates.map((update) => (
+            <View key={update.id} style={styles.card}>
+              <Text style={styles.transcriptLabel}>UPDATE</Text>
+              <Text style={styles.requestText}>{update.content}</Text>
+              <Text style={styles.timeText}>{new Date(update.createdAt).toLocaleString()}</Text>
             </View>
-          )}
+          ))}
 
           {prayer.hasPrayerDate && prayer.eventDate && !isNaN(daysUntil(prayer.eventDate)) && daysUntil(prayer.eventDate) >= 0 && (
             <View style={[styles.dateBanner, shouldShowReminderBadge(prayer.eventDate) && styles.dateBannerUrgent]}>
@@ -431,9 +398,9 @@ export default function ReceivedPrayerScreen() {
             </View>
             <Text style={styles.prayedText}>
               {prayer.prayerCount} {prayer.prayerCount === 1 ? "person has" : "people have"}{" "}
-              {isVoice ? "listened to" : "prayed for"}{" "}
+              prayed for{" "}
               <Text style={styles.prayedBold}>{prayer.senderName.split(" ")[0]}</Text>{" "}
-              today
+              on this request
             </Text>
           </View>
         </AutoScrollView>
@@ -473,12 +440,14 @@ export default function ReceivedPrayerScreen() {
             <View style={styles.prayBtnWrap}>
               <Pressable
                 style={[styles.prayBtn, hasPrayed && styles.prayBtnPraying]}
-                onPress={hasPrayed ? undefined : handlePray}
+                onPress={() => void handlePray()}
+                disabled={hasPrayed || isSaving}
+                accessibilityState={{ disabled: hasPrayed || isSaving, busy: isSaving }}
                 testID="pray-button"
               >
                 <Text style={styles.prayBtnEmoji}>🙏</Text>
                 <View style={styles.prayBtnTextWrap}>
-                  <Text style={styles.prayBtnText}>{hasPrayed ? "Praying" : "Pray"}</Text>
+                  <Text style={styles.prayBtnText}>{isSaving ? "Saving…" : hasPrayed ? "Praying" : "Pray"}</Text>
                 </View>
               </Pressable>
 
@@ -499,9 +468,9 @@ export default function ReceivedPrayerScreen() {
               )}
             </View>
 
-            <Pressable style={styles.chatBtn} onPress={() => router.push(`/chat/${prayer.senderId}`)}>
+            {prayer.senderId && <Pressable style={styles.chatBtn} accessibilityLabel="View sender profile" accessibilityRole="button" onPress={() => router.push(`/user/${prayer.senderId}`)}>
               <MessageCircle size={22} color={colors.secondaryForeground} />
-            </Pressable>
+            </Pressable>}
           </View>
         </SafeAreaView>
       </SafeAreaView>
