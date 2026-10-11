@@ -7,6 +7,39 @@
  */
 import * as zod from "zod";
 
+export const uploadGroupMediaBodyBase64Max = 11184812;
+
+export const uploadGroupMediaBodyDurationMsMax = 300000;
+
+export const UploadGroupMediaBody = zod.object({
+  expectedUserId: zod.string().uuid(),
+  groupId: zod.string().uuid(),
+  mediaId: zod.string().uuid(),
+  kind: zod.enum(["image", "voice", "cover"]),
+  mime: zod.string(),
+  base64: zod.string().max(uploadGroupMediaBodyBase64Max),
+  durationMs: zod
+    .number()
+    .min(1)
+    .max(uploadGroupMediaBodyDurationMsMax)
+    .optional(),
+});
+
+export const UploadGroupMediaResponse = zod.object({
+  id: zod.string().uuid(),
+});
+
+export const DownloadGroupMediaBody = zod.object({
+  expectedUserId: zod.string().uuid(),
+  groupId: zod.string().uuid(),
+  mediaId: zod.string().uuid(),
+});
+
+export const DownloadGroupMediaResponse = zod.object({
+  base64: zod.string(),
+  mime: zod.string(),
+});
+
 export const ExportAccountDataQueryParams = zod.object({
   expectedUserId: zod.coerce.string().uuid(),
 });

@@ -27,6 +27,14 @@ test("legacy missing metadata defaults do not confer administrative roles", () =
   assert.equal(parsed.settings.private, true);
   assert.equal(parsed.members.length, 0);
 });
+test("persisted media metadata survives DTO parsing without introducing public URLs",()=>{
+  const media={id:groupId,kind:"voice",mime:"audio/webm",bytes:120,durationMs:3000};
+  const chat=groupChatSchema.parse({...raw,messages:[{...raw.messages[0],media}]});
+  assert.equal(groupMessages(chat,userId)[0].media?.durationMs,3000);
+  assert.equal(groupMessages(chat,userId)[0].media?.kind,"voice");
+  assert.equal("url" in chat.messages[0].media!,false);
+  assert.throws(()=>groupChatSchema.parse({...raw,messages:[{...raw.messages[0],media:{...media,bytes:8388609}}]}));
+});
 test("malformed server records fail instead of silently appearing as empty chat", () => {
   assert.throws(() => groupChatSchema.parse({ ...raw, messages: [{ content: "Invalid" }] }));
 });

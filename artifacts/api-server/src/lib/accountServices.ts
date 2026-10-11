@@ -45,7 +45,11 @@ export async function attachFileDownloads(data: Record<string, unknown>, authori
       const batch = list.slice(index, index + 100);
       const signed = await supabaseRequest(`/storage/v1/object/sign/${encodeURIComponent(bucket)}`, {
         method: "POST", body: JSON.stringify({ expiresIn: 3600, paths: batch.map(file => file.name) }),
-      }, authorization) as Array<{ path: string; signedURL?: string; error?: unknown }>;
+      // The manifest is returned by the caller-authenticated own-account RPC,
+      // never supplied by the request. Private group objects cannot be signed
+      // through the normal client role; exporting one's own files is separate
+      // from reading other group members' content.
+      }, bucket === "group-chat-private" ? undefined : authorization) as Array<{ path: string; signedURL?: string; error?: unknown }>;
       if (!Array.isArray(signed) || signed.length !== batch.length) throw new Error("Could not export file links");
       for (const file of batch) {
         const link = signed.find(item => item.path === file.name);

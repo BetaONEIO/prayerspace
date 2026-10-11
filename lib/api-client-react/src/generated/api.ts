@@ -22,6 +22,10 @@ import type {
   ExportAccountDataParams,
   GetCommunityAccess200,
   GetCommunityAccessParams,
+  GroupMediaDownloadInput,
+  GroupMediaFile,
+  GroupMediaInput,
+  GroupMediaUploadResult,
   HealthStatus,
   RequestAccountDeletion202,
 } from "./api.schemas";
@@ -34,6 +38,166 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getUploadGroupMediaUrl = () => {
+  return `/api/group-media/upload`;
+};
+
+export const uploadGroupMedia = async (
+  groupMediaInput: GroupMediaInput,
+  options?: RequestInit,
+): Promise<GroupMediaUploadResult> => {
+  return customFetch<GroupMediaUploadResult>(getUploadGroupMediaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(groupMediaInput),
+  });
+};
+
+export const getUploadGroupMediaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadGroupMedia>>,
+    TError,
+    { data: BodyType<GroupMediaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadGroupMedia>>,
+  TError,
+  { data: BodyType<GroupMediaInput> },
+  TContext
+> => {
+  const mutationKey = ["uploadGroupMedia"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadGroupMedia>>,
+    { data: BodyType<GroupMediaInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadGroupMedia(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadGroupMediaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadGroupMedia>>
+>;
+export type UploadGroupMediaMutationBody = BodyType<GroupMediaInput>;
+export type UploadGroupMediaMutationError = ErrorType<unknown>;
+
+export const useUploadGroupMedia = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadGroupMedia>>,
+    TError,
+    { data: BodyType<GroupMediaInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadGroupMedia>>,
+  TError,
+  { data: BodyType<GroupMediaInput> },
+  TContext
+> => {
+  return useMutation(getUploadGroupMediaMutationOptions(options));
+};
+
+export const getDownloadGroupMediaUrl = () => {
+  return `/api/group-media/download`;
+};
+
+export const downloadGroupMedia = async (
+  groupMediaDownloadInput: GroupMediaDownloadInput,
+  options?: RequestInit,
+): Promise<GroupMediaFile> => {
+  return customFetch<GroupMediaFile>(getDownloadGroupMediaUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(groupMediaDownloadInput),
+  });
+};
+
+export const getDownloadGroupMediaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof downloadGroupMedia>>,
+    TError,
+    { data: BodyType<GroupMediaDownloadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof downloadGroupMedia>>,
+  TError,
+  { data: BodyType<GroupMediaDownloadInput> },
+  TContext
+> => {
+  const mutationKey = ["downloadGroupMedia"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof downloadGroupMedia>>,
+    { data: BodyType<GroupMediaDownloadInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return downloadGroupMedia(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DownloadGroupMediaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof downloadGroupMedia>>
+>;
+export type DownloadGroupMediaMutationBody = BodyType<GroupMediaDownloadInput>;
+export type DownloadGroupMediaMutationError = ErrorType<unknown>;
+
+export const useDownloadGroupMedia = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof downloadGroupMedia>>,
+    TError,
+    { data: BodyType<GroupMediaDownloadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof downloadGroupMedia>>,
+  TError,
+  { data: BodyType<GroupMediaDownloadInput> },
+  TContext
+> => {
+  return useMutation(getDownloadGroupMediaMutationOptions(options));
+};
 
 export const getExportAccountDataUrl = (params: ExportAccountDataParams) => {
   const normalizedParams = new URLSearchParams();

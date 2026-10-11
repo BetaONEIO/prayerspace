@@ -5,6 +5,45 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type GroupMediaInputKind =
+  (typeof GroupMediaInputKind)[keyof typeof GroupMediaInputKind];
+
+export const GroupMediaInputKind = {
+  image: "image",
+  voice: "voice",
+  cover: "cover",
+} as const;
+
+export interface GroupMediaInput {
+  expectedUserId: string;
+  groupId: string;
+  mediaId: string;
+  kind: GroupMediaInputKind;
+  mime: string;
+  /** @maxLength 11184812 */
+  base64: string;
+  /**
+   * @minimum 1
+   * @maximum 300000
+   */
+  durationMs?: number;
+}
+
+export interface GroupMediaDownloadInput {
+  expectedUserId: string;
+  groupId: string;
+  mediaId: string;
+}
+
+export interface GroupMediaUploadResult {
+  id: string;
+}
+
+export interface GroupMediaFile {
+  base64: string;
+  mime: string;
+}
+
 export type AccountDeletionInputConfirmation =
   (typeof AccountDeletionInputConfirmation)[keyof typeof AccountDeletionInputConfirmation];
 

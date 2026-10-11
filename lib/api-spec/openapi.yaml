@@ -11,6 +11,44 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /group-media/upload:
+    post:
+      operationId: uploadGroupMedia
+      tags: [groupMedia]
+      security:
+        - SupabaseBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMediaInput"
+      responses:
+        "200":
+          description: Private file uploaded and verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMediaUploadResult"
+  /group-media/download:
+    post:
+      operationId: downloadGroupMedia
+      tags: [groupMedia]
+      security:
+        - SupabaseBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupMediaDownloadInput"
+      responses:
+        "200":
+          description: File bytes after a fresh membership check; never a shareable URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupMediaFile"
   /account/export:
     get:
       operationId: exportAccountData
@@ -129,6 +167,35 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    GroupMediaInput:
+      type: object
+      required: [expectedUserId, groupId, mediaId, kind, mime, base64]
+      properties:
+        expectedUserId: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        mediaId: { type: string, format: uuid }
+        kind: { type: string, enum: [image, voice, cover] }
+        mime: { type: string }
+        base64: { type: string, maxLength: 11184812 }
+        durationMs: { type: integer, minimum: 1, maximum: 300000 }
+    GroupMediaDownloadInput:
+      type: object
+      required: [expectedUserId, groupId, mediaId]
+      properties:
+        expectedUserId: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        mediaId: { type: string, format: uuid }
+    GroupMediaUploadResult:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    GroupMediaFile:
+      type: object
+      required: [base64, mime]
+      properties:
+        base64: { type: string }
+        mime: { type: string }
     AccountDeletionInput:
       type: object
       required: [expectedUserId, confirmation]

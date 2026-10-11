@@ -68,6 +68,10 @@ import { emptyGroupResult, groupIdResult, groupMessages, groupRpc, newGroupClien
 import { getOrCreateDMConversation, isUUID } from "@/lib/chat";
 import { supabase } from "@/lib/supabase";
 import GroupInviteSheet from "@/components/GroupInviteSheet";
+import PhotoUploadModal from "@/components/PhotoUploadModal";
+import PrivateGroupAttachment from "@/components/PrivateGroupAttachment";
+import { uploadPrivateGroupFile, type GroupMediaContext } from "@/lib/groupMedia";
+import type { GroupMedia } from "@/lib/groupChat";
 
 type GroupTab = "Chat" | "Members" | "Media";
 
@@ -107,6 +111,7 @@ interface ReplyTo {
 }
 
 interface ChatMessage {
+  media?: GroupMedia;
   id: string;
   senderId: string;
   senderName: string;
@@ -186,7 +191,11 @@ export default function GroupDetailScreen() {
   const [sending, setSending] = useScopedGroupState<boolean>(scope, false);
   const [inviteVisible, setInviteVisible] = useScopedGroupState<boolean>(scope, false);
   const [actionError, setActionError] = useScopedGroupState<string | null>(scope, null);
-  const sendRef = useRef<{ scope: object; id: string; content: string; replyId: string | null } | null>(null);
+  const sendRef = useRef<{ scope: object; id: string; content: string; replyId: string | null; uri: string | null; kind: "image" | "voice" | null } | null>(null);
+  const mediaContext = useMemo<GroupMediaContext>(()=>({userId:user?.id??"",groupId,scope}),[scope,user?.id,groupId]);
+  const [coverPicker,setCoverPicker]=useScopedGroupState<boolean>(scope,false);
+  const [coverDraft,setCoverDraft]=useScopedGroupState<string|null>(scope,null);
+  const coverAttempt=useRef<{scope:object;uri:string;id:string}|null>(null);
   const actionRef = useRef<object | null>(null);
   const [showVoiceRecorder, setShowVoiceRecorder] = useScopedGroupState<boolean>(scope, false);
   const [memberActionsTarget, setMemberActionsTarget] = useScopedGroupState<Member | null>(scope, null);
@@ -283,25 +292,36 @@ export default function GroupDetailScreen() {
     setActiveTab(tab);
   }, []);
 
-  const handleSendMessage = useCallback(async () => {
-    const trimmed = chatInput.trim();
-    if (!trimmed || !user || !chat?.canSend || sending) return;
-    if (groupImageUri) { setActionError("Group attachments aren't supported yet. Remove the attachment to send text."); return; }
+  const handleSendMessage = useCallback(async (voice?: {uri:string;durationMs:number}) => {
+    const trimmed = voice ? "" : chatInput.trim();
+    const uri = voice?.uri ?? groupImageUri;
+    const kind = voice ? "voice" as const : uri ? "image" as const : null;
+    if ((!trimmed && !kind) || !user || !chat?.canSend || sending) return;
     const replyId = replyingTo?.id ?? null;
     const previous = sendRef.current;
-    const attempt = previous?.scope === scope && previous.content === trimmed && previous.replyId === replyId
-      ? previous : { scope, id: newGroupClientId(), content: trimmed, replyId };
+    const attempt = previous?.scope === scope && previous.content === trimmed && previous.replyId === replyId && previous.uri===uri && previous.kind===kind
+      ? previous : { scope, id: newGroupClientId(), content: trimmed, replyId, uri, kind };
     if (actionRef.current === scope) return;
     actionRef.current = scope;
     sendRef.current = attempt;
     setSending(true);
     setActionError(null);
     try {
-      await groupRpc(supabase, user.id, "send_group_chat_message", {
-        p_group_id: groupId, p_client_id: attempt.id, p_content: trimmed, p_reply_id: replyId,
-      }, groupIdResult);
+      if(kind && uri){
+        await uploadPrivateGroupFile(mediaContext,attempt.id,kind,uri,()=>currentScope.current===scope,voice?.durationMs);
+        if(currentScope.current!==scope)return;
+        await groupRpc(supabase,user.id,"publish_group_media",{
+          p_group_id:groupId,p_media_id:attempt.id,p_client_id:attempt.id,p_content:trimmed,p_reply_id:replyId,
+        },groupIdResult);
+      }else{
+        await groupRpc(supabase, user.id, "send_group_chat_message", {
+          p_group_id: groupId, p_client_id: attempt.id, p_content: trimmed, p_reply_id: replyId,
+        }, groupIdResult);
+      }
       if (currentScope.current !== scope) return;
-      setChatInput(current => current.trim() === trimmed ? "" : current);
+      if(!voice)setChatInput(current => current.trim() === trimmed ? "" : current);
+      if(kind==="image")setGroupImageUri(current=>current===uri?null:current);
+      if(voice)setShowVoiceRecorder(false);
       setReplyingTo(current => current?.id === replyId ? null : current);
       sendRef.current = null;
       await refresh();
@@ -311,12 +331,26 @@ export default function GroupDetailScreen() {
       if (currentScope.current === scope) setSending(false);
       if (actionRef.current === scope) actionRef.current = null;
     }
-  }, [chatInput, groupImageUri, replyingTo, user?.id, chat?.canSend, sending, scope, groupId, refresh, setChatInput, setReplyingTo, setSending, setActionError]);
+  }, [chatInput, groupImageUri, replyingTo, user?.id, chat?.canSend, sending, scope, groupId, refresh, mediaContext, setChatInput, setGroupImageUri, setShowVoiceRecorder, setReplyingTo, setSending, setActionError]);
 
-  const handleSendVoiceMessage = useCallback((_uri: string, _durationMs: number) => {
-    setShowVoiceRecorder(false);
-    Alert.alert("Voice notes unavailable", "Voice notes are not connected to saved group chat yet.");
-  }, [setShowVoiceRecorder]);
+  const handleSendVoiceMessage = useCallback((uri: string, durationMs: number) => {
+    void handleSendMessage({uri,durationMs});
+  }, [handleSendMessage]);
+  const saveCover=useCallback(async(uri:string)=>{
+    if(!user || actionRef.current===scope)return;
+    actionRef.current=scope;setSending(true);setActionError(null);
+    const old=coverAttempt.current;
+    const attempt=old?.scope===scope && old.uri===uri?old:{scope,uri,id:newGroupClientId()};
+    coverAttempt.current=attempt;
+    try{
+      await uploadPrivateGroupFile(mediaContext,attempt.id,"cover",uri,()=>currentScope.current===scope);
+      if(currentScope.current!==scope)return;
+      await groupRpc(supabase,user.id,"publish_group_media",{p_group_id:groupId,p_media_id:attempt.id,p_client_id:attempt.id},groupIdResult);
+      if(currentScope.current!==scope)return;
+      setCoverDraft(null);coverAttempt.current=null;await refresh();
+    }catch(error){if(currentScope.current===scope)setActionError(error instanceof Error?error.message:"Photo not saved. Please retry.");}
+    finally{if(currentScope.current===scope)setSending(false);if(actionRef.current===scope)actionRef.current=null;}
+  },[scope,user?.id,mediaContext,groupId,refresh,setSending,setActionError,setCoverDraft]);
 
   const filteredMembers = groupState.members.filter((m) =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase())
@@ -358,6 +392,8 @@ export default function GroupDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <GroupInviteSheet key={`${user.id}:${groupId}`} groupId={groupId} userId={user.id} visible={inviteVisible} onClose={() => setInviteVisible(false)} onChanged={refresh} />
+      <PhotoUploadModal key={`cover:${scope.generation}`} visible={coverPicker} onClose={()=>setCoverPicker(false)}
+        onImageSelected={uri=>{setCoverPicker(false);setCoverDraft(uri);void saveCover(uri);}} isUploading={sending} />
       {!isChatTab && (
         <View style={[styles.banner, { paddingTop: insets.top + 12 }]}>
           <Image
@@ -438,7 +474,9 @@ export default function GroupDetailScreen() {
         ))}
       </View>
 
+      {activeTab!=="Chat" && chat.settings.coverMedia && <PrivateGroupAttachment media={chat.settings.coverMedia} context={mediaContext}/>}
       {actionError && <Text accessibilityRole="alert" style={{ color: colors.destructive, paddingHorizontal: 20, paddingVertical: 8 }}>{actionError}</Text>}
+      {coverDraft && !sending && <Pressable onPress={()=>void saveCover(coverDraft)}><Text style={{color:colors.primary,padding:12}}>Retry saving group photo</Text></Pressable>}
       {activeTab === "Chat" && (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -483,6 +521,7 @@ export default function GroupDetailScreen() {
                 <OwnMessage
                   key={msg.id}
                   message={msg}
+                  mediaContext={mediaContext}
                   totalMembers={groupState.members.length}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
@@ -494,6 +533,7 @@ export default function GroupDetailScreen() {
                 <OtherMessage
                   key={msg.id}
                   message={msg}
+                  mediaContext={mediaContext}
                   showHeader={isFirstInGroup}
                   onImagePress={setViewingGroupImage}
                   onLongPress={handleLongPress}
@@ -532,8 +572,9 @@ export default function GroupDetailScreen() {
               </View>
             )}
             <View style={[styles.chatInputBar, { paddingBottom: insets.bottom + 8 }]}>
-            <Pressable accessibilityLabel="Group attachment information" onPress={() => setActionError("Group photos and voice notes aren't connected yet. Text messages and reactions are available.")}>
-              <ImageIcon size={22} color={colors.mutedForeground} />
+            <ImageAttachment imageUri={null} onImageSelected={setGroupImageUri} onRemove={()=>setGroupImageUri(null)} disabled={sending || !chat.canSend}/>
+            <Pressable accessibilityLabel="Record group voice message" disabled={sending || !chat.canSend} onPress={()=>setShowVoiceRecorder(true)}>
+              <Mic size={22} color={colors.primary}/>
             </Pressable>
             <View style={styles.chatInputWrap}>
               <TextInput
@@ -550,7 +591,7 @@ export default function GroupDetailScreen() {
             <Pressable
               style={[styles.chatSendBtn, (chatInput.trim().length > 0 || !!groupImageUri) && styles.chatSendBtnActive]}
               accessibilityLabel="Send message"
-              disabled={sending || !chat.canSend || !chatInput.trim()}
+              disabled={sending || !chat.canSend || (!chatInput.trim() && !groupImageUri)}
               onPress={() => void handleSendMessage()}
             >
               {sending ? <ActivityIndicator color={colors.primaryForeground} /> : (
@@ -567,7 +608,10 @@ export default function GroupDetailScreen() {
           />
 
           <ChatVoiceRecorder
+            key={`recorder:${scope.generation}`}
             visible={showVoiceRecorder}
+            sending={sending}
+            error={actionError}
             onSend={handleSendVoiceMessage}
             onCancel={() => setShowVoiceRecorder(false)}
           />
@@ -635,10 +679,13 @@ export default function GroupDetailScreen() {
       />
 
       {activeTab === "Media" && (
-        <MediaGallery
-          images={allMediaImages}
-          onImagePress={(item) => setViewingMediaItem(item)}
-        />
+        <ScrollView contentContainerStyle={{padding:20,gap:16}}>
+          {chatMessages.filter(message=>message.media).length===0 && <Text style={{color:colors.mutedForeground}}>No shared photos or voice messages yet.</Text>}
+          {chatMessages.filter(message=>message.media).map(message=><View key={message.id} style={{gap:6}}>
+            <Text style={{color:colors.mutedForeground}}>{message.senderName} · {message.time}</Text>
+            <PrivateGroupAttachment media={message.media!} context={mediaContext}/>
+          </View>)}
+        </ScrollView>
       )}
 
       {activeTab === "Members" && (
@@ -757,6 +804,12 @@ export default function GroupDetailScreen() {
                 <Text style={[styles.menuOwnerText, { color: colors.mutedForeground }]}>You are the owner</Text>
               )}
 
+              {IS_CURRENT_USER_ADMIN && (
+                <Pressable style={styles.groupMenuItem} disabled={sending} onPress={()=>{closeGroupMenu();setCoverPicker(true);}}>
+                  <ImageIcon color={colors.primary} size={18}/>
+                  <Text style={{color:colors.foreground}}>Change group photo</Text>
+                </Pressable>
+              )}
               {IS_CURRENT_USER_ADMIN && (
                 <Pressable
                   style={[styles.groupMenuItem, { borderBottomColor: colors.border }]}
@@ -933,7 +986,9 @@ function InlineVoicePlayer({ uri, durationMs, isOwn }: { uri?: string; durationM
   );
 }
 
-function ChatVoiceRecorder({ visible, onSend, onCancel }: {
+function ChatVoiceRecorder({ visible, onSend, onCancel, sending=false, error }: {
+  sending?:boolean;
+  error?:string|null;
   visible: boolean;
   onSend: (uri: string, durationMs: number) => void;
   onCancel: () => void;
@@ -953,8 +1008,12 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
   const hasFinishedRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const generation = useRef(0);
+  const playbackBusy = useRef(false);
 
   const stopAll = useCallback(() => {
+    generation.current++;
+    playbackBusy.current=false;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     pulseLoopRef.current?.stop();
     pulseAnim.setValue(1);
@@ -978,14 +1037,17 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
   useEffect(() => () => stopAll(), [stopAll]);
 
   const startRecording = useCallback(async () => {
+    const token=generation.current;
     try {
       const { granted } = await Audio.requestPermissionsAsync();
+      if(token!==generation.current)return;
       if (!granted) {
         Alert.alert("Permission needed", "Microphone access is required to record a voice message.");
         return;
       }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      if(token!==generation.current){await recording.stopAndUnloadAsync().catch(()=>{});return;}
       recordingRef.current = recording;
       setRecState("recording");
       setDurationMs(0);
@@ -1008,12 +1070,16 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     pulseLoopRef.current?.stop();
     pulseAnim.setValue(1);
-    const captured = durationMs;
+    const token=generation.current;
+    const recording=recordingRef.current;
+    recordingRef.current=null;
     try {
-      await recordingRef.current.stopAndUnloadAsync();
+      const status=await recording.getStatusAsync();
+      const captured=status.durationMillis ?? durationMs;
+      await recording.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
+      if(token!==generation.current)return;
+      const uri = recording.getURI();
       if (uri && captured > 400) {
         setRecordedUri(uri);
         setRecordedDuration(captured);
@@ -1024,13 +1090,22 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
         setDurationMs(0);
       }
     } catch {
+      await recording.stopAndUnloadAsync().catch(()=>{});
+      if(token!==generation.current)return;
       setRecState("idle");
       setDurationMs(0);
     }
   }, [durationMs, pulseAnim]);
+  useEffect(()=>{if(recState==="recording" && durationMs>=299000)void stopRecording();},[recState,durationMs,stopRecording]);
 
   const togglePreviewPlay = useCallback(async () => {
-    if (!recordedUri) return;
+    if (!recordedUri || sending || playbackBusy.current) return;
+    playbackBusy.current=true;
+    const token=generation.current;
+    try {
+    const loaded=soundRef.current?await soundRef.current.getStatusAsync():null;
+    if(token!==generation.current)return;
+    if(loaded && !loaded.isLoaded){soundRef.current=null;throw new Error("Audio is not loaded");}
     if (isPlaying) {
       await soundRef.current?.pauseAsync();
       setIsPlaying(false);
@@ -1045,7 +1120,7 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
           { uri: recordedUri },
           { shouldPlay: true },
           (status) => {
-            if (status.isLoaded) {
+            if (status.isLoaded && token===generation.current) {
               setPlaybackMs(status.positionMillis ?? 0);
               if (status.didJustFinish && !hasFinishedRef.current) {
                 hasFinishedRef.current = true;
@@ -1055,19 +1130,24 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
             }
           }
         );
+        if(token!==generation.current){await sound.unloadAsync().catch(()=>{});return;}
         soundRef.current = sound;
       }
       setIsPlaying(true);
     }
-  }, [isPlaying, recordedUri]);
+    }catch{if(token===generation.current){setIsPlaying(false);privacyNotice("Playback unavailable","Tap play to retry the recording preview.");}}
+    finally{if(token===generation.current)playbackBusy.current=false;}
+  }, [isPlaying, recordedUri,sending]);
 
   const handleSend = useCallback(() => {
-    if (!recordedUri) return;
+    if (!recordedUri || sending) return;
+    generation.current++;playbackBusy.current=false;setIsPlaying(false);
     if (soundRef.current) { soundRef.current.unloadAsync().catch(() => {}); soundRef.current = null; }
     onSend(recordedUri, recordedDuration);
-  }, [recordedUri, recordedDuration, onSend]);
+  }, [recordedUri, recordedDuration, onSend,sending]);
 
   const handleDiscard = useCallback(() => {
+    if(sending)return;
     stopAll();
     setRecState("idle");
     setDurationMs(0);
@@ -1076,9 +1156,10 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
     setIsPlaying(false);
     setPlaybackMs(0);
     onCancel();
-  }, [stopAll, onCancel]);
+  }, [stopAll, onCancel,sending]);
 
   const handleReRecord = useCallback(() => {
+    if(sending)return;
     stopAll();
     setRecState("idle");
     setDurationMs(0);
@@ -1086,7 +1167,7 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
     setRecordedDuration(0);
     setIsPlaying(false);
     setPlaybackMs(0);
-  }, [stopAll]);
+  }, [stopAll,sending]);
 
   if (!visible) return null;
 
@@ -1101,7 +1182,7 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
         <View style={styles.vrSheet}>
           <View style={styles.vrHandle} />
           <View style={styles.vrHeader}>
-            <Text style={styles.vrTitle}>Voice Message</Text>
+            <Text style={styles.vrTitle}>{sending?"Saving voice message…":"Voice Message"}</Text>
             <Pressable onPress={handleDiscard} hitSlop={12} style={styles.vrCloseBtn}>
               <X size={20} color={colors.mutedForeground} />
             </Pressable>
@@ -1109,7 +1190,7 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
 
           {recState === "idle" && (
             <View style={styles.vrIdleBody}>
-              <Text style={styles.vrHint}>Tap to start recording</Text>
+              <Text style={styles.vrHint}>Tap to record · maximum 5 minutes / 8 MB</Text>
               <Pressable onPress={startRecording} style={styles.vrBigMicBtn}>
                 <Mic size={36} color={colors.primaryForeground} />
               </Pressable>
@@ -1133,7 +1214,7 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
           {recState === "preview" && (
             <View style={styles.vrPreviewBody}>
               <View style={styles.vrPreviewPlayer}>
-                <Pressable onPress={togglePreviewPlay} style={styles.vrPreviewPlayBtn}>
+                <Pressable disabled={sending} onPress={togglePreviewPlay} style={styles.vrPreviewPlayBtn}>
                   {isPlaying
                     ? <Pause size={22} color={colors.primaryForeground} />
                     : <Play size={22} color={colors.primaryForeground} />
@@ -1150,13 +1231,14 @@ function ChatVoiceRecorder({ visible, onSend, onCancel }: {
                 <Pressable onPress={handleReRecord} style={styles.vrDiscardBtn}>
                   <Text style={styles.vrDiscardText}>Re-record</Text>
                 </Pressable>
-                <Pressable onPress={handleSend} style={styles.vrSendBtn}>
+                <Pressable disabled={sending} onPress={handleSend} style={styles.vrSendBtn}>
                   <Send size={16} color={colors.primaryForeground} />
-                  <Text style={styles.vrSendText}>Send</Text>
+                  <Text style={styles.vrSendText}>{sending?"Saving…":"Send"}</Text>
                 </Pressable>
               </View>
             </View>
           )}
+          {error && <Text accessibilityRole="alert" style={{color:colors.destructive,padding:12}}>{error}</Text>}
         </View>
       </View>
     </Modal>
@@ -1392,7 +1474,8 @@ function PrayingReactions({ reactions }: { reactions?: MessageReaction[] }) {
   );
 }
 
-function OwnMessage({ message, totalMembers, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+function OwnMessage({ message, mediaContext, totalMembers, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+  mediaContext:GroupMediaContext;
   message: ChatMessage;
   totalMembers: number;
   onImagePress?: (uri: string) => void;
@@ -1417,7 +1500,12 @@ function OwnMessage({ message, totalMembers, onImagePress, onLongPress, onReply,
             onPress={() => onScrollToMessage?.(message.replyTo!.id)}
           />
         )}
-        {message.isVoice ? (
+        {message.media ? (
+          <View style={{gap:6}}>
+            <PrivateGroupAttachment media={message.media} context={mediaContext} onLongPress={()=>onLongPress?.(message)}/>
+            {hasText && <Text style={{color:colors.foreground}}>{message.text}</Text>}
+          </View>
+        ) : message.isVoice ? (
           <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={300} style={[styles.voiceBubble, styles.voiceBubbleOwn]}>
             <InlineVoicePlayer uri={message.audioUri} durationMs={message.audioDurationMs ?? 0} isOwn />
           </Pressable>
@@ -1457,7 +1545,8 @@ function OwnMessage({ message, totalMembers, onImagePress, onLongPress, onReply,
   );
 }
 
-function OtherMessage({ message, showHeader = true, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+function OtherMessage({ message, mediaContext, showHeader = true, onImagePress, onLongPress, onReply, onScrollToMessage, onLayout }: {
+  mediaContext:GroupMediaContext;
   message: ChatMessage;
   showHeader?: boolean;
   onImagePress?: (uri: string) => void;
@@ -1493,7 +1582,12 @@ function OtherMessage({ message, showHeader = true, onImagePress, onLongPress, o
               onPress={() => onScrollToMessage?.(message.replyTo!.id)}
             />
           )}
-          {message.isVoice ? (
+          {message.media ? (
+            <View style={{gap:6}}>
+              <PrivateGroupAttachment media={message.media} context={mediaContext} onLongPress={()=>onLongPress?.(message)}/>
+              {!!message.text && <Text style={{color:colors.foreground}}>{message.text}</Text>}
+            </View>
+          ) : message.isVoice ? (
             <Pressable onLongPress={() => onLongPress?.(message)} delayLongPress={300} style={styles.voiceBubble}>
               <InlineVoicePlayer uri={message.audioUri} durationMs={message.audioDurationMs ?? 12000} isOwn={false} />
             </Pressable>

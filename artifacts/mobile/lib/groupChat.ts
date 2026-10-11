@@ -3,6 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 const uuid = z.string().uuid();
 const timestamp = z.string().datetime({ offset: true });
+export const groupMediaSchema = z.object({
+  id: uuid, kind: z.enum(["image", "voice", "cover"]), mime: z.string(),
+  bytes: z.number().int().positive().max(8388608), durationMs: z.number().int().positive().max(300000).nullable(),
+});
+export type GroupMedia = z.infer<typeof groupMediaSchema>;
 const memberSchema = z.object({
   id: uuid, name: z.string(), avatar: z.string(), role: z.enum(["admin", "leader", "member"]), joinedAt: timestamp,
 });
@@ -15,6 +20,7 @@ export const groupChatSchema = z.object({
   settings: z.object({
     focus: z.enum(["Prayer", "Bible Study", "Support", "Testimony"]).default("Prayer"),
     private: z.boolean().default(true), safeSpace: z.boolean().default(true),
+    coverMedia: groupMediaSchema.nullable().default(null),
   }),
   members: z.array(memberSchema),
   messages: z.array(z.object({
@@ -22,6 +28,7 @@ export const groupChatSchema = z.object({
     content: z.string(), createdAt: timestamp, prayerContent: z.string().nullable(),
     reply: z.object({ id: uuid, senderName: z.string(), content: z.string() }).nullable(),
     reactions: z.array(reactionSchema),
+    media: groupMediaSchema.nullable().default(null),
   })),
 });
 export const groupListSchema = z.array(z.object({
@@ -63,8 +70,9 @@ export function groupMessages(chat: GroupChat, userId: string) {
     id: message.id, senderId: message.senderId, senderName: message.senderName, senderAvatar: message.senderAvatar,
     text: message.content, time: new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     createdAt: message.createdAt, isOwn: message.senderId === userId,
+    media: message.media ?? undefined,
     sharedPrayer: message.prayerContent ? { authorName: "Shared prayer", authorAvatar: "", postContent: message.prayerContent } : undefined,
-    replyTo: message.reply ? { id: message.reply.id, senderName: message.reply.senderName, text: message.reply.content } : undefined,
+    replyTo: message.reply ? { id: message.reply.id, senderName: message.reply.senderName, text: message.reply.content || "Media message" } : undefined,
     reactions: message.reactions.map(reaction => ({
       userId: reaction.userId, userName: reaction.userName, userAvatar: reaction.userAvatar,
       isMine: reaction.userId === userId, type: reaction.type === "pray" ? "pray" as const : "emoji" as const,

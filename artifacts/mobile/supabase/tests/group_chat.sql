@@ -24,6 +24,7 @@ insert into public.friend_requests(sender_id,receiver_id,status) values(
 insert into public.prayer_requests(id,author_id,content,audience) values(
  'a1400000-0000-4000-8000-000000000001','a1100000-0000-4000-8000-000000000002','Fixture prayer','friends');
 select set_config('request.jwt.claim.sub','a1100000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.role','authenticated',true);
 set local role authenticated;
 select public.create_prayer_chat_group('a1100000-0000-4000-8000-000000000001','a1200000-0000-4000-8000-000000000001','Fixture group','{}');
 select public.create_prayer_chat_group('a1100000-0000-4000-8000-000000000001','a1200000-0000-4000-8000-000000000001','Fixture group','{}');

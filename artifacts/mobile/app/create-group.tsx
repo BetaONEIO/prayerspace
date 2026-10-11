@@ -41,6 +41,7 @@ import { supabase } from "@/lib/supabase";
 import { groupIdResult, groupRpc, newGroupClientId } from "@/lib/groupChat";
 import { useQueryClient } from "@tanstack/react-query";
 import { useScopedGroupState } from "@/hooks/useGroupChat";
+import { uploadPrivateGroupFile } from "@/lib/groupMedia";
 
 type Step = 1 | 2;
 type FocusCategory = "Prayer" | "Bible Study" | "Support" | "Testimony";
@@ -66,7 +67,7 @@ export default function CreateGroupScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const owner = useMemo(() => ({ id: user?.id }), [user?.id]);
+  const owner = useMemo(() => ({ id: user?.id, generation:newGroupClientId() }), [user?.id]);
   const currentOwner = useRef(owner);
   currentOwner.current = owner;
   const scrollRef = useRef<ScrollView>(null);
@@ -77,7 +78,8 @@ export default function CreateGroupScreen() {
   const [selectedPrivacy, setSelectedPrivacy] = useScopedGroupState<PrivacyType>(owner, "Private");
   const [groupPhotoUri, setGroupPhotoUri] = useScopedGroupState<string | null>(owner, null);
   const creationId = useMemo(() => newGroupClientId(), [owner, groupName.trim(), selectedFocus, selectedPrivacy, safeSpaceEnabled]);
-  const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
+  const coverId = useMemo(()=>newGroupClientId(),[creationId,groupPhotoUri]);
+  const [showPhotoModal, setShowPhotoModal] = useScopedGroupState<boolean>(owner,false);
   const [showCreatedModal, setShowCreatedModal] = useScopedGroupState<boolean>(owner, false);
   const [showNameAlert, setShowNameAlert] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useScopedGroupState<boolean>(owner, false);
@@ -159,17 +161,25 @@ export default function CreateGroupScreen() {
           p_client_id: creationId, p_name: groupName.trim(),
           p_settings: { focus: selectedFocus ?? "Prayer", private: selectedPrivacy === "Private", safeSpace: safeSpaceEnabled },
         }, groupIdResult);
+        if(currentOwner.current!==owner)return;
+        if(groupPhotoUri){
+          await uploadPrivateGroupFile({userId:user.id,groupId:creationId,scope:owner},coverId,"cover",groupPhotoUri,()=>currentOwner.current===owner);
+          if(currentOwner.current!==owner)return;
+          await groupRpc(supabase,user.id,"publish_group_media",{
+            p_group_id:creationId,p_media_id:coverId,p_client_id:coverId,
+          },groupIdResult);
+        }
         if (currentOwner.current !== owner) return;
         await queryClient.invalidateQueries({ queryKey: ["prayer-chat-groups", user.id] });
         openCreatedModal();
       } catch (err) {
         console.error("[CreateGroup] Failed to create group:", err);
-        if (currentOwner.current === owner) Alert.alert("Could not create group", err instanceof Error ? err.message : "Please try again.");
+        if (currentOwner.current === owner) Alert.alert("Group setup not confirmed", `${err instanceof Error ? err.message : "Please retry."}${groupPhotoUri ? " If the group was saved but its photo failed, retry to finish the same group." : ""}`);
       } finally {
         setIsSubmitting(false);
       }
     }
-  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, openCreatedModal, isSubmitting, user?.id, owner, queryClient, creationId]);
+  }, [step, groupName, selectedFocus, safeSpaceEnabled, selectedPrivacy, openCreatedModal, isSubmitting, user?.id, owner, queryClient, creationId,coverId,groupPhotoUri]);
 
   const handleBack = useCallback(() => {
     if (step === 2) {
@@ -190,10 +200,9 @@ export default function CreateGroupScreen() {
   }, []);
 
   const handleGroupPhotoSelected = useCallback((uri: string) => {
-    console.log("[CreateGroup] Photo selected:", uri);
     setGroupPhotoUri(uri);
     setShowPhotoModal(false);
-  }, []);
+  }, [setGroupPhotoUri,setShowPhotoModal]);
 
   return (
     <>
@@ -242,7 +251,7 @@ export default function CreateGroupScreen() {
                 </Text>
               </View>
 
-              <Pressable style={styles.imagePickerWrap} onPress={() => Alert.alert("Group photos", "Connected prayer groups currently support text chat and reactions. Group photos are not connected yet.")} testID="group-photo-btn">
+              <Pressable style={styles.imagePickerWrap} onPress={() => setShowPhotoModal(true)} testID="group-photo-btn">
                 {groupPhotoUri ? (
                   <Image source={{ uri: groupPhotoUri }} style={styles.imagePickerPhoto} />
                 ) : (
@@ -429,6 +438,7 @@ export default function CreateGroupScreen() {
       </Modal>
 
       <PhotoUploadModal
+        key={owner.generation}
         visible={showPhotoModal}
         onClose={() => setShowPhotoModal(false)}
         onImageSelected={handleGroupPhotoSelected}
