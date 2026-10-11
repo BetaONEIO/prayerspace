@@ -11,6 +11,13 @@ export interface UserProfile {
   deletion_requested_at: string | null;
 }
 
+// All authenticated providers require the same saved DOB, including OAuth
+// accounts whose profile row has not been created yet. Metadata flags are not
+// proof of age.
+export function needsDateOfBirth(profile: Pick<UserProfile, "date_of_birth"> | null | undefined): boolean {
+  return !profile?.date_of_birth;
+}
+
 export function validateDateOfBirth(value: unknown, today = new Date()): asserts value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new Error("Please enter a valid date of birth.");
@@ -47,7 +54,13 @@ export async function checkRegistrationStorage(client: SupabaseClient): Promise<
 export async function readOwnRegistrationProfile(client: SupabaseClient): Promise<UserProfile | null> {
   const { data, error } = await client.rpc("get_my_registration_profile").maybeSingle();
   if (error) throw profileStorageError(error);
-  return data as UserProfile | null;
+  const profile = data as UserProfile | null;
+  // This reader is shared by email, Google, Apple and restored sessions.
+  // A pre-existing row alone must not bypass the minimum-age requirement.
+  if (profile?.date_of_birth && !profile.deletion_requested_at) {
+    validateDateOfBirth(profile.date_of_birth);
+  }
+  return profile;
 }
 
 export async function writeOwnRegistrationProfile(

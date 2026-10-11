@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { needsDateOfBirth } from "@/lib/registrationProfile";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useCallback } from "react";
@@ -75,11 +76,7 @@ function AuthGuard() {
     // required DOB completion takes priority over onboarding/home redirects.
     if (session && segments[0] !== "verify-otp") {
       if (isProfileLoading || profileError) return;
-      const isOAuthUser =
-        session.user.app_metadata?.provider &&
-        session.user.app_metadata.provider !== "email";
-      const isEmailUser = (session.user.app_metadata?.provider ?? "email") === "email";
-      const needsDob = (isEmailUser || (isOAuthUser && profile !== null)) && !profile?.date_of_birth;
+      const needsDob = needsDateOfBirth(profile);
       if (needsDob && !inCompleteProfile) {
         console.log("[AuthGuard] User missing required DOB, redirecting to complete-profile");
         router.replace("/complete-profile" as never);
@@ -131,14 +128,17 @@ function RootLayoutNav() {
   const localDataError = prayerData.loadError || favouritesData.loadError;
   const { profile } = useAuth();
   const deletionPending = !!profile?.deletion_requested_at;
+  const completingDob = !!session && needsDateOfBirth(profile) &&
+    (segments[0] as string) !== "complete-profile";
   // Verification handles its own save error. Keep the navigator mounted but
-  // prevent interaction elsewhere while the required profile cannot load.
+  // prevent interaction elsewhere while loading or redirecting to required DOB
+  // completion. A direct private link must not create a usable bypass.
   const profileBlocked = session && segments[0] !== "verify-otp" &&
-    (isProfileLoading || profileError || localDataLoading || localDataError || deletionPending);
+    (isProfileLoading || profileError || localDataLoading || localDataError || deletionPending || completingDob);
   const profileGate = (
     <Modal visible={!!profileBlocked} animationType="none" onRequestClose={() => {}}>
       <View style={[profileGateStyles.container, { backgroundColor: colors.background }]}>
-        {isProfileLoading || localDataLoading ? <ActivityIndicator color={colors.primary} /> : (
+        {isProfileLoading || localDataLoading || (completingDob && !profileError && !localDataError && !deletionPending) ? <ActivityIndicator color={colors.primary} /> : (
           <>
             <Text style={[profileGateStyles.title, { color: colors.foreground }]}>
               {deletionPending ? "Account Deletion Requested" : localDataError ? "Your Data Could Not Load" : "Profile Could Not Load"}

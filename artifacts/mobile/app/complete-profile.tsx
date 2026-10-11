@@ -63,12 +63,25 @@ export default function CompleteProfileScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, updateProfile, isUpdatingProfile } = useAuth();
+  const { user, updateProfile, isUpdatingProfile, signOut } = useAuth();
 
   const [dobDay, setDobDay] = useState("");
   const [dobMonth, setDobMonth] = useState("");
   const [dobYear, setDobYear] = useState("");
   const [dobError, setDobError] = useState("");
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      router.replace("/login");
+    } catch {
+      setDobError("Couldn't sign out. Please try again.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [signOut, router]);
 
   const monthRef = useRef<TextInput | null>(null);
   const yearRef = useRef<TextInput | null>(null);
@@ -100,6 +113,7 @@ export default function CompleteProfileScreen() {
   }, []);
 
   const handleSave = useCallback(async () => {
+    if (isSigningOut) return;
     const iso = buildIsoDate(dobDay, dobMonth, dobYear);
     if (!iso) {
       setDobError("Please enter a valid date of birth.");
@@ -119,7 +133,7 @@ export default function CompleteProfileScreen() {
       const message = error instanceof Error ? error.message : "Your date of birth could not be saved. Please try again.";
       Alert.alert("Could Not Save", message);
     }
-  }, [dobDay, dobMonth, dobYear, updateProfile, router]);
+  }, [dobDay, dobMonth, dobYear, updateProfile, router, isSigningOut]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -204,7 +218,7 @@ export default function CompleteProfileScreen() {
           <Pressable
             style={[styles.saveBtn, isUpdatingProfile && styles.saveBtnDisabled]}
             onPress={handleSave}
-            disabled={isUpdatingProfile}
+            disabled={isUpdatingProfile || isSigningOut}
             testID="complete-profile-save"
           >
             {isUpdatingProfile ? (
@@ -217,6 +231,15 @@ export default function CompleteProfileScreen() {
             Your date of birth is used only for age verification and is never
             shared publicly.
           </Text>
+          <Pressable
+            onPress={handleSignOut}
+            disabled={isUpdatingProfile || isSigningOut}
+            accessibilityRole="button"
+            testID="complete-profile-sign-out"
+            style={styles.signOutBtn}
+          >
+            <Text style={styles.helperText}>{isSigningOut ? "Signing out…" : "Sign out"}</Text>
+          </Pressable>
         </AutoScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -231,6 +254,10 @@ function createStyles(colors: ThemeColors) {
     },
     flex: {
       flex: 1,
+    },
+    signOutBtn: {
+      padding: 16,
+      alignItems: "center",
     },
     container: {
       flexGrow: 1,

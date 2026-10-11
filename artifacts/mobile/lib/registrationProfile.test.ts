@@ -3,13 +3,32 @@ import { test } from "node:test";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import {
   checkRegistrationStorage, loadEmailRegistrationProfile,
-  profileStorageError, validateDateOfBirth,
+  profileStorageError, validateDateOfBirth, readOwnRegistrationProfile, needsDateOfBirth,
 } from "./registrationProfile";
 
 const today = new Date(2026, 9, 7, 12);
 const user = {
   id: "isolated-test-user", user_metadata: { full_name: "Test", date_of_birth: "2000-02-29" },
 } as unknown as User;
+
+test("every provider needs completion when the profile or DOB is missing", () => {
+  for (const profile of [null, undefined, { date_of_birth: null }]) {
+    assert.equal(needsDateOfBirth(profile), true);
+  }
+  assert.equal(needsDateOfBirth({ date_of_birth: "1995-01-01" }), false);
+});
+
+test("shared profile loading rejects saved underage and invalid dates for OAuth and restored sessions", async () => {
+  for (const date_of_birth of ["2020-01-01", "2001-02-29", "2099-01-01"]) {
+    const existing = { id: user.id, date_of_birth };
+    const { client, writes } = clientFor(existing, null);
+    await assert.rejects(readOwnRegistrationProfile(client), /at least 13|valid date/);
+    assert.equal(writes.length, 0);
+  }
+  const saved = { id: user.id, date_of_birth: "1995-01-01" };
+  assert.deepEqual(await readOwnRegistrationProfile(clientFor(saved, null).client), saved);
+  assert.equal(await readOwnRegistrationProfile(clientFor(null, null).client), null);
+});
 
 function clientFor(
   existing: unknown, saved: unknown, readError: unknown = null, saveError: unknown = null,
