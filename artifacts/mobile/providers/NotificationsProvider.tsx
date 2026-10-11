@@ -2,10 +2,11 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import createContextHook from "@nkzw/create-context-hook";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/providers/AuthProvider";
+import { useGroupInvitationAlerts, groupInvitationAlertPrefix } from "@/hooks/useGroupInvitationAlerts";
 
 export interface AppNotification {
   id: string;
-  type: "prayer" | "group" | "testimony" | "streak" | "request" | "comment" | "reaction" | "reply" | "member_joined" | "event" | "mention";
+  type: "prayer" | "group" | "group_invitation" | "testimony" | "streak" | "request" | "comment" | "reaction" | "reply" | "member_joined" | "event" | "mention";
   title: string;
   body: string;
   time: string;
@@ -32,7 +33,23 @@ type DurableNotificationRow = {
 
 export const [NotificationsProvider, useNotifications] = createContextHook(() => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [baseNotifications, setNotifications] = useState<AppNotification[]>([]);
+  const invitationAlerts = useGroupInvitationAlerts();
+  const notifications = useMemo<AppNotification[]>(() => [
+    ...invitationAlerts.data.map(alert => ({
+      id: `${groupInvitationAlertPrefix}${alert.id}`,
+      type: "group_invitation" as const,
+      title: "New group invitation",
+      body: `${alert.inviterName} invited you to "${alert.groupName}". Review the invitation to accept or decline.`,
+      time: formatNotificationTime(alert.createdAt),
+      unread: alert.unread, targetRoute: "/manage-invites", persisted: true,
+      actions: [
+        { label: "Review invitation", variant: "primary" as const },
+        { label: "Dismiss", variant: "secondary" as const },
+      ],
+    })),
+    ...baseNotifications,
+  ], [invitationAlerts.data, baseNotifications]);
   const [prayedRequestIds, setPrayedRequestIds] = useState<Set<string>>(new Set());
   const [joinedGroupIds, setJoinedGroupIds] = useState<Set<string>>(new Set());
   const refreshVersion = useRef(0);
@@ -173,6 +190,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   }, []);
 
   const removeNotification = useCallback((id: string) => {
+    if (id.startsWith(groupInvitationAlertPrefix)) { invitationAlerts.update("dismiss", id); return; }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     if (id.startsWith("notif-")) return;
     void (async () => {
@@ -181,9 +199,10 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
         console.error("[NotificationsProvider] Failed to dismiss notification:", error.message);
       }
     })();
-  }, []);
+  }, [invitationAlerts.update]);
 
   const markNotificationRead = useCallback((id: string) => {
+    if (id.startsWith(groupInvitationAlertPrefix)) { invitationAlerts.update("read", id); return; }
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === id ? { ...notification, unread: false } : notification
@@ -200,9 +219,10 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
         console.error("[NotificationsProvider] Failed to mark notification read:", error.message);
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, invitationAlerts.update]);
 
   const markAllRead = useCallback(() => {
+    invitationAlerts.update("read_all");
     setNotifications((current) => current.map((notification) => ({ ...notification, unread: false })));
     if (!user?.id) return;
     void (async () => {
@@ -215,7 +235,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
         console.error("[NotificationsProvider] Failed to mark notifications read:", error.message);
       }
     })();
-  }, [user?.id]);
+  }, [user?.id, invitationAlerts.update]);
 
   const markRequestPrayed = useCallback((requestId: string) => {
     console.log("[NotificationsProvider] Marking request as prayed:", requestId);
@@ -255,8 +275,11 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       hasBeenPrayed,
       joinGroup,
       hasJoinedGroup,
+      groupInvitationAlertsError: invitationAlerts.error,
+      groupInvitationAlertsLoading: invitationAlerts.loading,
+      retryGroupInvitationAlerts: invitationAlerts.retry,
     }),
-    [notifications, prayedRequestIds, joinedGroupIds, unreadCount, addNotification, removeNotification, markNotificationRead, markAllRead, markRequestPrayed, hasBeenPrayed, joinGroup, hasJoinedGroup]
+    [notifications, prayedRequestIds, joinedGroupIds, unreadCount, addNotification, removeNotification, markNotificationRead, markAllRead, markRequestPrayed, hasBeenPrayed, joinGroup, hasJoinedGroup, invitationAlerts.error, invitationAlerts.loading, invitationAlerts.retry]
   );
 });
 

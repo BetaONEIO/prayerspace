@@ -30,3 +30,17 @@ able to bypass the recipient's new restriction.
 including legacy send paths and acceptance. Serialize preference changes with
 sends/responses; preserve conversation → recipient → invitation lock order, with
 the preference setter taking no conversation locks.
+
+Reading or dismissing an invitation alert must not accept or decline the
+invitation. Dismissal hides that alert across devices, while the invitation
+remains actionable in the inbox. Alert receipts are recipient-private and must
+not become read receipts visible to senders.
+
+**Why:** Notification housekeeping is not consent to join or reject a private
+chat. Adding metadata to sender-readable invitation rows would expose recipient
+behavior without opting into shared read receipts.
+
+**How to apply:** Keep alert actions separate from invitation responses. Only
+eligible pending, unexpired, non-dismissed invitations produce in-app alerts;
+receipt updates are monotonic and scoped to the authenticated recipient. Do not
+add external messaging or push notifications as part of these in-app alerts.

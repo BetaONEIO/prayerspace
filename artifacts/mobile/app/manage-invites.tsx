@@ -35,6 +35,7 @@ function GroupInvitationsBody() {
       if(!mounted.current)return;
       await Promise.all([
         client.invalidateQueries({queryKey:["group-invitations",query.user?.id]}),
+        client.invalidateQueries({queryKey:["group-invitation-alerts",query.user?.id]}),
         client.invalidateQueries({queryKey:["prayer-chat-groups",query.user?.id]}),
         client.invalidateQueries({queryKey:["group-chat-invites",query.user?.id]}),
       ]);

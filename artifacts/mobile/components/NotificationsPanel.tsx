@@ -66,7 +66,7 @@ function DeclineDialog({ visible, onConfirm, onCancel, groupName, colors }: Decl
 
 function NotificationIcon({ type, colors }: { type: Notification["type"]; colors: ThemeColors }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
-  if (type === "group") {
+  if (type === "group" || type === "group_invitation") {
     return (
       <View style={[styles.iconCircle, { backgroundColor: colors.secondary }]}>
         <Users size={22} color={colors.primary} />
@@ -142,7 +142,8 @@ function NotificationIcon({ type, colors }: { type: Notification["type"]; colors
 export default function NotificationsPanel({ visible, onClose }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { notifications, removeNotification, markNotificationRead, markAllRead } = useNotifications();
+  const { notifications, removeNotification, markNotificationRead, markAllRead,
+    groupInvitationAlertsError, groupInvitationAlertsLoading, retryGroupInvitationAlerts } = useNotifications();
   const router = useRouter();
   const invitations = useGroupInvitations(visible);
   const pendingInvitations = invitations.data?.filter(i => i.recipientId === invitations.user?.id && i.status === "pending").length ?? 0;
@@ -150,6 +151,11 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
   const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
   const handleActionPress = useCallback((notif: Notification, actionLabel: string) => {
+    if (notif.type === "group_invitation") {
+      if (actionLabel === "Dismiss") removeNotification(notif.id);
+      else { markNotificationRead(notif.id); onClose(); router.push("/manage-invites"); }
+      return;
+    }
     if (actionLabel === "Dismiss") {
       removeNotification(notif.id);
     } else if (actionLabel === "Decline") {
@@ -158,7 +164,7 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
     } else {
       console.log(`Action "${actionLabel}" pressed for notification ${notif.id}`);
     }
-  }, [removeNotification]);
+  }, [removeNotification, markNotificationRead, onClose, router]);
 
   const handleDeclineConfirm = useCallback(() => {
     if (pendingDeclineId) {
@@ -223,17 +229,25 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
                 <Text style={{color:colors.foreground,fontWeight:"700"}}>Group invitations{pendingInvitations ? ` (${pendingInvitations})` : ""}</Text>
                 <Text style={{color:colors.mutedForeground,marginTop:6}}>{invitations.isError?"Open to retry loading invitations":"Accept, decline, or manage your private chat invitations"}</Text>
               </Pressable>
+              {groupInvitationAlertsLoading && <Text style={{color:colors.mutedForeground,padding:18}}>Loading invitation alerts…</Text>}
+              {groupInvitationAlertsError && <Pressable accessibilityRole="button" onPress={retryGroupInvitationAlerts}>
+                <Text accessibilityRole="alert" style={{color:colors.destructive,padding:18}}>Couldn't refresh invitation alerts. Tap to refresh and try again.</Text>
+              </Pressable>}
               {notifications.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Bell size={36} color={colors.mutedForeground + "66"} />
-                  <Text style={styles.emptyText}>You're all caught up!</Text>
-                  <Text style={styles.emptySubtext}>No new notifications</Text>
+                  <Text style={styles.emptyText}>{groupInvitationAlertsLoading ? "Checking notifications…" : groupInvitationAlertsError ? "Notifications unavailable" : "You're all caught up!"}</Text>
+                  <Text style={styles.emptySubtext}>{groupInvitationAlertsLoading ? "Checking invitation alerts…" : groupInvitationAlertsError ? "Some alerts could not be loaded" : "No new notifications"}</Text>
                 </View>
               ) : (
                 notifications.map((notif, index) => (
                   <Pressable
                     key={notif.id}
-                    onPress={() => markNotificationRead(notif.id)}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      markNotificationRead(notif.id);
+                      if (notif.type === "group_invitation") {onClose();router.push("/manage-invites");}
+                    }}
                     style={[
                       styles.notifRow,
                       notif.unread && styles.notifRowUnread,
@@ -277,7 +291,7 @@ export default function NotificationsPanel({ visible, onClose }: Props) {
                             {notif.actions.map((action) => (
                               <Pressable
                                 key={action.label}
-                                onPress={() => handleActionPress(notif, action.label)}
+                                onPress={(event) => {event.stopPropagation();handleActionPress(notif, action.label);}}
                                 style={[
                                   styles.actionBtn,
                                   action.variant === "primary"

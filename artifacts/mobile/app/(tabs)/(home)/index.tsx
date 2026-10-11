@@ -98,7 +98,7 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { user, profile } = useAuth();
   const { stats } = usePrayer();
-  const { hasBeenPrayed } = useNotifications();
+  const { hasBeenPrayed, unreadCount } = useNotifications();
   const receivedQuery = useQuery({
     queryKey: ["received-prayers", user?.id],
     enabled: !!user?.id,
@@ -410,9 +410,9 @@ export default function HomeScreen() {
                 <View style={styles.friendBadge} />
               )}
             </Pressable>
-            <Pressable style={styles.bellButton} onPress={handleOpenNotif}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadCount} unread`} style={styles.bellButton} onPress={handleOpenNotif}>
               <Bell size={20} color={colors.secondaryForeground} />
-              <View style={styles.bellBadge} />
+              {unreadCount > 0 && <View style={styles.bellBadge} />}
             </Pressable>
           </View>
         </View>

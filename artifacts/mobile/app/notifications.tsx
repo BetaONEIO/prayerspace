@@ -42,6 +42,7 @@ function DeclineDialog({ visible, onConfirm, onCancel, groupName, colors }: { vi
 function NotificationIcon({ type, colors }: { type: Notification["type"]; colors: ThemeColors }) {
   const iconStyle = { width: 48, height: 48, borderRadius: 24, alignItems: "center" as const, justifyContent: "center" as const, flexShrink: 0 };
   switch (type) {
+    case "group_invitation":
     case "group": return <View style={[iconStyle, { backgroundColor: colors.secondary }]}><Users size={22} color={colors.primary} /></View>;
     case "testimony": return <View style={[iconStyle, { backgroundColor: colors.accent }]}><Trophy size={22} color={colors.primary} /></View>;
     case "streak": return <View style={[iconStyle, { backgroundColor: colors.secondary }]}><Flame size={22} color={colors.mutedForeground} /></View>;
@@ -60,13 +61,19 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { notifications, removeNotification, markNotificationRead, markAllRead, joinGroup } = useNotifications();
+  const { notifications, removeNotification, markNotificationRead, markAllRead, joinGroup,
+    groupInvitationAlertsError, groupInvitationAlertsLoading, retryGroupInvitationAlerts } = useNotifications();
   const invitations=useGroupInvitations();
   const pendingInvitations=invitations.data?.filter(i=>i.recipientId===invitations.user?.id && i.status==="pending").length ?? 0;
   const [declineDialogVisible, setDeclineDialogVisible] = useState(false);
   const [pendingDeclineId, setPendingDeclineId] = useState<string | null>(null);
 
   const handleActionPress = useCallback((notif: Notification, actionLabel: string) => {
+    if (notif.type === "group_invitation") {
+      if (actionLabel === "Dismiss") removeNotification(notif.id);
+      else { markNotificationRead(notif.id); router.push("/manage-invites"); }
+      return;
+    }
     if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (actionLabel === "Dismiss") { removeNotification(notif.id); return; }
     if (actionLabel === "Decline") { setPendingDeclineId(notif.id); setDeclineDialogVisible(true); return; }
@@ -97,6 +104,11 @@ export default function NotificationsScreen() {
   }, [pendingDeclineId, removeNotification]);
 
   const handleNotifRowPress = useCallback((notif: Notification) => {
+    if (notif.type === "group_invitation") {
+      markNotificationRead(notif.id);
+      router.push("/manage-invites");
+      return;
+    }
     if (!notif.targetRoute) {
       markNotificationRead(notif.id);
       return;
@@ -136,11 +148,15 @@ export default function NotificationsScreen() {
           <Text style={{color:colors.foreground,fontWeight:"700"}}>Group invitations{pendingInvitations ? ` (${pendingInvitations})` : ""}</Text>
           <Text style={{color:colors.mutedForeground,marginTop:6}}>{invitations.isError?"Open to retry loading invitations":"Accept, decline, or manage your private chat invitations"}</Text>
         </Pressable>
+        {groupInvitationAlertsLoading && <Text style={{color:colors.mutedForeground,padding:18}}>Loading invitation alerts…</Text>}
+        {groupInvitationAlertsError && <Pressable accessibilityRole="button" onPress={retryGroupInvitationAlerts}>
+          <Text accessibilityRole="alert" style={{color:colors.destructive,padding:18}}>Couldn't refresh invitation alerts. Tap to refresh and try again.</Text>
+        </Pressable>}
         {notifications.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconWrap}><Bell size={40} color={colors.mutedForeground + "66"} /></View>
-            <Text style={styles.emptyText}>You're all caught up!</Text>
-            <Text style={styles.emptySubtext}>No new notifications</Text>
+            <Text style={styles.emptyText}>{groupInvitationAlertsLoading ? "Checking notifications…" : groupInvitationAlertsError ? "Notifications unavailable" : "You're all caught up!"}</Text>
+            <Text style={styles.emptySubtext}>{groupInvitationAlertsLoading ? "Checking invitation alerts…" : groupInvitationAlertsError ? "Some alerts could not be loaded" : "No new notifications"}</Text>
           </View>
         ) : (
           <View style={styles.notifList}>
@@ -163,7 +179,7 @@ export default function NotificationsScreen() {
                     {notif.actions && (
                       <View style={styles.notifActions}>
                         {notif.actions.map((action) => (
-                          <Pressable key={action.label} onPress={() => handleActionPress(notif, action.label)} style={[styles.actionBtn, action.variant === "primary" ? styles.actionBtnPrimary : styles.actionBtnSecondary]}>
+                          <Pressable key={action.label} onPress={(event) => {event.stopPropagation();handleActionPress(notif, action.label);}} style={[styles.actionBtn, action.variant === "primary" ? styles.actionBtnPrimary : styles.actionBtnSecondary]}>
                             <Text style={[styles.actionBtnText, action.variant === "primary" ? styles.actionBtnTextPrimary : styles.actionBtnTextSecondary]}>{action.label}</Text>
                           </Pressable>
                         ))}

@@ -55,6 +55,7 @@ function AccountInvitationSetting({ userId }: { userId?: string }) {
       setSaved(true);
       await Promise.all([
         client.invalidateQueries({ queryKey: ["group-invitations", userId] }),
+        client.invalidateQueries({ queryKey: ["group-invitation-alerts", userId] }),
         client.invalidateQueries({ queryKey: ["group-chat-invites", userId] }),
       ]);
     },
