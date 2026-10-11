@@ -15,6 +15,7 @@ import { groupStore, groupCreatedStore } from "@/lib/groupStore";
 import { synchronizeAccountReminders } from "@/lib/accountReminderNotifications";
 import { checkRegistrationStorage, loadEmailRegistrationProfile, readOwnRegistrationProfile, writeOwnRegistrationProfile, validateDateOfBirth } from "@/lib/registrationProfile";
 import type { UserProfile } from "@/lib/registrationProfile";
+import { completeNativeGoogleSignIn, NativeGoogleAuthError } from "@/lib/nativeGoogleAuth";
 export type { UserProfile } from "@/lib/registrationProfile";
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
@@ -23,6 +24,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [localDataEpoch, setLocalDataEpoch] = useState(0);
   const requestedDeletionAccounts = useRef(new Set<string>());
+  const googleSignInInFlight = useRef(false);
   const accountIdentity = useMemo(() => ({ ...getLocalDataIdentity() }), [session?.user.id, localDataEpoch]);
 
   useEffect(() => {
@@ -287,73 +289,38 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        skipBrowserRedirect: true,
-        redirectTo,
-      },
-    });
-
-    if (error) {
-      console.error("[Auth] Google OAuth error:", error.message);
-      throw error;
+    // Prevent overlapping native attempts from replacing the shared PKCE
+    // verifier while an earlier browser session is still open.
+    if (googleSignInInFlight.current) {
+      throw new NativeGoogleAuthError("Google sign-in is already in progress.");
     }
-    if (!data?.url) throw new Error("No OAuth URL returned from Supabase");
-
-    console.log("[Auth] Opening Google auth browser, redirectTo:", redirectTo);
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    console.log("[Auth] WebBrowser result type:", result.type);
-
-    if (result.type === "success" && result.url) {
-      console.log("[Auth] Exchanging code for session...");
-      const { error: sessionError } = await supabase.auth.exchangeCodeForSession(result.url);
-      if (sessionError) {
-        console.error("[Auth] exchangeCodeForSession error:", sessionError.message);
-        throw sessionError;
+    googleSignInInFlight.current = true;
+    const startingAccount = { ...getLocalDataIdentity() };
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { skipBrowserRedirect: true, redirectTo },
+      });
+      if (error || !data?.url) {
+        throw new NativeGoogleAuthError("Google sign-in couldn't start. Please try again.");
       }
-      console.log("[Auth] Google sign in successful");
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: existingProfile, error: profileCheckErr } = await supabase
-          .from("profiles")
-          .select("id, deletion_requested_at")
-          .eq("id", user.id)
-          .single();
-
-        if (profileCheckErr && profileCheckErr.code !== "PGRST116") {
-          console.error("[Auth] Google profile check error (non-fatal):", profileCheckErr.message);
-        }
-
-        if (existingProfile?.deletion_requested_at) {
-          console.log("[Auth] Google sign in blocked — account pending deletion:", user.id);
-          await supabase.auth.signOut();
-          throw new Error("ACCOUNT_DELETED");
-        }
-
-        if (!existingProfile) {
-          console.log("[Auth] Creating profile for new Google user...");
-          const fullName = user.user_metadata?.full_name ?? user.user_metadata?.name ?? "";
-          const avatarUrl = user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null;
-          const { error: upsertError } = await supabase.from("profiles").upsert(
-            {
-              id: user.id,
-              full_name: fullName,
-              avatar_url: avatarUrl,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
-          if (upsertError) {
-            console.error("[Auth] Failed to create Google user profile (non-fatal):", upsertError.message);
-          } else {
-            console.log("[Auth] Google user profile created");
-          }
-        }
-      }
-    } else {
-      console.log("[Auth] Google sign in cancelled or failed:", result.type);
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      const completed = await completeNativeGoogleSignIn(
+        result,
+        redirectTo,
+        code => supabase.auth.exchangeCodeForSession(code),
+        () => assertLocalDataIdentity(startingAccount),
+      );
+      if (!completed) return;
+      // The shared SIGNED_IN handler and profile query perform profile
+      // creation, deletion checks and mandatory DOB completion for all
+      // providers. Do not duplicate that work in a late browser callback.
+      console.log("[Auth] Google session established");
+    } catch (error) {
+      if (error instanceof NativeGoogleAuthError) throw error;
+      throw new NativeGoogleAuthError("Google sign-in couldn't complete. Please try again.");
+    } finally {
+      googleSignInInFlight.current = false;
     }
   }, []);
 
